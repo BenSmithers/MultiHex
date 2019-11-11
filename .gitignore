@@ -1,0 +1,5 @@
+# ignore all compiled files
+*.pyc
+
+# ignore any adobe illustrator files
+*.ai

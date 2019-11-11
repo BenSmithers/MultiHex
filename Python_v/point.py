@@ -1,0 +1,81 @@
+import numpy as np
+
+def is_number(object):
+    gt = type(object)
+    return( gt==int or gt==float )
+
+class Point:
+    """
+    Creates a framework to have points in 2D space
+    
+    Defines several operators for adding, subtracting, and taking the inner product of two points 
+    """
+    def __init__(self, ex =0.0, why=0.0):
+        # do the thing
+        self.x = ex
+        self.y = why
+        
+        # use the bool so that we only have to calculate the magnitude once 
+        self._calculated = False
+        self._magnitude     = 0.0
+    
+    def __add__(self, obj):
+        """
+        Used to add a point to another one through vector addition 
+        """
+        if (obj.__class__!=self.__class__):
+            raise TypeError("Cannot add type {} to Point object".format(obj.__class__)) 
+        new = Point( self.x + obj.x, self.y + obj.y)
+        return( new )
+    def __sub__(self, obj):
+        """
+        Same as addition, but for subtraction
+        """
+        if (obj.__class__!=self.__class__):
+            raise TypeError("Cannot subtract type {} from Point object".format(obj.__class__)) 
+        new = Point( self.x - obj.x, self.y - obj.y)
+        return( new )
+    def __mul__(self, obj):
+        """
+        Calculate the inner product of two vector-points, or scale one vector-point by a scalar. 
+        """
+        if is_number(obj):
+            return( Point( self.x*obj, self.y*obj ))
+        elif obj.__class__==self.__class__:
+            return( self.x*obj.x + self.y*obj.y )
+        else:
+            raise TypeError("Cannot multiply type {} with Point object".format(obj.__class__))
+    def __eq__(self, obj):
+        return( self.x==obj.x and self.y==obj.y)
+    def __truediv__(self, obj):
+        if not is_number(obj):
+            raise TypeError("Cannot divide Point by object of type '{}'".format(type(obj)))
+        else:
+            return( Point( self.x/obj, self.y/obj ) )
+    
+    def __pow__(self, obj):
+        if not is_number(obj):
+            raise TypeError("Cannot raise vector to a non-number power")
+        else:
+            # returns a scalar! 
+            return( self.x**obj + self.y**obj )
+
+    @property
+    def magnitude(cls):
+        """
+        Return the magnitude of the vector. If it hasn't been calculated, calculate it.
+        """
+        if cls._calculated:
+            return( cls._magnitude )
+        else:
+            cls._magnitude = np.sqrt( cls.x**2 + cls.y**2 )
+            cls._calculated = True
+            return(cls._magnitude)
+    
+    # casting this object as a string 
+    def __str__(self):
+        return( "({},{})".format( self.x, self.y ) )
+    
+    def __repr__(self):
+        return("Point({},{})".format(self.x,self.y))
+        
