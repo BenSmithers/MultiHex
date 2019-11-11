@@ -28,13 +28,12 @@ class Hexmap:
     Object to maintain the whole hex catalogue, draw the hexes, registers the hexes
     """
     def __init__(self):
-        # public
         self.catalogue = {}
         
-        #private 
         self._drawscale = 15.0
         self._zoom      = 1.0
         self._active_id = None
+        self._party_hex = None
         
         self.draw_relative_to = Point(0.0,0.0)
     
@@ -54,24 +53,37 @@ class Hexmap:
     def rescale(self):
         pass
 
-    @staticmethod
-    def get_hex_neighbors(cls, ID):
+    def get_hex_neighbors(self, ID):
+        """
+        Calculates the IDs of a given Hexes' neighbors
+        NOTE: Neighbors not guaranteed to exist! 
+        """
+
         # convert the id to a bit string
         x_id, y_id, grid = deconstruct_id(ID)
 
-        #TODO:
-        # add catches for when the neighbor ID calculated doesn't exist 
 
         neighbors = []
         neighbors.append(construct_id(x_id, y_id+1, grid) )
         neighbors.append(construct_id(x_id, y_id-1, grid) )
 
+        if grid:
+            neighbors.append(construct_id(x_id,   y_id,   not grid) )
+            neighbors.append(construct_id(x_id,   y_id-1, not grid) )
+            neighbors.append(construct_id(x_id-1, y_id,   not grid) )
+            neighbors.append(construct_id(x_id-1, y_id-1, not grid) )
+        else:
+            neighbors.append(construct_id(x_id,   y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id,   y_id, not grid) )
+            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id+1, y_id, not grid) )
 
+        return(neighbors)
 
 
     def translate(self, vector):
         """
-        unused since this has been replaced by a working system 
+        Unused since this has been replaced by a working system 
         """
         for tile in self.catalogue.values():
             tile.translate( vector )
@@ -79,10 +91,10 @@ class Hexmap:
     def draw(self, canvas):
         canvas.delete("all")
         for tile in self.catalogue.values():
-            canvas.create_polygon( tile.get_flattened_points(self.draw_relative_to, self._zoom), outline=tile.outline, fill=tile.fill, width=2,tag='background')
+            canvas.create_polygon( tile.get_flattened_points(self.draw_relative_to, self._zoom), outline=tile.outline, fill=tile.fill, width=2.5,tag='background')
         
         if self._active_id is not None:
-            canvas.create_polygon( self.catalogue[ self._active_id ].get_flattened_points(self.draw_relative_to, self._zoom), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=2, tag='background')
+            canvas.create_polygon( self.catalogue[ self._active_id ].get_flattened_points(self.draw_relative_to, self._zoom), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=2.5, tag='background')
 
     
     def get_id_from_point(self, point):

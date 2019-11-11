@@ -55,6 +55,53 @@ class clicker_control:
         main_map._zoom += (event.delta/120.)*0.05
         main_map.draw( event.widget )
 
+def draw_buttons(frame):
+    frame.update()
+    hex_selector = tk.Frame(frame, background='white',width=int(0.2*gui_width) )
+    brushes      = tk.Frame(frame, background='white',width=int(0.2*gui_width) )
+    buttons      = tk.Frame(frame, background = 'white',width=int(0.2*gui_width) )
+    hex_selector.pack(side='top')
+    brushes.pack(side='top')
+    buttons.pack(side='top')
+
+    left_hex = tk.Frame(hex_selector, background='white',width=int(0.1*gui_width) )
+    right_hex = tk.Frame(hex_selector, background='white',width=int(0.1*gui_width) )
+    left_hex.pack(side='left')
+    right_hex.pack(side='left')
+    left_hex.update()
+    right_hex.update()
+
+    master.update()
+    button1 = tk.Button( left_hex, text="Button 1",     width=int(0.05*gui_width), command=None)
+    button2 = tk.Button( left_hex, text="Button 2",     width=int(0.05*gui_width), command=None)
+    button3 = tk.Button( left_hex, text="Button 3",     width=int(0.05*gui_width), command=None)
+    button4 = tk.Button( right_hex, text="Button 4",     width=int(0.05*gui_width), command=None)
+    button5 = tk.Button( right_hex, text="Button 5",     width=int(0.05*gui_width), command=None)
+    button6 = tk.Button( right_hex, text="Button 6",     width=int(0.05*gui_width), command=None)
+    button1.pack(side='top')
+    button4.pack(side='top')
+    button2.pack(side='top')
+    button5.pack(side='top')
+    button3.pack(side='top')
+    button6.pack(side='top')
+
+    
+
+     # define buttons 
+    draw_button = tk.Button( buttons, text="Draw Hex",     width=buttons.winfo_width(), command=None)
+    remove_button = tk.Button(buttons, text="Remove Data", width=buttons.winfo_width(), command=None)
+    quit_button   = tk.Button( buttons, text="Quit", width=buttons.winfo_width(), command = master.destroy )
+
+    draw_button.pack(side='top')
+    remove_button.pack(side='top')
+    quit_button.pack(side='bottom')
+
+    
+
+
+   
+
+
      # get_flattened_points
     # redraw 
     # check active tool
@@ -77,10 +124,15 @@ master.geometry('{}x{}'.format(gui_width, gui_height))
 #put a frame on the left to hold the map
 left_frame = tk.Frame( master, background='white', height=gui_height, width=int(0.8*gui_width))
 left_frame.pack(side='left')
+right_frame = tk.Frame( master, background='white', height=gui_height, width=int(0.2*gui_width))
+right_frame.pack(side='right')
+master.update()
+
+draw_buttons(right_frame)
 
 # put a frame on the right to hold buttons
-buttons = tk.Frame(master, background='gray', height=gui_height, width=int(0.2*gui_width))
-buttons.pack(side='right')
+#buttons = tk.Frame(lower_right, background='gray', height=gui_height, width=int(0.2*gui_width))
+#buttons.pack(side='right')
 
 # update the master object
 master.update()
@@ -96,13 +148,7 @@ canvas.pack()
 #update again
 master.update()
 
-# define buttons 
-draw_button = tk.Button( buttons, text="Draw Hex",     width=buttons.winfo_width(), command=None)
-remove_button = tk.Button(buttons, text="Remove Data", width=buttons.winfo_width(), command=None)
-quit_button   = tk.Button( buttons, text="Quit", width=buttons.winfo_width(), command = master.destroy )
-
-draw_button.pack(side='top')
-remove_button.pack(side='top')
-quit_button.pack(side='bottom')
 
 master.mainloop()
+
+# frame.destroy()
