@@ -4,38 +4,67 @@ from point import Point
 from hex import Hex
 from hexmap import Hexmap
 from special_hexes import *
+
 import tkinter as tk
-from PIL import Image, ImageTk
+
 
 master = tk.Tk()
-
 screen_ratio = 0.8
 
-photo1 = tk.PhotoImage(file= "hexes\hex_deepgreen.gif").subsample(8,8)
-photo2 = tk.PhotoImage(file= "hexes\hex_lightgreen.gif").subsample(8,8)
-photo3 = tk.PhotoImage(file= "hexes\hex_orange.gif").subsample(8,8)
-photo4 = tk.PhotoImage(file= "hexes\hex_blue.gif").subsample(8,8)
-photo5 = tk.PhotoImage(file= "hexes\hex_gray.gif").subsample(8,8)
-photo6 = tk.PhotoImage(file= "hexes\hex_beige.gif").subsample(8,8)
+import os # use the os module to discern the OS
+#it's stupid that I have to do this
+if os.name == 'nt':
+    photo1 = tk.PhotoImage(file= "hexes\hex_deepgreen.gif").subsample(8,8)
+    photo2 = tk.PhotoImage(file= "hexes\hex_lightgreen.gif").subsample(8,8)
+    photo3 = tk.PhotoImage(file= "hexes\hex_orange.gif").subsample(8,8)
+    photo4 = tk.PhotoImage(file= "hexes\hex_blue.gif").subsample(8,8)
+    photo5 = tk.PhotoImage(file= "hexes\hex_gray.gif").subsample(8,8)
+    photo6 = tk.PhotoImage(file= "hexes\hex_beige.gif").subsample(8,8)
+    draw_one = tk.PhotoImage(file= "hexes\draw_one.gif").subsample(8,8)
+    draw_several = tk.PhotoImage(file= "hexes\draw_several.gif").subsample(8,8)
+    erase_one = tk.PhotoImage(file= "hexes\erase_one.gif").subsample(8,8)
+    erase_several = tk.PhotoImage(file= "hexes\erase_several.gif").subsample(8,8)
+else:
+    photo1 = tk.PhotoImage(file= "hexes/hex_deepgreen.gif").subsample(8,8)
+    photo2 = tk.PhotoImage(file= "hexes/hex_lightgreen.gif").subsample(8,8)
+    photo3 = tk.PhotoImage(file= "hexes/hex_orange.gif").subsample(8,8)
+    photo4 = tk.PhotoImage(file= "hexes/hex_blue.gif").subsample(8,8)
+    photo5 = tk.PhotoImage(file= "hexes/hex_gray.gif").subsample(8,8)
+    photo6 = tk.PhotoImage(file= "hexes/hex_beige.gif").subsample(8,8)
+    draw_one = tk.PhotoImage(file= "hexes/draw_one.gif").subsample(8,8)
+    draw_several = tk.PhotoImage(file= "hexes/draw_several.gif").subsample(8,8)
+    erase_one = tk.PhotoImage(file= "hexes/erase_one.gif").subsample(8,8)
+    erase_several = tk.PhotoImage(file= "hexes/erase_several.gif").subsample(8,8)
 
-draw_one = tk.PhotoImage(file= "hexes\draw_one.gif").subsample(8,8)
-draw_several = tk.PhotoImage(file= "hexes\draw_several.gif").subsample(8,8)
-erase_one = tk.PhotoImage(file= "hexes\erase_one.gif").subsample(8,8)
-erase_several = tk.PhotoImage(file= "hexes\erase_several.gif").subsample(8,8)
 
 main_map = Hexmap() 
 
-
-
-class clicker_interface:
+class basic_tool:
+    """
+    Prototype a basic tool 
+    """
     def __init__(self):
         pass
     def activate(self, place):
+        """
+        This is called when the mouse is released from a localized click. 
+
+        @param place - location of release
+        """
         pass
     def hold(self,place, step):
+        """
+        Called continuously while the mouse is held
+
+        @param place - current mouse location
+        @param setp  - vector pointing from last called location to @place
+        """
         pass
 
-class hand(clicker_interface):
+class hand(basic_tool):
+    """
+    Scroller 
+    """
     def __init__(self):
         pass
     def activate(self,place):
@@ -50,7 +79,10 @@ class hand(clicker_interface):
         main_map.draw_relative_to += Point( event.x - step.x, event.y -step.y )
         
 
-class hex_writer(clicker_interface):
+class hex_brush(basic_tool):
+    """
+    Writes hexes.
+    """
     def __init__(self):
         self.writing = True
         self._brush_type = Grassland
@@ -99,7 +131,7 @@ class hex_writer(clicker_interface):
         self._brush_type = Arctic
 
 
-writer_control = hex_writer()
+writer_control = hex_brush()
 hand_control = hand()
 
 
