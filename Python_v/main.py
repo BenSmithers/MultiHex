@@ -3,13 +3,105 @@
 from point import Point
 from hex import Hex
 from hexmap import Hexmap
+from special_hexes import *
 import tkinter as tk
+from PIL import Image, ImageTk
 
 master = tk.Tk()
 
 screen_ratio = 0.8
 
+photo1 = tk.PhotoImage(file= "hexes\hex_deepgreen.gif").subsample(8,8)
+photo2 = tk.PhotoImage(file= "hexes\hex_lightgreen.gif").subsample(8,8)
+photo3 = tk.PhotoImage(file= "hexes\hex_orange.gif").subsample(8,8)
+photo4 = tk.PhotoImage(file= "hexes\hex_blue.gif").subsample(8,8)
+photo5 = tk.PhotoImage(file= "hexes\hex_gray.gif").subsample(8,8)
+photo6 = tk.PhotoImage(file= "hexes\hex_beige.gif").subsample(8,8)
+
+draw_one = tk.PhotoImage(file= "hexes\draw_one.gif").subsample(8,8)
+draw_several = tk.PhotoImage(file= "hexes\draw_several.gif").subsample(8,8)
+erase_one = tk.PhotoImage(file= "hexes\erase_one.gif").subsample(8,8)
+erase_several = tk.PhotoImage(file= "hexes\erase_several.gif").subsample(8,8)
+
 main_map = Hexmap() 
+
+
+
+class clicker_interface:
+    def __init__(self):
+        pass
+    def activate(self, place):
+        pass
+    def hold(self,place, step):
+        pass
+
+class hand(clicker_interface):
+    def __init__(self):
+        pass
+    def activate(self,place):
+        try:
+            loc_id = main_map.get_id_from_point( place )
+            main_map.set_active_hex( loc_id )
+        except KeyError:
+            pass
+
+    def hold(self, event, step):
+        move_by = Point(event.x - step.x, event.y - step.y)  
+        main_map.draw_relative_to += Point( event.x - step.x, event.y -step.y )
+        
+
+class hex_writer(clicker_interface):
+    def __init__(self):
+        self.writing = True
+        self._brush_type = Grassland
+
+    def activate(self, place):
+        if self.writing:
+            self.write(place)
+        else:
+            pass
+    def hold(self, place, step):
+        self.activate(place)
+
+    def erase(self, place):
+        loc_id = main_map.get_id_from_point( place )
+        main_map.remove_hex(loc_id)
+
+
+    def write(self, place):
+        # get the nearest relevant ID
+        loc_id = main_map.get_id_from_point( place )
+
+        # calculate the center of a hex that would have that id
+        new_hex_center = main_map.get_point_from_id( loc_id )
+        # create a hex at that point, with a radius given by the current drawscale 
+        new_hex= self._brush_type( new_hex_center, main_map._drawscale )
+        #print(self._brush_type)
+        # register that hex in the hexmap 
+        try:
+            main_map.register_hex( new_hex, loc_id )
+        except NameError:
+            # if there is already a hex there, just set that hex as the active one
+            pass
+      
+    
+    def switch_forest(self):
+        self._brush_type = Forest
+    def switch_grass(self):
+        self._brush_type = Grassland
+    def switch_mountain(self):
+        self._brush_type = Mountain
+    def switch_desert(self):
+        self._brush_type = Desert
+    def switch_ocean(self):
+        self._brush_type = Ocean
+    def switch_arctic(self):
+        self._brush_type = Arctic
+
+
+writer_control = hex_writer()
+hand_control = hand()
+
 
 class clicker_control:
     """
@@ -19,6 +111,9 @@ class clicker_control:
         self.start = Point(0.0, 0.0)
         self.step = Point(0.0, 0.0)
         self.end   = Point(0.0, 0.0)
+
+        self._active = writer_control
+        
     def press(self, event):
         self.step =  Point( event.x, event.y)
         self.start = Point( event.x, event.y)
@@ -26,80 +121,73 @@ class clicker_control:
         self.end = Point(event.x, event.y)
         diff = self.start - self.end
         if diff.magnitude <=5.0:
-            # get the nearest relevant ID
-            loc_id = main_map.get_id_from_point( self.end )
-            # calculate the center of a hex that would have that id
-            new_hex_center = main_map.get_point_from_id( loc_id )
-            # create a hex at that point, with a radius given by the current drawscale 
-            new_hex= Hex( new_hex_center, main_map._drawscale )
-            # register that hex in the hexmap 
-            try:
-                main_map.register_hex( new_hex, loc_id )
-            except NameError:
-                # if there is already a hex there, just set that hex as the active one
-                main_map.set_active_hex( loc_id )
+            self._active.activate(self.end)
         else:
             #event.widget.create_line(self.start.x, self.start.y, self.end.x, self.end.y)
             #main_map.draw_relative_to = self.end - self.start
+            # self._active.hold(self.end, self.step)
             pass
+        main_map.draw( event.widget )
 
-        main_map.draw(event.widget)
-
-    def held(self, event): 
-        move_by = Point(event.x - self.step.x, event.y - self.step.y)  
-        main_map.draw_relative_to += Point( event.x - self.step.x, event.y - self.step.y )
+    def held(self, event):
+        self._active.hold(Point(event.x,event.y), self.step)
         self.step = Point( event.x, event.y )
-        main_map.draw( event.widget )   
+        main_map.draw( event.widget )
+
     def scroll(self, event):
         #print("change: {}".format(event.delta))
         main_map._zoom += (event.delta/120.)*0.05
         main_map.draw( event.widget )
 
+    def to_brush(self):
+        self._active = writer_control
+
+    def to_hand(self):
+        self._active = hand_control
+    
+controller = clicker_control()
+
 def draw_buttons(frame):
     frame.update()
-    hex_selector = tk.Frame(frame, background='white',width=int(0.2*gui_width) )
-    brushes      = tk.Frame(frame, background='white',width=int(0.2*gui_width) )
-    buttons      = tk.Frame(frame, background = 'white',width=int(0.2*gui_width) )
-    hex_selector.pack(side='top')
-    brushes.pack(side='top')
-    buttons.pack(side='top')
 
-    left_hex = tk.Frame(hex_selector, background='white',width=int(0.1*gui_width) )
-    right_hex = tk.Frame(hex_selector, background='white',width=int(0.1*gui_width) )
-    left_hex.pack(side='left')
-    right_hex.pack(side='left')
-    left_hex.update()
-    right_hex.update()
+    hex_selector = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.3*frame.winfo_height()))
+    brushes      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.3*frame.winfo_height() ) )
+    buttons      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.3*frame.winfo_height() ) )
+
+    hex_selector.grid(row=0, column=0)
+    brushes.grid(row=1, column=0)
+    buttons.grid(row=2, column=0)
+    hex_selector.update()
 
     master.update()
-    button1 = tk.Button( left_hex, text="Button 1",     width=int(0.05*gui_width), command=None)
-    button2 = tk.Button( left_hex, text="Button 2",     width=int(0.05*gui_width), command=None)
-    button3 = tk.Button( left_hex, text="Button 3",     width=int(0.05*gui_width), command=None)
-    button4 = tk.Button( right_hex, text="Button 4",     width=int(0.05*gui_width), command=None)
-    button5 = tk.Button( right_hex, text="Button 5",     width=int(0.05*gui_width), command=None)
-    button6 = tk.Button( right_hex, text="Button 6",     width=int(0.05*gui_width), command=None)
-    button1.pack(side='top')
-    button4.pack(side='top')
-    button2.pack(side='top')
-    button5.pack(side='top')
-    button3.pack(side='top')
-    button6.pack(side='top')
 
-    
+    button1 = tk.Button( hex_selector, text="Forest",     image = photo1, command=writer_control.switch_forest, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height())
+    button2 = tk.Button( hex_selector, text="Grasslands", image = photo2, command=writer_control.switch_grass, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height())
+    button3 = tk.Button( hex_selector, text="Desert",     image = photo3, command=writer_control.switch_desert, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height()) 
+    button4 = tk.Button( hex_selector, text="Ocean",      image = photo4, command=writer_control.switch_ocean, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height()) 
+    button5 = tk.Button( hex_selector, text="Arctic",     image = photo5, command=writer_control.switch_arctic, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height()) 
+    button6 = tk.Button( hex_selector, text="Mountains",  image = photo6, command=writer_control.switch_mountain, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height())
+    button1.grid(row=0,column=0)
+    button2.grid(row=1,column=0)
+    button3.grid(row=2,column=0)
+    button4.grid(row=0,column=1)
+    button5.grid(row=1,column=1)
+    button6.grid(row=2,column=1)
+
+    button_draw_one      = tk.Button( brushes, text="Forest",     image = draw_one, command=controller.to_brush, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_draw_several  = tk.Button( brushes, text="Forest",     image = draw_several, command=None, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_erase_one     = tk.Button( brushes, text="Forest",     image = erase_one, command=controller.to_hand, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_erase_several = tk.Button( brushes, text="Forest",     image = erase_several, command=None, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_draw_one.grid(row=0,column=0)
+    button_draw_several.grid(row=0,column=1)
+    button_erase_one.grid(row=1,column=0)
+    button_erase_several.grid(row=1,column=1)
 
      # define buttons 
-    draw_button = tk.Button( buttons, text="Draw Hex",     width=buttons.winfo_width(), command=None)
-    remove_button = tk.Button(buttons, text="Remove Data", width=buttons.winfo_width(), command=None)
-    quit_button   = tk.Button( buttons, text="Quit", width=buttons.winfo_width(), command = master.destroy )
+    draw_button     = tk.Button( buttons, text="Draw Hex",     width=buttons.winfo_width(), command=None)
+    remove_button   = tk.Button( buttons, text="Remove Data",  width=buttons.winfo_width(), command=None)
+    quit_button     = tk.Button( buttons, text="Quit",         width=buttons.winfo_width(), command = master.destroy )
 
-    draw_button.pack(side='top')
-    remove_button.pack(side='top')
-    quit_button.pack(side='bottom')
-
-    
-
-
-   
 
 
      # get_flattened_points
@@ -108,7 +196,7 @@ def draw_buttons(frame):
     # act accordingly 
     #print(" click @ ({},{})".format(event.x, event.y))
 
-controller = clicker_control()
+
     
 # get screen information, create variables to use for the window size
 screen_width  = master.winfo_screenwidth()

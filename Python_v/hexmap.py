@@ -1,5 +1,6 @@
 from point import Point #fundamental point, allows vector algegbra
 from hex import Hex #your standard hexagon. Holds all the metadata
+from special_hexes import *
 
 # prefer to import the numpy functions since they are faster,
 # but if the user doesn't have them installed let's just use the math ones 
@@ -37,6 +38,12 @@ class Hexmap:
         
         self.draw_relative_to = Point(0.0,0.0)
     
+    def remove_hex( self, target_id):
+        try:
+            del self.catalogue[target_id]
+        except KeyError:
+            pass
+
     def register_hex(self, target_hex, new_id ):
         if new_id in self.catalogue:
             raise NameError("A hex with ID {} is already registered")
