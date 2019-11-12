@@ -1,14 +1,15 @@
 import numpy as np
 
 def is_number(object):
-    gt = type(object)
-    return( gt==int or gt==float )
+    try:
+        a= 5+object
+        return(True)
+    except TypeError:
+        return(False)
 
 class Point:
     """
-    Creates a framework to have points in 2D space
-    
-    Defines several operators for adding, subtracting, and taking the inner product of two points 
+    A vector in 2D Cartesian space. 
     """
     def __init__(self, ex =0.0, why=0.0):
         # do the thing
