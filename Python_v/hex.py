@@ -17,6 +17,7 @@ class Hex:
         self.fill   = '#05f' 
         self._vertices = [ center for i in range(6) ]
 
+        self._biodiversity     = 1.0
         self._temperature_base = 1.0
         self._humidity_base    = 1.0
         self._altitude_base    = 1.0
@@ -34,8 +35,15 @@ class Hex:
         for vertex in self._vertices:
             vertex += vector 
 
+    def build_name(self):
+        return("")
     
     def get_flattened_points(self, displacement=None, zoom=1.0):
+        """
+        deprecated
+
+        functionality moved up to hexmap.py
+        """
         flat = []
         if displacement is None:
             for obj in self._vertices:

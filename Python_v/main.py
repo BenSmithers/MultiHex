@@ -60,6 +60,8 @@ class basic_tool:
         @param setp  - vector pointing from last called location to @place
         """
         pass
+    def move(self, place):
+        pass
 
 class hand(basic_tool):
     """
@@ -85,7 +87,8 @@ class hex_brush(basic_tool):
     """
     def __init__(self):
         self.writing = True
-        self._brush_type = Grassland
+        self._brush_type = Grassland_Hex
+        self._brush_size = 2
 
     def activate(self, place):
         if self.writing:
@@ -94,6 +97,17 @@ class hex_brush(basic_tool):
             pass
     def hold(self, place, step):
         self.activate(place)
+    
+    def move(self, place):
+        # show an outline of where we are going to write
+        if self._brush_size == 1:
+            center_id = main_map.get_id_from_point( place )
+
+        elif self._brush_size == 2:
+            center_id = main_map.get_id_from_point( place )
+            outline = main_map.get_neighbor_outline( center_id )
+            main_map._outline = outline
+            
 
     def erase(self, place):
         loc_id = main_map.get_id_from_point( place )
@@ -115,20 +129,23 @@ class hex_brush(basic_tool):
         except NameError:
             # if there is already a hex there, just set that hex as the active one
             pass
-      
-    
+
+    def set_brush_small(self):
+        self._brush_size = 1
+    def set_brush_large(self):
+        self._brush_size = 2
     def switch_forest(self):
-        self._brush_type = Forest
+        self._brush_type = Forest_Hex
     def switch_grass(self):
-        self._brush_type = Grassland
+        self._brush_type = Grassland_Hex
     def switch_mountain(self):
-        self._brush_type = Mountain
+        self._brush_type = Mountain_Hex
     def switch_desert(self):
-        self._brush_type = Desert
+        self._brush_type = Desert_Hex
     def switch_ocean(self):
-        self._brush_type = Ocean
+        self._brush_type = Ocean_Hex
     def switch_arctic(self):
-        self._brush_type = Arctic
+        self._brush_type = Arctic_Hex
 
 
 writer_control = hex_brush()
@@ -169,6 +186,10 @@ class clicker_control:
     def scroll(self, event):
         #print("change: {}".format(event.delta))
         main_map._zoom += (event.delta/120.)*0.05
+        main_map.draw( event.widget )
+
+    def move(self,event):
+        self._active.move( Point(event.x,event.y) )
         main_map.draw( event.widget )
 
     def to_brush(self):
@@ -263,6 +284,7 @@ canvas.bind("<Button-1>", controller.press)
 canvas.bind("<ButtonRelease-1>", controller.release)
 canvas.bind("<B1-Motion>",controller.held)
 canvas.bind("<MouseWheel>",controller.scroll)
+canvas.bind("<Motion>",controller.move)
 canvas.pack()
 
 #update again

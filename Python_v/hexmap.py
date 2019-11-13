@@ -35,9 +35,9 @@ class Hexmap:
         self._zoom      = 1.0
         self._active_id = None
         self._party_hex = None
-        
+        self._outline   = None
+
         self.draw_relative_to = Point(0.0,0.0)
-    
     def remove_hex( self, target_id):
         try:
             del self.catalogue[target_id]
@@ -64,6 +64,10 @@ class Hexmap:
         """
         Calculates the IDs of a given Hexes' neighbors
         NOTE: Neighbors not guaranteed to exist! 
+
+        @param ID - ID of center
+
+        @returns a LIST of IDs 
         """
 
         # convert the id to a bit string
@@ -85,7 +89,50 @@ class Hexmap:
             neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
             neighbors.append(construct_id(x_id+1, y_id, not grid) )
 
-        return(neighbors)
+        return(neighbors)    
+
+    def get_neighbor_outline(self, ID, size=1):
+        """
+        returns a flattened set of vertices tracing the circumference of the hex at ID's would-be neightbors 
+
+        @param ID - ID of center
+
+        @returns a LIST of Points 
+        """
+        center = self.get_point_from_id( ID )
+        
+        perimeter_points = []
+        
+        if size==1:
+            perimeter_points +=[ center + Point( -0.5, 0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point(  0.5, 0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point(  1.0, 0.0)*self._drawscale]
+            perimeter_points +=[ center + Point(  0.5,-0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point( -0.5,-0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point( -1.0, 0.0)*self._drawscale]
+            return(perimeter_points)
+        else:
+            # these are shifts to the three unique vertices on the Northern Hexes' outer perimeter
+            vector_shift = [ Point(self._drawscale, self._drawscale*rthree),Point(self._drawscale*0.5, 3*rthree*0.5*self._drawscale) , Point(-self._drawscale*0.5, 3*rthree*0.5*self._drawscale)] 
+            perimeter_points += vector_shift 
+            # now we will rotate these over 5 multiples of -60 degrees  (clockwise rotation)
+            
+            iteration=1
+            while iteration<6:
+                # rotate each of the three points by -60 degrees
+                # from normal rotation matrix
+                for i in range(3):                
+                    vector_shift[i] = Point( vector_shift[i].x*0.5 - rthree*vector_shift[i].y*0.5 ,  vector_shift[i].x*rthree*0.5 + 0.5*vector_shift[i].y )
+
+                # and append them to the list of points 
+                perimeter_points +=  vector_shift
+                # this will be done 5 times in addition to the initial one
+                iteration += 1
+
+            perimeter_points = [ i+center for i in perimeter_points ]
+            #print("{}\n".format(perimeter_points))
+            return( perimeter_points ) 
+
 
 
     def translate(self, vector):
@@ -95,18 +142,40 @@ class Hexmap:
         for tile in self.catalogue.values():
             tile.translate( vector )
 
-    def draw(self, canvas):
-        canvas.delete("all")
-        for tile in self.catalogue.values():
-            canvas.create_polygon( tile.get_flattened_points(self.draw_relative_to, self._zoom), outline=tile.outline, fill=tile.fill, width=2.5,tag='background')
+    def point_to_draw( self, list_of_points ):
+        """
+        this transforms a list of points into a flattened list of coordinates in Draw-Space
+        """
+        list_of_coords = []
+        # transform and flatten
+        for point in list_of_points:
+            point += self.draw_relative_to
+            point *= self._zoom
+            list_of_coords += [point.x, point.y]
+        return( list_of_coords )
         
-        if self._active_id is not None:
-            canvas.create_polygon( self.catalogue[ self._active_id ].get_flattened_points(self.draw_relative_to, self._zoom), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=2.5, tag='background')
 
+
+    def draw(self, canvas):
+        """
+        Draws the canvas! 
+        """
+        #clear the canvas
+        canvas.delete("all")
+        # draw all the hexes
+        for tile in self.catalogue.values():
+            canvas.create_polygon( self.point_to_draw(tile._vertices), outline=tile.outline, fill=tile.fill, width=2.5,tag='background')
+        
+        # draw the selected one 
+        if self._active_id is not None:
+            canvas.create_polygon( self.point_to_draw(self.catalogue[ self._active_id ]._vertices), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=2.5, tag='background')
     
+        if self._outline is not None:
+            canvas.create_polygon( self.point_to_draw(self._outline), outline='gold',fill='',width=2.5,tag='background')
+
     def get_id_from_point(self, point):
         """
-        Takes a set of XY coordinates, finds the nearest hex tile to that point, and returns the ID of that hex location
+        Function to return either nearest hex center, or ID
         """
 
         # need to account for any zoom and translations applied to the drawing relative to the base global coordinates 
@@ -133,7 +202,7 @@ class Hexmap:
         # this is in the off-grid
         candidate_point_2 =Point(base_idx*3*self._drawscale, base_idy*rthree*self._drawscale )
         candidate_point_2 += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
-
+        
         if (og_point - candidate_point)**2 < (og_point - candidate_point_2)**2:
             return( construct_id(base_idx, base_idy, True ))
         else:
