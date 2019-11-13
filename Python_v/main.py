@@ -23,8 +23,9 @@ if os.name == 'nt':
     photo6 = tk.PhotoImage(file= "hexes\hex_beige.gif").subsample(8,8)
     draw_one = tk.PhotoImage(file= "hexes\draw_one.gif").subsample(8,8)
     draw_several = tk.PhotoImage(file= "hexes\draw_several.gif").subsample(8,8)
-    erase_one = tk.PhotoImage(file= "hexes\erase_one.gif").subsample(8,8)
-    erase_several = tk.PhotoImage(file= "hexes\erase_several.gif").subsample(8,8)
+    hex_add = tk.PhotoImage(file= "hexes\hex_add.gif").subsample(8,8)
+    hex_remove = tk.PhotoImage(file= "hexes\hex_remove.gif").subsample(8,8)
+
 else:
     photo1 = tk.PhotoImage(file= "hexes/hex_deepgreen.gif").subsample(8,8)
     photo2 = tk.PhotoImage(file= "hexes/hex_lightgreen.gif").subsample(8,8)
@@ -34,8 +35,8 @@ else:
     photo6 = tk.PhotoImage(file= "hexes/hex_beige.gif").subsample(8,8)
     draw_one = tk.PhotoImage(file= "hexes/draw_one.gif").subsample(8,8)
     draw_several = tk.PhotoImage(file= "hexes/draw_several.gif").subsample(8,8)
-    erase_one = tk.PhotoImage(file= "hexes/erase_one.gif").subsample(8,8)
-    erase_several = tk.PhotoImage(file= "hexes/erase_several.gif").subsample(8,8)
+    hex_add = tk.PhotoImage(file= "hexes/hex_add.gif").subsample(8,8)
+    hex_remove = tk.PhotoImage(file= "hexes/hex_remove.gif").subsample(8,8)
 
 
 main_map = Hexmap() 
@@ -117,6 +118,7 @@ class hex_brush(basic_tool):
         else:
             self.erase(place)
     def hold(self, place, step):
+        self.move(place)
         self.activate(place)
     
     def move(self, place):
@@ -163,6 +165,10 @@ class hex_brush(basic_tool):
         self._brush_size = 1
     def set_brush_large(self):
         self._brush_size = 2
+    def set_write(self):
+        self.writing = True
+    def set_erase(self):
+        self.writing = False
     def switch_forest(self):
         self._brush_type = Forest_Hex
     def switch_grass(self):
@@ -216,6 +222,9 @@ class clicker_control:
 
     def scroll(self, event):
         #print("change: {}".format(event.delta))
+        
+        main_map.draw_relative_to += (main_map.origin_shift - Point(event.x,event.y) )*(1./main_map._zoom)
+        main_map.origin_shift = Point(event.x, event.y)
         main_map._zoom += (event.delta/120.)*0.05
         main_map.draw( event.widget )
 
@@ -236,14 +245,22 @@ controller = clicker_control()
 def draw_buttons(frame):
     frame.update()
 
-    hex_selector = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.3*frame.winfo_height()))
-    brushes      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.3*frame.winfo_height() ) )
-    buttons      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.3*frame.winfo_height() ) )
+    hex_selector = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
+    write_type      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
+    brushes      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
+    tools        = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
 
     hex_selector.grid(row=0, column=0)
-    brushes.grid(row=1, column=0)
-    buttons.grid(row=2, column=0)
+    write_type.grid(row=1, column=0)
+    brushes.grid(row=2, column=0)
+    tools.grid(row=3, column=0)
+
+    quit_button = tk.Button( frame, text = "Quit", command=master.destroy,width=int(0.95*frame.winfo_width()/font.measure("0")) )
+    quit_button.grid(row=4, column=0)
+
     hex_selector.update()
+
+    #master.destroy 
 
     master.update()
 
@@ -260,23 +277,24 @@ def draw_buttons(frame):
     button5.grid(row=1,column=1)
     button6.grid(row=2,column=1)
 
-    button_draw_one      = tk.Button( brushes, text="Forest",image = draw_one,     command=controller.to_brush, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_draw_several  = tk.Button( brushes, text="Forest",image = draw_several, command=writer_control.set_brush_large, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_erase_one     = tk.Button( brushes, text="Forest",image = erase_one,    command=controller.to_hand, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_erase_several = tk.Button( brushes, text="Forest",image = erase_several,command=None, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_draw_one.grid(row=0,column=0)
-    button_draw_several.grid(row=0,column=1)
-    button_erase_one.grid(row=1,column=0)
-    button_erase_several.grid(row=1,column=1)
+    button_write      = tk.Button( write_type, text="add",   image = hex_add,    command=writer_control.set_write, width=0.45*write_type.winfo_width())
+    button_erase      = tk.Button( write_type, text="remove",image = hex_remove, command=writer_control.set_erase, width=0.45*write_type.winfo_width())
+    button_write.grid(row=0,column=0)
+    button_erase.grid(row=0,column=1)
+
+    button_one      = tk.Button( brushes, text="small", image = draw_one,     command=writer_control.set_brush_small, width=0.45*brushes.winfo_width())
+    button_many      = tk.Button( brushes, text="large", image = draw_several, command=writer_control.set_brush_large, width=0.45*brushes.winfo_width())
+    button_one.grid(row=0,column=0)
+    button_many.grid(row=0,column=1)
 
      # define buttons 
-    draw_button     = tk.Button( buttons, text="Draw Hex",     width=int(0.90*buttons.winfo_width()/font.measure("0")), command=None)
-    remove_button   = tk.Button( buttons, text="Remove Data",  width=int(0.90*buttons.winfo_width()/font.measure("0")), command=None)
-    quit_button     = tk.Button( buttons, text="Quit",         width=int(0.90*buttons.winfo_width()/font.measure("0")), command = master.destroy )
+    tools.update()
+    draw_button     = tk.Button( tools, text="Draw",     command=controller.to_brush, width=int(0.29*frame.winfo_width()/font.measure("0")))
+    select_button   = tk.Button( tools, text="Selector", command=controller.to_hand,  width=int(0.29*frame.winfo_width()/font.measure("0")))
+    hand_button     = tk.Button( tools, text="Hand",     command=controller.to_hand,  width=int(0.29*frame.winfo_width()/font.measure("0")))
     draw_button.grid(row=0,column=0)
-    remove_button.grid(row=1,column=0)
-    quit_button.grid(row=2,column=0)
-
+    select_button.grid(row=0,column=1)
+    hand_button.grid(row=0,column=2)
 
 
      # get_flattened_points
