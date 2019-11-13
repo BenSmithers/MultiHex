@@ -39,6 +39,11 @@ class Hexmap:
 
         self.draw_relative_to = Point(0.0,0.0)
     def remove_hex( self, target_id):
+        """
+        Try popping a hex from the catalogue. Deletes the key, deletes the hex. 
+
+        @param target_id - the ID of the removed hex
+        """
         try:
             del self.catalogue[target_id]
         except KeyError:
@@ -164,14 +169,14 @@ class Hexmap:
         canvas.delete("all")
         # draw all the hexes
         for tile in self.catalogue.values():
-            canvas.create_polygon( self.point_to_draw(tile._vertices), outline=tile.outline, fill=tile.fill, width=2.5,tag='background')
+            canvas.create_polygon( self.point_to_draw(tile._vertices), outline=tile.outline, fill=tile.fill, width=1.5,tag='background')
         
         # draw the selected one 
         if self._active_id is not None:
-            canvas.create_polygon( self.point_to_draw(self.catalogue[ self._active_id ]._vertices), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=2.5, tag='background')
+            canvas.create_polygon( self.point_to_draw(self.catalogue[ self._active_id ]._vertices), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=1.5, tag='background')
     
         if self._outline is not None:
-            canvas.create_polygon( self.point_to_draw(self._outline), outline='gold',fill='',width=2.5,tag='background')
+            canvas.create_polygon( self.point_to_draw(self._outline), outline='gold',fill='',width=2,tag='background')
 
     def get_id_from_point(self, point):
         """

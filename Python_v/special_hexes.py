@@ -8,6 +8,7 @@ def Ocean_Hex(center, radius):
     temp.fill = 'powderblue'
     temp._temperature_base = 0.5
     temp._humidity_base    = 1.0
+    temp._biodiversity     = 1.0
     temp._altitude_base    = 0.0
     temp._is_land          = False
     return(temp) 

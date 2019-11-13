@@ -6,9 +6,10 @@ from hexmap import Hexmap
 from special_hexes import *
 
 import tkinter as tk
-
+import tkinter.font as tkfont
 
 master = tk.Tk()
+font = tkfont.Font(family="Consolas", size=10, weight="normal")
 screen_ratio = 0.8
 
 import os # use the os module to discern the OS
@@ -45,6 +46,13 @@ class basic_tool:
     """
     def __init__(self):
         pass
+    def press(self,pace):
+        """
+        Called when the mouse is pressed
+
+        @param place - where it's pressed 
+        """
+        pass
     def activate(self, place):
         """
         This is called when the mouse is released from a localized click. 
@@ -61,6 +69,11 @@ class basic_tool:
         """
         pass
     def move(self, place):
+        """
+        Called continuously while the mouse is in the widget
+
+        @param place - where the mouse is 
+        """
         pass
 
 class hand(basic_tool):
@@ -80,6 +93,14 @@ class hand(basic_tool):
         move_by = Point(event.x - step.x, event.y - step.y)  
         main_map.draw_relative_to += Point( event.x - step.x, event.y -step.y )
         
+class selector(basic_tool):
+    def __init__(self):
+        self.start = Point(0.0,0.0)
+    def press(self, place):
+        self.start = place 
+    def activate(self, place):
+        pass
+
 
 class hex_brush(basic_tool):
     """
@@ -94,25 +115,24 @@ class hex_brush(basic_tool):
         if self.writing:
             self.write(place)
         else:
-            pass
+            self.erase(place)
     def hold(self, place, step):
         self.activate(place)
     
     def move(self, place):
         # show an outline of where we are going to write
-        if self._brush_size == 1:
-            center_id = main_map.get_id_from_point( place )
-
-        elif self._brush_size == 2:
-            center_id = main_map.get_id_from_point( place )
-            outline = main_map.get_neighbor_outline( center_id )
-            main_map._outline = outline
-            
+        center_id = main_map.get_id_from_point( place )
+        outline = main_map.get_neighbor_outline( center_id , self._brush_size)
+        main_map._outline = outline
+        
 
     def erase(self, place):
         loc_id = main_map.get_id_from_point( place )
         main_map.remove_hex(loc_id)
-
+        if self._brush_size ==2:
+            neighbors = main_map.get_hex_neighbors(loc_id)
+            for neighbor in neighbors:
+                main_map.remove_hex( neighbor )
 
     def write(self, place):
         # get the nearest relevant ID
@@ -129,6 +149,15 @@ class hex_brush(basic_tool):
         except NameError:
             # if there is already a hex there, just set that hex as the active one
             pass
+        if self._brush_size ==2:
+            neighbors = main_map.get_hex_neighbors( loc_id )
+            for neighbor in neighbors:
+                new_hex_center = main_map.get_point_from_id( neighbor )
+                new_hex = self._brush_type( new_hex_center, main_map._drawscale)
+                try:
+                    main_map.register_hex( new_hex, neighbor )
+                except NameError:
+                    pass
 
     def set_brush_small(self):
         self._brush_size = 1
@@ -166,6 +195,8 @@ class clicker_control:
     def press(self, event):
         self.step =  Point( event.x, event.y)
         self.start = Point( event.x, event.y)
+        self._active.press(self.start)
+
     def release( self, event):
         self.end = Point(event.x, event.y)
         diff = self.start - self.end
@@ -193,9 +224,11 @@ class clicker_control:
         main_map.draw( event.widget )
 
     def to_brush(self):
+        writer_control.set_brush_small()
         self._active = writer_control
 
     def to_hand(self):
+        main_map._outline = None
         self._active = hand_control
     
 controller = clicker_control()
@@ -227,19 +260,22 @@ def draw_buttons(frame):
     button5.grid(row=1,column=1)
     button6.grid(row=2,column=1)
 
-    button_draw_one      = tk.Button( brushes, text="Forest",     image = draw_one, command=controller.to_brush, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_draw_several  = tk.Button( brushes, text="Forest",     image = draw_several, command=None, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_erase_one     = tk.Button( brushes, text="Forest",     image = erase_one, command=controller.to_hand, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
-    button_erase_several = tk.Button( brushes, text="Forest",     image = erase_several, command=None, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_draw_one      = tk.Button( brushes, text="Forest",image = draw_one,     command=controller.to_brush, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_draw_several  = tk.Button( brushes, text="Forest",image = draw_several, command=writer_control.set_brush_large, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_erase_one     = tk.Button( brushes, text="Forest",image = erase_one,    command=controller.to_hand, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
+    button_erase_several = tk.Button( brushes, text="Forest",image = erase_several,command=None, width=0.45*brushes.winfo_width(), height=0.45*brushes.winfo_height())
     button_draw_one.grid(row=0,column=0)
     button_draw_several.grid(row=0,column=1)
     button_erase_one.grid(row=1,column=0)
     button_erase_several.grid(row=1,column=1)
 
      # define buttons 
-    draw_button     = tk.Button( buttons, text="Draw Hex",     width=buttons.winfo_width(), command=None)
-    remove_button   = tk.Button( buttons, text="Remove Data",  width=buttons.winfo_width(), command=None)
-    quit_button     = tk.Button( buttons, text="Quit",         width=buttons.winfo_width(), command = master.destroy )
+    draw_button     = tk.Button( buttons, text="Draw Hex",     width=int(0.90*buttons.winfo_width()/font.measure("0")), command=None)
+    remove_button   = tk.Button( buttons, text="Remove Data",  width=int(0.90*buttons.winfo_width()/font.measure("0")), command=None)
+    quit_button     = tk.Button( buttons, text="Quit",         width=int(0.90*buttons.winfo_width()/font.measure("0")), command = master.destroy )
+    draw_button.grid(row=0,column=0)
+    remove_button.grid(row=1,column=0)
+    quit_button.grid(row=2,column=0)
 
 
 
