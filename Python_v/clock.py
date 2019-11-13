@@ -3,6 +3,7 @@
 # in our fictional universe there are no timezones... no leap anything.
 # it's a perfect clockwork universe. Hurray
 
+# prefer the numpy version, but the default one is okay 
 try:
     from numpy import floor
 except ImportError:
