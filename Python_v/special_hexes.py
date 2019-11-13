@@ -3,52 +3,46 @@ from point import Point
 
 default_p = Point(0.0,0.0)
 
-class Ocean(Hex):
-    def __init__(self, center=default_p, radius=1.0 ):
-        Hex.__init__(self, center, radius)
-        self.fill = 'powderblue'
-        self._temperature_base = 0.5
-        self._humidity_base    = 1.0
-        self._altitude_base    = 0.0
-        self._is_land          = False
-        
+def Ocean_Hex(center, radius):
+    temp = Hex(center, radius)
+    temp.fill = 'powderblue'
+    temp._temperature_base = 0.5
+    temp._humidity_base    = 1.0
+    temp._altitude_base    = 0.0
+    temp._is_land          = False
+    return(temp) 
 
-class Grassland(Hex):
-    def __init__(self, center=default_p, radius=1.0 ):
-        Hex.__init__(self, center, radius )
-        self.fill = 'green3'
-    
+def Grassland_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = 'green3'
+    return(temp)
 
-class Forest(Hex):
-    def __init__(self, center=default_p, radius=1.0 ):
-        Hex.__init__(self, center, radius )
-        self.fill = 'forest green'
-    
+def Forest_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = 'forest green'
+    return(temp)
 
-class Mountain(Hex):
-    def __init__(self, center=default_p, radius=1.0 ):
-        Hex.__init__(self, center, radius )
-        self.fill = 'thistle4'
-    
+def Mountain_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = 'thistle4'
+    return(temp)
 
-class Arctic(Hex):
-    def __init__(self, center=default_p, radius=1.0 ):
-        Hex.__init__(self, center, radius )
-        self.fill = 'snow'
-        self._temperature_base = 0.0
-        self._humidity_base    = 0.0
-        self._altitude_base    = 0.0
-        self._is_land          = True
-    
+def Arctic_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = 'snow'
+    temp._temperature_base = 0.0
+    temp._humidity_base    = 0.0
+    temp._altitude_base    = 0.0
+    temp._is_land          = True
+    return(temp)
 
-class Desert(Hex):
-    def __init__(self, center=default_p, radius=1.0 ):
-        Hex.__init__(self, center, radius )
-        self.fill = 'goldenrod'
-        self._temperature_base = 1.0
-        self._humidity_base    = 0.0
-        self._altitude_base    = 0.0
-        self._is_land          = True
-
+def Desert_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = 'goldenrod'
+    temp._temperature_base = 1.0
+    temp._humidity_base    = 0.0
+    temp._altitude_base    = 0.0
+    temp._is_land          = True
+    return(temp)
 
 
