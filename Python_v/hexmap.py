@@ -38,14 +38,21 @@ class Hexmap:
         self._outline   = None
 
         self.draw_relative_to = Point(0.0,0.0)
+        self.origin_shift     = Point(0.0,0.0)
+
     def remove_hex( self, target_id):
         """
         Try popping a hex from the catalogue. Deletes the key, deletes the hex. 
 
         @param target_id - the ID of the removed hex
         """
+        
         try:
             del self.catalogue[target_id]
+            if target_id == self._active_id:
+                self._active_id = None
+            elif self._party_hex == self._active_id:
+                pass
         except KeyError:
             pass
 
@@ -140,12 +147,19 @@ class Hexmap:
 
 
 
-    def translate(self, vector):
+    def map_to_draw(self, vector):
         """
-        Unused since this has been replaced by a working system 
+        translates a given point from map space to a point in draw space 
         """
-        for tile in self.catalogue.values():
-            tile.translate( vector )
+        vector += self.draw_relative_to
+        vector *= self._zoom
+        vector += self.origin_shift
+        return(vector)
+    def draw_to_map(self,vector):
+        vector -= self.origin_shift
+        vector /= self._zoom
+        vector -= self.draw_relative_to
+        return(vector)
 
     def point_to_draw( self, list_of_points ):
         """
@@ -154,8 +168,7 @@ class Hexmap:
         list_of_coords = []
         # transform and flatten
         for point in list_of_points:
-            point += self.draw_relative_to
-            point *= self._zoom
+            point = self.map_to_draw(point)
             list_of_coords += [point.x, point.y]
         return( list_of_coords )
         
@@ -184,8 +197,7 @@ class Hexmap:
         """
 
         # need to account for any zoom and translations applied to the drawing relative to the base global coordinates 
-        point /= self._zoom
-        point -= self.draw_relative_to 
+        point = self.draw_to_map(point)
         
         # keep a copy of the untranslated point! 
         og_point = Point( point.x, point.y )
