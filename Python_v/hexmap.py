@@ -10,33 +10,61 @@ try:
 except ImportError:
     from math import sqrt, floor
 
+import pickle
+
 """
 Ben Smithers
 b.smithers.actual@gmail.com 
 
-Implements the hexmap class
+@ HexMap        - the fundamental class for a map of hexes
+@ construct_id  - 
+@ deconstruct_id- 
 """
+
+def save_map(h_map, filename):
+    file_object = open(filename, 'wb')
+    pickle.dump( h_map, file_object, -1)
+    file_object.close()
+
+def load_map(filename):
+    file_object = open(filename, 'rb')
+    hex_pickle = pickle.load(file_object)
+    file_object.close()
+    return( hex_pickle )
+
 
 # calculate this once, save it to the global scope! 
 rthree = sqrt(3)
-def transform_x(pos_x, pos_y=0.0):
-    return( pos_x/rthree )
-def transform_y(pos_x, pos_y):
-    return( pos_y - pos_x/rthree)
 
 class Hexmap:
     """
     Object to maintain the whole hex catalogue, draw the hexes, registers the hexes
+
+    @ remove_hex        - unregister hex from catalogue
+    @ register_hex      - register a hex in the catalogue
+    @ set_active_hex    - sets hex to "active"
+    @ rescale           - unused
+    @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
+    @ get_neighbor_outline      - retursn list of points to outline cursor 
+    @ map_to_draw       - converts map coordinates to draw coordinates (Point)
+    @ draw_to_map       - converts draw coordinates to map coordinates (Point)
+    @ points_to_draw    - takes list of map-Points, prepares flattened list of draw coordinates 
+    @ draw              - draws the map on a canvas
+    @ get_id_from_point - constructs neares ID to point
+    @ get_point_from_id - constructs point from ID
     """
     def __init__(self):
         self.catalogue = {}
         
+        # overal scaling factor 
         self._drawscale = 15.0
-        self._zoom      = 1.0
+
         self._active_id = None
         self._party_hex = None
         self._outline   = None
-
+        
+        # These are used to convert from map-space to draw-space 
+        self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
 
@@ -155,13 +183,14 @@ class Hexmap:
         vector *= self._zoom
         vector += self.origin_shift
         return(vector)
+    
     def draw_to_map(self,vector):
         vector -= self.origin_shift
         vector /= self._zoom
         vector -= self.draw_relative_to
         return(vector)
 
-    def point_to_draw( self, list_of_points ):
+    def points_to_draw( self, list_of_points ):
         """
         this transforms a list of points into a flattened list of coordinates in Draw-Space
         """
@@ -182,14 +211,14 @@ class Hexmap:
         canvas.delete("all")
         # draw all the hexes
         for tile in self.catalogue.values():
-            canvas.create_polygon( self.point_to_draw(tile._vertices), outline=tile.outline, fill=tile.fill, width=1.5,tag='background')
+            canvas.create_polygon( self.points_to_draw(tile._vertices), outline=tile.outline, fill=tile.fill, width=1.5,tag='background')
         
         # draw the selected one 
         if self._active_id is not None:
-            canvas.create_polygon( self.point_to_draw(self.catalogue[ self._active_id ]._vertices), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=1.5, tag='background')
+            canvas.create_polygon( self.points_to_draw(self.catalogue[ self._active_id ]._vertices), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=1.5, tag='background')
     
         if self._outline is not None:
-            canvas.create_polygon( self.point_to_draw(self._outline), outline='gold',fill='',width=2,tag='background')
+            canvas.create_polygon( self.points_to_draw(self._outline), outline='gold',fill='',width=2,tag='background')
 
     def get_id_from_point(self, point):
         """
