@@ -3,3 +3,8 @@
 
 # ignore any adobe illustrator files
 *.ai
+
+# hexmap save files
+*.hexmap
+
+Python_v/~$Plans.docx
