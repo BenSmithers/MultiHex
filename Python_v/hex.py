@@ -26,7 +26,7 @@ class Hex:
         self._temperature_base = 1.0
         self._is_land          = True
         self.coastal           = False
-        slef.hex_edge          = False
+        self.hex_edge          = False
 
         self._vertices[0] = self._center + point.Point( -0.5, 0.5*rthree)*self._radius
         self._vertices[1] = self._center + point.Point(  0.5, 0.5*rthree)*self._radius
