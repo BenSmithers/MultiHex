@@ -7,6 +7,9 @@ rthree = np.sqrt(3)
 class Hex:
     """
     Datastructure to represent a single hex on a hex map
+
+    @ build_name            - creates a name for hex biome
+    @ get_flattened_points  - returns vertices in flattened list [x1 , y1, x2, ... ]
     """
     def __init__(self, center=default_p, radius=1.0 ):
         self._center = center
@@ -22,6 +25,8 @@ class Hex:
         self._altitude_base    = 1.0
         self._temperature_base = 1.0
         self._is_land          = True
+        self.coastal           = False
+        slef.hex_edge          = False
 
         self._vertices[0] = self._center + point.Point( -0.5, 0.5*rthree)*self._radius
         self._vertices[1] = self._center + point.Point(  0.5, 0.5*rthree)*self._radius
@@ -29,11 +34,6 @@ class Hex:
         self._vertices[3] = self._center + point.Point(  0.5,-0.5*rthree)*self._radius
         self._vertices[4] = self._center + point.Point( -0.5,-0.5*rthree)*self._radius
         self._vertices[5] = self._center + point.Point( -1.0, 0.0)*self._radius
-
-    def translate(self, vector):
-        self._center += vector
-        for vertex in self._vertices:
-            vertex += vector 
 
     def build_name(self):
         return("")
@@ -52,13 +52,8 @@ class Hex:
             for obj in self._vertices:
                 flat+=[ (obj.x + displacement.x)*zoom , (obj.y + displacement.y)*zoom ]
         return(flat)
-            
-    
-    @classmethod
-    def _transformed_point(cls, unt_point ):
-        new_point = point.Point( unt_point.x/rthree, unt_point.y - (unt_point.x/rthree))
-        return( new_point )
-    
+              
+   
     def __repr__(self):
         return("{}@{}".format(self.__clas__, self.id))
 
