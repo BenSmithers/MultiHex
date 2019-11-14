@@ -9,7 +9,11 @@ def is_number(object):
 
 class Point:
     """
-    A vector in 2D Cartesian space. 
+    A vector in 2D Cartesian space.
+
+    @x          - x component of vector
+    @y          - y component of vector
+    @magnitude  - length of this vector
     """
     def __init__(self, ex =0.0, why=0.0):
         # do the thing
