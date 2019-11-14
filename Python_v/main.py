@@ -3,10 +3,14 @@
 from point import Point
 from hex import Hex
 from hexmap import Hexmap
+from hexmap import save_map, load_map
 from special_hexes import *
 
 import tkinter as tk
 import tkinter.font as tkfont
+
+import sys # basic command line interface 
+import os  # basic file-checking
 
 master = tk.Tk()
 font = tkfont.Font(family="Consolas", size=10, weight="normal")
@@ -38,8 +42,22 @@ else:
     hex_add = tk.PhotoImage(file= "hexes/hex_add.gif").subsample(8,8)
     hex_remove = tk.PhotoImage(file= "hexes/hex_remove.gif").subsample(8,8)
 
+if len(sys.argv) > 1:
+    in_file = sys.argv[1]
+    if in_file.split(".")[-1]=="hexmap":
+        if os.path.exists( in_file ):
+            print("Loading "+in_file)
+            main_map = load_map( in_file )
+        else:
+            main_map = Hexmap() 
+    else:
+        main_map = Hexmap() 
+else:
+    main_map = Hexmap() 
 
-main_map = Hexmap() 
+
+def savesave():
+    save_map(main_map, "saves/test.hexmap")
 
 class basic_tool:
     """
@@ -149,6 +167,8 @@ class hex_brush(basic_tool):
         try:
             main_map.register_hex( new_hex, loc_id )
         except NameError:
+            # don't actually want this
+            # main_map.set_active_hex( loc_id )
             # if there is already a hex there, just set that hex as the active one
             pass
         if self._brush_size ==2:
@@ -290,7 +310,7 @@ def draw_buttons(frame):
      # define buttons 
     tools.update()
     draw_button     = tk.Button( tools, text="Draw",     command=controller.to_brush, width=int(0.29*frame.winfo_width()/font.measure("0")))
-    select_button   = tk.Button( tools, text="Selector", command=controller.to_hand,  width=int(0.29*frame.winfo_width()/font.measure("0")))
+    select_button   = tk.Button( tools, text="Selector", command=savesave,  width=int(0.29*frame.winfo_width()/font.measure("0")))
     hand_button     = tk.Button( tools, text="Hand",     command=controller.to_hand,  width=int(0.29*frame.winfo_width()/font.measure("0")))
     draw_button.grid(row=0,column=0)
     select_button.grid(row=0,column=1)
