@@ -55,20 +55,22 @@ class Hexmap:
     """
     def __init__(self):
         self.catalogue = {}
-        
+        self.drawn_hexes = {}
+
         # overal scaling factor 
         self._drawscale = 15.0
 
         self._active_id = None
         self._party_hex = None
         self._outline   = None
-        
+        self._outline_obj = None
+
         # These are used to convert from map-space to draw-space 
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
 
-    def remove_hex( self, target_id):
+    def remove_hex( self, canvas, target_id):
         """
         Try popping a hex from the catalogue. Deletes the key, deletes the hex. 
 
@@ -76,7 +78,9 @@ class Hexmap:
         """
         
         try:
-            del self.catalogue[target_id]
+
+            canvas.delete( self.drawn_hexes[target_id] ) # delete the drawn thingy 
+            del self.catalogue[target_id] #delete the hex 
             if target_id == self._active_id:
                 self._active_id = None
             elif self._party_hex == self._active_id:
@@ -201,7 +205,19 @@ class Hexmap:
             list_of_coords += [point.x, point.y]
         return( list_of_coords )
         
+    def draw_outline(self, canvas):
+        if self._outline_obj is not None:
+            canvas.delete( self._outline_obj )
+        self._outline_obj = canvas.create_polygon( self.points_to_draw(self._outline), outline='gold', fill='', width=2)
 
+
+    def draw_one_hex( self, canvas, ID):
+        """
+        draws and registers one hex
+
+        """
+        get_hex = self.catalogue[ID]
+        self.drawn_hexes[ ID ] = canvas.create_polygon( self.points_to_draw( get_hex._vertices ), outline = get_hex.outline, fill=get_hex.fill, width=1.5, tag='background')
 
     def draw(self, canvas):
         """

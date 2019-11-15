@@ -42,12 +42,15 @@ else:
     hex_add = tk.PhotoImage(file= "hexes/hex_add.gif").subsample(8,8)
     hex_remove = tk.PhotoImage(file= "hexes/hex_remove.gif").subsample(8,8)
 
+# loaded maps need to be drawn
+need_to_draw = False
 if len(sys.argv) > 1:
     in_file = sys.argv[1]
     if in_file.split(".")[-1]=="hexmap":
         if os.path.exists( in_file ):
             print("Loading "+in_file)
             main_map = load_map( in_file )
+            need_to_draw = True
         else:
             main_map = Hexmap() 
     else:
@@ -65,29 +68,29 @@ class basic_tool:
     """
     def __init__(self):
         pass
-    def press(self,pace):
+    def press(self,event):
         """
         Called when the mouse is pressed
 
-        @param place - where it's pressed 
+        @param event 
         """
         pass
-    def activate(self, place):
+    def activate(self, event):
         """
         This is called when the mouse is released from a localized click. 
 
-        @param place - location of release
+        @param event - location of release
         """
         pass
-    def hold(self,place, step):
+    def hold(self,event, step):
         """
         Called continuously while the mouse is held
 
-        @param place - current mouse location
+        @param event - current mouse location
         @param setp  - vector pointing from last called location to @place
         """
         pass
-    def move(self, place):
+    def move(self, event):
         """
         Called continuously while the mouse is in the widget
 
@@ -101,9 +104,9 @@ class hand(basic_tool):
     """
     def __init__(self):
         pass
-    def activate(self,place):
+    def activate(self,event):
         try:
-            loc_id = main_map.get_id_from_point( place )
+            loc_id = main_map.get_id_from_point( Point( event.x, event.y) )
             main_map.set_active_hex( loc_id )
         except KeyError:
             pass
@@ -111,7 +114,13 @@ class hand(basic_tool):
     def hold(self, event, step):
         move_by = Point(event.x - step.x, event.y - step.y)  
         main_map.draw_relative_to += Point( event.x - step.x, event.y -step.y )
-        
+        # move canvas by draw_relative to
+#        for obj in main_map.drawn_hexes:
+         
+        #main_map.draw( event.widget )
+        event.widget.move( 'all', event.x-step.x, event.y-step.y)
+        #event.widget.update()
+
 class selector(basic_tool):
     def __init__(self):
         self.start = Point(0.0,0.0)
@@ -130,31 +139,37 @@ class hex_brush(basic_tool):
         self._brush_type = Grassland_Hex
         self._brush_size = 2
 
-    def activate(self, place):
+    def activate(self, event):
         if self.writing:
-            self.write(place)
+            self.write(event)
         else:
-            self.erase(place)
-    def hold(self, place, step):
-        self.move(place)
-        self.activate(place)
+            self.erase(event)
+    def hold(self, event, step):
+        
+        self.move(event)
+        self.activate(event)
     
-    def move(self, place):
+    def move(self, event):
+        place = Point( event.x, event.y)
         # show an outline of where we are going to write
         center_id = main_map.get_id_from_point( place )
         outline = main_map.get_neighbor_outline( center_id , self._brush_size)
         main_map._outline = outline
-        
+        main_map.draw_outline( event.widget )
 
-    def erase(self, place):
+        # redraw the selection outline
+
+    def erase(self, event):
+        place = Point(event.x,event.y)
         loc_id = main_map.get_id_from_point( place )
-        main_map.remove_hex(loc_id)
+        main_map.remove_hex(event.widget, loc_id)
         if self._brush_size ==2:
             neighbors = main_map.get_hex_neighbors(loc_id)
             for neighbor in neighbors:
-                main_map.remove_hex( neighbor )
+                main_map.remove_hex( event.widget, neighbor )
 
-    def write(self, place):
+    def write(self, event):
+        place = Point( event.x , event.y )
         # get the nearest relevant ID
         loc_id = main_map.get_id_from_point( place )
 
@@ -166,6 +181,7 @@ class hex_brush(basic_tool):
         # register that hex in the hexmap 
         try:
             main_map.register_hex( new_hex, loc_id )
+            main_map.draw_one_hex( event.widget, loc_id )
         except NameError:
             # don't actually want this
             # main_map.set_active_hex( loc_id )
@@ -178,6 +194,7 @@ class hex_brush(basic_tool):
                 new_hex = self._brush_type( new_hex_center, main_map._drawscale)
                 try:
                     main_map.register_hex( new_hex, neighbor )
+                    main_map.draw_one_hex( event.widget, neighbor )
                 except NameError:
                     pass
 
@@ -221,24 +238,22 @@ class clicker_control:
     def press(self, event):
         self.step =  Point( event.x, event.y)
         self.start = Point( event.x, event.y)
-        self._active.press(self.start)
+        self._active.press( event )
 
     def release( self, event):
         self.end = Point(event.x, event.y)
         diff = self.start - self.end
         if diff.magnitude <=5.0:
-            self._active.activate(self.end)
+            self._active.activate(event)
         else:
             #event.widget.create_line(self.start.x, self.start.y, self.end.x, self.end.y)
             #main_map.draw_relative_to = self.end - self.start
             # self._active.hold(self.end, self.step)
             pass
-        main_map.draw( event.widget )
 
     def held(self, event):
-        self._active.hold(Point(event.x,event.y), self.step)
+        self._active.hold(event, self.step)
         self.step = Point( event.x, event.y )
-        main_map.draw( event.widget )
 
     def scroll(self, event):
         #print("change: {}".format(event.delta))
@@ -249,8 +264,7 @@ class clicker_control:
         main_map.draw( event.widget )
 
     def move(self,event):
-        self._active.move( Point(event.x,event.y) )
-        main_map.draw( event.widget )
+        self._active.move( event )
 
     def to_brush(self):
         writer_control.set_brush_small()
@@ -360,6 +374,10 @@ canvas.bind("<B1-Motion>",controller.held)
 canvas.bind("<MouseWheel>",controller.scroll)
 canvas.bind("<Motion>",controller.move)
 canvas.pack()
+
+if need_to_draw:
+    for ID in main_map.catalogue:
+        main_map.draw_one_hex( canvas, ID )
 
 #update again
 master.update()
