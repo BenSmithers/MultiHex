@@ -13,7 +13,7 @@ def make_basic_hex(arg1, arg2):
     new_one.temperature_base = 0.0
     return( new_one )
 
-size = 'small'
+size = 'large'
 out_file = './saves/generated.hexmap'
 
 if size=='small':
@@ -84,7 +84,7 @@ while len(ids_to_propagate)!=0:
                 else:
                     new_hex = make_basic_hex(place, main_map._drawscale)
                     new_hex._altitude_base = new_alt 
-                    new_hex.fill = '#'+(hex(int(16-new_hex._altitude_base*16))[-1])+'b0'
+                    new_hex.fill = ( int(255-255*new_hex._altitude_base),180 ,0 )
             
             # if this throws an exception, I did something wrong and I want to know 
             main_map.register_hex( new_hex, neighbor )

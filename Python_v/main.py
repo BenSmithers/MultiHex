@@ -5,42 +5,24 @@ from hex import Hex
 from hexmap import Hexmap
 from hexmap import save_map, load_map
 from special_hexes import *
+try:
+    from PyQt4 import QtCore, QtGui
+except ImportError:
+    from PyQt4 import QtCore, QtGui
 
-import tkinter as tk
-import tkinter.font as tkfont
+#from PyQt4.QtWidgets import QGraphicsScene
+from display import Ui_MainWindow
 
 import sys # basic command line interface 
-import os  # basic file-checking
+import os  # basic file-checking, detecting os
 
-master = tk.Tk()
-font = tkfont.Font(family="Consolas", size=10, weight="normal")
 screen_ratio = 0.8
 
-import os # use the os module to discern the OS
-#it's stupid that I have to do this
-if os.name == 'nt':
-    photo1 = tk.PhotoImage(file= "hexes\hex_deepgreen.gif").subsample(8,8)
-    photo2 = tk.PhotoImage(file= "hexes\hex_lightgreen.gif").subsample(8,8)
-    photo3 = tk.PhotoImage(file= "hexes\hex_orange.gif").subsample(8,8)
-    photo4 = tk.PhotoImage(file= "hexes\hex_blue.gif").subsample(8,8)
-    photo5 = tk.PhotoImage(file= "hexes\hex_gray.gif").subsample(8,8)
-    photo6 = tk.PhotoImage(file= "hexes\hex_beige.gif").subsample(8,8)
-    draw_one = tk.PhotoImage(file= "hexes\draw_one.gif").subsample(8,8)
-    draw_several = tk.PhotoImage(file= "hexes\draw_several.gif").subsample(8,8)
-    hex_add = tk.PhotoImage(file= "hexes\hex_add.gif").subsample(8,8)
-    hex_remove = tk.PhotoImage(file= "hexes\hex_remove.gif").subsample(8,8)
-
-else:
-    photo1 = tk.PhotoImage(file= "hexes/hex_deepgreen.gif").subsample(8,8)
-    photo2 = tk.PhotoImage(file= "hexes/hex_lightgreen.gif").subsample(8,8)
-    photo3 = tk.PhotoImage(file= "hexes/hex_orange.gif").subsample(8,8)
-    photo4 = tk.PhotoImage(file= "hexes/hex_blue.gif").subsample(8,8)
-    photo5 = tk.PhotoImage(file= "hexes/hex_gray.gif").subsample(8,8)
-    photo6 = tk.PhotoImage(file= "hexes/hex_beige.gif").subsample(8,8)
-    draw_one = tk.PhotoImage(file= "hexes/draw_one.gif").subsample(8,8)
-    draw_several = tk.PhotoImage(file= "hexes/draw_several.gif").subsample(8,8)
-    hex_add = tk.PhotoImage(file= "hexes/hex_add.gif").subsample(8,8)
-    hex_remove = tk.PhotoImage(file= "hexes/hex_remove.gif").subsample(8,8)
+try:
+    _fromUtf8 = QtCore.QString.fromUtf8
+except AttributeError:
+    def _fromUtf8(s):
+        return s
 
 # loaded maps need to be drawn
 need_to_draw = False
@@ -57,6 +39,16 @@ if len(sys.argv) > 1:
         main_map = Hexmap() 
 else:
     main_map = Hexmap() 
+
+# open the gui
+class gui(QtGui.QMainWindow):
+    def __init__(self,parent=None):
+        QtGui.QWidget.__init__(self,parent)
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+
+app = QtGui.QApplication(sys.argv)
+app_instance = gui()
 
 
 def savesave():
@@ -98,34 +90,95 @@ class basic_tool:
         """
         pass
 
-class hand(basic_tool):
-    """
-    Scroller 
-    """
-    def __init__(self):
-        pass
-    def activate(self,event):
-        try:
-            loc_id = main_map.get_id_from_point( Point( event.x, event.y) )
-            main_map.set_active_hex( loc_id )
-        except KeyError:
-            pass
 
-    def hold(self, event, step):
-        move_by = Point(event.x - step.x, event.y - step.y)  
-        main_map.draw_relative_to += Point( event.x - step.x, event.y -step.y )
-        # move canvas by draw_relative to
-#        for obj in main_map.drawn_hexes:
-         
-        #main_map.draw( event.widget )
-        event.widget.move( 'all', event.x-step.x, event.y-step.y)
-        #event.widget.update()
+class clicker_control(QtGui.QGraphicsScene):
+    """
+    Manages the mouse interface for to the canvas 
+    """
+    def __init__(self, parent=None):
+        QtGui.QGraphicsScene.__init__(self, parent)
+
+
+        self.start = Point(0.0, 0.0)
+        self.step = Point(0.0, 0.0)
+        self.end   = Point(0.0, 0.0)
+
+        self._active = None
+        self._held = False
+        
+
+    def mousePressEvent(self, event):
+        event.accept()
+        self._held = True
+        self.step =  Point( event.scenePos().x(), event.scenePos().y())
+        self.start = Point( event.scenePos().x(), event.scenePos().y())
+        # temp to stop break break
+        self._active.press( event )
+
+    def mouseReleaseEvent( self, event):
+        event.accept()
+        self._held = False
+        self.end = Point(event.scenePos().x(), event.scenePos().y())
+        diff = self.start - self.end
+    #    if diff.magnitude <=5.0:
+        self._active.activate(event)
+            #event.widget.create_line(self.start.x, self.start.y, self.end.x, self.end.y)
+            #main_map.draw_relative_to = self.end - self.start
+            # self._active.hold(self.end, self.step)
+
+    def scroll(self, event):
+        #print("change: {}".format(event.delta))
+        
+        main_map.draw_relative_to += (main_map.origin_shift - Point(event.scenePos().x(),event.scenePos().y()) )*(1./main_map._zoom)
+        main_map.origin_shift = Point(event.scenePos().x(), event.scenePos().y())
+        main_map._zoom += (event.delta/120.)*0.05
+        main_map.draw( event.widget )
+
+   #mouseMoveEvent 
+    def mouseMoveEvent(self,event):
+        event.accept()
+        if self._held:
+            self._active.hold( event, self.start )
+            self.step = Point( event.scenePos().x(), event.scenePos().y() )
+
+        #    self.mouseHeld( event )
+        
+        self._active.move( event )
+
+    def to_brush(self):
+        writer_control.set_brush_small()
+        self._active = writer_control
+  #      app_instance.ui.hand.setChecked(False)
+    def to_select(self):
+
+        self._active = selector_control
+ #       app_instance.ui.brush.setChecked(True)
+
+  
+#    def setMouseTracking(self, flag):
+#        def recursive_set(parent):
+#            for child in parent.findChildren(QtCore.QObject):
+#                try:
+#                    child.setMouseTracking(flag)
+#                except:
+#                    pass
+#                recursive_set(child)
+#        QtGui.QWidget.setMouseTracking(self, flag)
+#        recursive_set(self)
+
+#controlle = clicker_control()
+
+#scene = clicker_control( app_instance.ui.centralwidget )
+
+scene = clicker_control( app_instance.ui.graphicsView )
 
 class selector(basic_tool):
     def __init__(self):
         self.start = Point(0.0,0.0)
+        self.selection = None
+
     def press(self, place):
-        self.start = place 
+        pass
     def activate(self, place):
         pass
 
@@ -139,6 +192,9 @@ class hex_brush(basic_tool):
         self._brush_type = Grassland_Hex
         self._brush_size = 2
 
+        self.QBrush = QtGui.QBrush()
+        self.QPen   = QtGui.QPen()
+
     def activate(self, event):
         if self.writing:
             self.write(event)
@@ -150,26 +206,60 @@ class hex_brush(basic_tool):
         self.activate(event)
     
     def move(self, event):
-        place = Point( event.x, event.y)
-        # show an outline of where we are going to write
+        # get center, 
+        place = Point( event.scenePos().x(), event.scenePos().y())
         center_id = main_map.get_id_from_point( place )
-        outline = main_map.get_neighbor_outline( center_id , self._brush_size)
-        main_map._outline = outline
-        main_map.draw_outline( event.widget )
+        self.QPen.setWidth(5)
+        
+        if main_map._outline == center_id:
+            # the mouse hasn't moved, skip this
+            pass
+        else:
+            # new center! 
+            main_map._outline = center_id
 
-        # redraw the selection outline
+            # get the outline
+            outline = main_map.get_neighbor_outline( center_id , self._brush_size)
+
+            if self.writing:
+                self.QPen.setColor(QtGui.QColor(15,255,15))
+            else:
+                self.QPen.setColor(QtGui.QColor(255,15,15))
+
+
+            # remove previous outline object
+            if main_map._outline_obj is not None:
+                scene.removeItem( main_map._outline_obj )
+            # redraw the selection outline
+
+            self.QBrush.setStyle(0)
+            main_map._outline_obj = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
 
     def erase(self, event):
-        place = Point(event.x,event.y)
+        place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = main_map.get_id_from_point( place )
-        main_map.remove_hex(event.widget, loc_id)
+        try:
+            scene.removeItem( main_map.drawn_hexes[ loc_id ] ) 
+            del main_map.drawn_hexes[loc_id]
+            main_map.remove_hex(loc_id)
+        except KeyError:
+            pass 
+
         if self._brush_size ==2:
             neighbors = main_map.get_hex_neighbors(loc_id)
             for neighbor in neighbors:
-                main_map.remove_hex( event.widget, neighbor )
+                try:
+                    scene.removeItem( main_map.drawn_hexes[neighbor])
+                    del main_map.drawn_hexes[neighbor]
+                    main_map.remove_hex( neighbor )
+                except KeyError:
+                    pass
+
+
 
     def write(self, event):
-        place = Point( event.x , event.y )
+        self.QPen.setWidth(2)
+        place = Point( event.scenePos().x() , event.scenePos().y() )
         # get the nearest relevant ID
         loc_id = main_map.get_id_from_point( place )
 
@@ -177,11 +267,19 @@ class hex_brush(basic_tool):
         new_hex_center = main_map.get_point_from_id( loc_id )
         # create a hex at that point, with a radius given by the current drawscale 
         new_hex= self._brush_type( new_hex_center, main_map._drawscale )
-        #print(self._brush_type)
+        
+        # get the pen ready (does the outlines)
+        self.QPen.setColor(QtGui.QColor( new_hex.outline[0], new_hex.outline[1], new_hex.outline[2] ))
+        self.QBrush.setStyle(1)
+
         # register that hex in the hexmap 
         try:
             main_map.register_hex( new_hex, loc_id )
-            main_map.draw_one_hex( event.widget, loc_id )
+
+            self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2] ))
+            main_map.drawn_hexes[loc_id] = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
+
+            #main_map.draw_one_hex( event.widget, loc_id )
         except NameError:
             # don't actually want this
             # main_map.set_active_hex( loc_id )
@@ -193,19 +291,25 @@ class hex_brush(basic_tool):
                 new_hex_center = main_map.get_point_from_id( neighbor )
                 new_hex = self._brush_type( new_hex_center, main_map._drawscale)
                 try:
-                    main_map.register_hex( new_hex, neighbor )
-                    main_map.draw_one_hex( event.widget, neighbor )
+                    main_map.register_hex( new_hex, neighbor )            
+                    self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2]))
+                    main_map.drawn_hexes[neighbor] = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush)
+        
                 except NameError:
                     pass
 
-    def set_brush_small(self):
-        self._brush_size = 1
-    def set_brush_large(self):
-        self._brush_size = 2
-    def set_write(self):
-        self.writing = True
-    def set_erase(self):
-        self.writing = False
+    def toggle_brush_size(self):
+        if self._brush_size==1:
+            self._brush_size = 2 
+        else: 
+            self._brush_size = 1
+
+    def toggle_write(self):
+        if self.writing:
+            self.writing = False
+        else:
+            self.writing = True
+
     def switch_forest(self):
         self._brush_type = Forest_Hex
     def switch_grass(self):
@@ -221,168 +325,51 @@ class hex_brush(basic_tool):
 
 
 writer_control = hex_brush()
-hand_control = hand()
+selector_control = selector()
+
+scene._active = writer_control
+app_instance.ui.graphicsView.setMouseTracking(True)
+#app_instance.ui.graphicsView.setTransformationAnchor( 0 )
+#app_instance.ui.graphicsView.setVerticalScrollBarPolicy( QtCore.Qt.ScrollBarAlwaysOff )
+#app_instance.ui.graphicsView.setHorizontalScrollBarPolicy( QtCore.Qt.ScrollBarAlwaysOff )
+#app_instance.ui.graphicsView.horizontalScrollBar().disconnect()
+#app_instance.ui.graphicsView.verticalScrollBar().disconnect()
 
 
-class clicker_control:
-    """
-    Manages the mouse interface for to the canvas 
-    """
-    def __init__(self):
-        self.start = Point(0.0, 0.0)
-        self.step = Point(0.0, 0.0)
-        self.end   = Point(0.0, 0.0)
+#app_instance.ui.graphicsView = clicker_control( app_instance.ui.centralwidget )
+#app_instance.ui.graphicsView.setObjectName(_fromUtf8("graphicsView"))
 
-        self._active = writer_control
-        
-    def press(self, event):
-        self.step =  Point( event.x, event.y)
-        self.start = Point( event.x, event.y)
-        self._active.press( event )
-
-    def release( self, event):
-        self.end = Point(event.x, event.y)
-        diff = self.start - self.end
-        if diff.magnitude <=5.0:
-            self._active.activate(event)
-        else:
-            #event.widget.create_line(self.start.x, self.start.y, self.end.x, self.end.y)
-            #main_map.draw_relative_to = self.end - self.start
-            # self._active.hold(self.end, self.step)
-            pass
-
-    def held(self, event):
-        self._active.hold(event, self.step)
-        self.step = Point( event.x, event.y )
-
-    def scroll(self, event):
-        #print("change: {}".format(event.delta))
-        
-        main_map.draw_relative_to += (main_map.origin_shift - Point(event.x,event.y) )*(1./main_map._zoom)
-        main_map.origin_shift = Point(event.x, event.y)
-        main_map._zoom += (event.delta/120.)*0.05
-        main_map.draw( event.widget )
-
-    def move(self,event):
-        self._active.move( event )
-
-    def to_brush(self):
-        writer_control.set_brush_small()
-        self._active = writer_control
-
-    def to_hand(self):
-        main_map._outline = None
-        self._active = hand_control
-    
-controller = clicker_control()
-
-def draw_buttons(frame):
-    frame.update()
-
-    hex_selector = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
-    write_type      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
-    brushes      = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
-    tools        = tk.Frame(frame, relief=tk.RAISED, borderwidth=1, background='white',width=frame.winfo_width(),height=int(0.22*frame.winfo_height() ) )
-
-    hex_selector.grid(row=0, column=0)
-    write_type.grid(row=1, column=0)
-    brushes.grid(row=2, column=0)
-    tools.grid(row=3, column=0)
-
-    quit_button = tk.Button( frame, text = "Quit", command=master.destroy,width=int(0.95*frame.winfo_width()/font.measure("0")) )
-    quit_button.grid(row=4, column=0)
-
-    hex_selector.update()
-
-    #master.destroy 
-
-    master.update()
-
-    button1 = tk.Button( hex_selector, text="Forest",     image = photo1, command=writer_control.switch_forest, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height())
-    button2 = tk.Button( hex_selector, text="Grasslands", image = photo2, command=writer_control.switch_grass, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height())
-    button3 = tk.Button( hex_selector, text="Desert",     image = photo3, command=writer_control.switch_desert, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height()) 
-    button4 = tk.Button( hex_selector, text="Ocean",      image = photo4, command=writer_control.switch_ocean, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height()) 
-    button5 = tk.Button( hex_selector, text="Arctic",     image = photo5, command=writer_control.switch_arctic, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height()) 
-    button6 = tk.Button( hex_selector, text="Mountains",  image = photo6, command=writer_control.switch_mountain, width=0.45*hex_selector.winfo_width(), height=0.28*hex_selector.winfo_height())
-    button1.grid(row=0,column=0)
-    button2.grid(row=1,column=0)
-    button3.grid(row=2,column=0)
-    button4.grid(row=0,column=1)
-    button5.grid(row=1,column=1)
-    button6.grid(row=2,column=1)
-
-    button_write      = tk.Button( write_type, text="add",   image = hex_add,    command=writer_control.set_write, width=0.45*write_type.winfo_width())
-    button_erase      = tk.Button( write_type, text="remove",image = hex_remove, command=writer_control.set_erase, width=0.45*write_type.winfo_width())
-    button_write.grid(row=0,column=0)
-    button_erase.grid(row=0,column=1)
-
-    button_one      = tk.Button( brushes, text="small", image = draw_one,     command=writer_control.set_brush_small, width=0.45*brushes.winfo_width())
-    button_many      = tk.Button( brushes, text="large", image = draw_several, command=writer_control.set_brush_large, width=0.45*brushes.winfo_width())
-    button_one.grid(row=0,column=0)
-    button_many.grid(row=0,column=1)
-
-     # define buttons 
-    tools.update()
-    draw_button     = tk.Button( tools, text="Draw",     command=controller.to_brush, width=int(0.29*frame.winfo_width()/font.measure("0")))
-    select_button   = tk.Button( tools, text="Selector", command=savesave,  width=int(0.29*frame.winfo_width()/font.measure("0")))
-    hand_button     = tk.Button( tools, text="Hand",     command=controller.to_hand,  width=int(0.29*frame.winfo_width()/font.measure("0")))
-    draw_button.grid(row=0,column=0)
-    select_button.grid(row=0,column=1)
-    hand_button.grid(row=0,column=2)
+app_instance.ui.graphicsView.setScene( scene )
 
 
-     # get_flattened_points
-    # redraw 
-    # check active tool
-    # act accordingly 
-    #print(" click @ ({},{})".format(event.x, event.y))
+app_instance.ui.brush.clicked.connect( scene.to_brush )
+app_instance.ui.hand.clicked.connect( scene.to_select )
 
 
-    
-# get screen information, create variables to use for the window size
-screen_width  = master.winfo_screenwidth()
-screen_height = master.winfo_screenheight()
-gui_width = int(screen_ratio*screen_width)
-gui_height= int(screen_ratio*screen_height)
-
-# create window with specified size
-master.title("Ben's HexMap")
-master.resizable(width= False, height=False)
-master.geometry('{}x{}'.format(gui_width, gui_height))
-
-#put a frame on the left to hold the map
-left_frame = tk.Frame( master, background='white', height=gui_height, width=int(0.8*gui_width))
-left_frame.pack(side='left')
-right_frame = tk.Frame( master, background='white', height=gui_height, width=int(0.2*gui_width))
-right_frame.pack(side='right')
-master.update()
-
-draw_buttons(right_frame)
-
-# put a frame on the right to hold buttons
-#buttons = tk.Frame(lower_right, background='gray', height=gui_height, width=int(0.2*gui_width))
-#buttons.pack(side='right')
-
-# update the master object
-master.update()
-
-# put a canvas on the left so that we can draw
-canvas = tk.Canvas(left_frame, background='white', height=left_frame.winfo_height(), width=left_frame.winfo_width())
-canvas.bind("<Button-1>", controller.press)
-canvas.bind("<ButtonRelease-1>", controller.release)
-canvas.bind("<B1-Motion>",controller.held)
-canvas.bind("<MouseWheel>",controller.scroll)
-canvas.bind("<Motion>",controller.move)
-canvas.pack()
+app_instance.ui.pushButton_7.clicked.connect( writer_control.switch_desert )
+app_instance.ui.pushButton_8.clicked.connect( writer_control.switch_arctic )
+app_instance.ui.pushButton_9.clicked.connect( writer_control.switch_mountain )
+app_instance.ui.Forest.clicked.connect( writer_control.switch_forest )
+app_instance.ui.Ocean.clicked.connect( writer_control.switch_ocean )
+app_instance.ui.Grassland.clicked.connect( writer_control.switch_grass )
+app_instance.ui.brushTottle.clicked.connect( writer_control.toggle_brush_size )
+app_instance.ui.write_erase.clicked.connect( writer_control.toggle_write )
+#toggle_write
 
 if need_to_draw:
+    newpen = QtGui.QPen()
+    newbrush=QtGui.QBrush()
+    newbrush.setStyle(1)
     for ID in main_map.catalogue:
-        main_map.draw_one_hex( canvas, ID )
+        dahex = main_map.catalogue[ID]
+        newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
+        newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
+        main_map.drawn_hexes[ID] = scene.addPolygon( QtGui.QPolygonF(main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
+
 
 #update again
-master.update()
-
-
-master.mainloop()
+if __name__=="__main__":
+    app_instance.show()
+    sys.exit(app.exec_())
 
 # frame.destroy()

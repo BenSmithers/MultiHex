@@ -2,6 +2,8 @@ from point import Point #fundamental point, allows vector algegbra
 from hex import Hex #your standard hexagon. Holds all the metadata
 from special_hexes import *
 
+from PyQt4.QtCore import QPointF
+
 # prefer to import the numpy functions since they are faster,
 # but if the user doesn't have them installed let's just use the math ones 
 # these are both needed to handle the geometry 
@@ -38,7 +40,7 @@ rthree = sqrt(3)
 
 class Hexmap:
     """
-    Object to maintain the whole hex catalogue, draw the hexes, registers the hexes
+    mObject to maintain the whole hex catalogue, draw the hexes, registers the hexes
 
     @ remove_hex        - unregister hex from catalogue
     @ register_hex      - register a hex in the catalogue
@@ -70,22 +72,16 @@ class Hexmap:
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
 
-    def remove_hex( self, canvas, target_id):
+    def remove_hex( self, target_id):
         """
         Try popping a hex from the catalogue. Deletes the key, deletes the hex. 
 
         @param target_id - the ID of the removed hex
-        """
-        
-        try:
-
-            canvas.delete( self.drawn_hexes[target_id] ) # delete the drawn thingy 
-            del self.catalogue[target_id] #delete the hex 
-            if target_id == self._active_id:
-                self._active_id = None
-            elif self._party_hex == self._active_id:
-                pass
-        except KeyError:
+        """ 
+        del self.catalogue[target_id] #delete the hex 
+        if target_id == self._active_id:
+            self._active_id = None
+        elif self._party_hex == self._active_id:
             pass
 
     def register_hex(self, target_hex, new_id ):
@@ -196,25 +192,28 @@ class Hexmap:
 
     def points_to_draw( self, list_of_points ):
         """
-        this transforms a list of points into a flattened list of coordinates in Draw-Space
+        Takes list of map-space points, converts it to list of QPoints in draw space
         """
         list_of_coords = []
         # transform and flatten
         for point in list_of_points:
             point = self.map_to_draw(point)
-            list_of_coords += [point.x, point.y]
+            list_of_coords += [QPointF( point.x, point.y )]
         return( list_of_coords )
         
     def draw_outline(self, canvas):
         if self._outline_obj is not None:
             canvas.delete( self._outline_obj )
-        self._outline_obj = canvas.create_polygon( self.points_to_draw(self._outline), outline='gold', fill='', width=2)
+        pass
+        # hrmmm
+#        self._outline_obj = canvas.create_polygon( self.points_to_draw(self._outline), outline='gold', fill='', width=2)
 
 
     def draw_one_hex( self, canvas, ID):
         """
-        draws and registers one hex
+        DEPRECATED - moving this up a level so the hexmap doesn't draw 
 
+        draws and registers one hex
         """
         get_hex = self.catalogue[ID]
         self.drawn_hexes[ ID ] = canvas.create_polygon( self.points_to_draw( get_hex._vertices ), outline = get_hex.outline, fill=get_hex.fill, width=1.5, tag='background')

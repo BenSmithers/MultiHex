@@ -16,8 +16,8 @@ class Hex:
         self._radius = radius
         
 #        self.id     = 1
-        self.outline= '#ddd'
-        self.fill   = '#05f' 
+        self.outline= (240,240,240)
+        self.fill   = (100,100,100) 
         self._vertices = [ center for i in range(6) ]
 
         self._biodiversity     = 1.0
@@ -27,6 +27,17 @@ class Hex:
         self._is_land          = True
         self.coastal           = False
         self.hex_edge          = False
+        
+        # used in procedural generation
+        self.genkey            = '00000000'
+        # 0 - ridgeline
+        # 1 - mountain 
+        #
+        #
+        #
+        # 6 - island
+        # 7 - ocean
+
 
         self._vertices[0] = self._center + point.Point( -0.5, 0.5*rthree)*self._radius
         self._vertices[1] = self._center + point.Point(  0.5, 0.5*rthree)*self._radius
