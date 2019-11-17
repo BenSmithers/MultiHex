@@ -85,6 +85,8 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
+        ## Need to add a check to make sure this is __actually__ a hex
+
         if new_id in self.catalogue:
             raise NameError("A hex with ID {} is already registered")
         else:

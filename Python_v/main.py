@@ -364,6 +364,7 @@ if need_to_draw:
         dahex = main_map.catalogue[ID]
         newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
         newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
+        newpen.setWidth(2)
         main_map.drawn_hexes[ID] = scene.addPolygon( QtGui.QPolygonF(main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
 
 

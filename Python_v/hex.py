@@ -32,9 +32,10 @@ class Hex:
         self.genkey            = '00000000'
         # 0 - ridgeline
         # 1 - mountain 
-        #
-        #
-        #
+        # 2 - alive / dead 
+        # 3 - dry / wet 
+        # 4 - 
+        # 5 - hot / cold
         # 6 - island
         # 7 - ocean
 
