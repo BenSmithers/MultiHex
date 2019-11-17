@@ -16,6 +16,7 @@ def Ocean_Hex(center, radius):
 def Grassland_Hex(center,radius):
     temp = Hex( center, radius )
     temp.fill = (149,207,68)
+    temp._is_land = True
     return(temp)
 
 def Forest_Hex(center,radius):

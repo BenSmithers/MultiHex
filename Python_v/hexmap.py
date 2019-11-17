@@ -85,7 +85,8 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
-        ## Need to add a check to make sure this is __actually__ a hex
+        if type(target_hex)!=Hex:
+            raise TypeError("Cannot register non-hexes, dumb dumb!")
 
         if new_id in self.catalogue:
             raise NameError("A hex with ID {} is already registered")
@@ -241,6 +242,8 @@ class Hexmap:
         """
         Function to return either nearest hex center, or ID
         """
+        if type(point)!=Point:
+            raise TypeError("{} is not a Point, it is {}".format(point, type(point)))
 
         # need to account for any zoom and translations applied to the drawing relative to the base global coordinates 
         point = self.draw_to_map(point)

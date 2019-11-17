@@ -258,7 +258,7 @@ class hex_brush(basic_tool):
 
 
     def write(self, event):
-        self.QPen.setWidth(2)
+        self.QPen.setWidth(1)
         place = Point( event.scenePos().x() , event.scenePos().y() )
         # get the nearest relevant ID
         loc_id = main_map.get_id_from_point( place )
@@ -364,7 +364,7 @@ if need_to_draw:
         dahex = main_map.catalogue[ID]
         newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
         newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
-        newpen.setWidth(2)
+        newpen.setWidth(1)
         main_map.drawn_hexes[ID] = scene.addPolygon( QtGui.QPolygonF(main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
 
 
