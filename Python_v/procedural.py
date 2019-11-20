@@ -18,7 +18,7 @@ def make_basic_hex(arg1, arg2):
     new_one._temperature_base = 0.0
     return( new_one )
 
-size = 'large'
+size = 'cont'
 out_file = './saves/generated.hexmap'
 
 if size=='small':
@@ -27,6 +27,10 @@ if size=='small':
 elif size=='large':
     dimensions = [3840, 2160]
     n_peaks = 25
+elif size=='cont':
+    dimensions = [6000, 3000]
+    zones = 4
+    n_peaks = 11
 else:
     raise Exception("'{}' size not implemented".format(size))
 
@@ -48,29 +52,51 @@ ids_to_propagate = []
 def point_is_in(point):
     return( point.x < dimensions[0] and point.x > 0 and point.y < dimensions[1] and point.y>0)
 
+if size=='small' or size=='large':
+    for i in range( n_peaks ):
+        while True:
+            place = Point( rnd.gauss(distribution_mean, distribution_width), rnd.random()*dimensions[1] )
+            if not point_is_in( place ):
+                # try again... 
+                continue
+            
+            loc_id = main_map.get_id_from_point( place )
+            new_hex_center = main_map.get_point_from_id( loc_id )
+            
+            new_hex = make_basic_hex( new_hex_center, main_map._drawscale)
+            new_hex.genkey = '11000000'
+            new_hex.fill = (99,88,60)
+            # it's unlikely, but possible that we sampled the same point multiple times 
+            try:
+                main_map.register_hex( new_hex, loc_id )
+                ids_to_propagate.append( loc_id )
+                # if it doesn't, break out of the while loop! 
+                break 
+            except NameError:
+                # if that happens, just run through this again
+                continue
 
-for i in range( n_peaks ):
-    while True:
-        place = Point( rnd.gauss(distribution_mean, distribution_width), rnd.random()*dimensions[1] )
-        if not point_is_in( place ):
-            # try again... 
-            continue
-        
-        loc_id = main_map.get_id_from_point( place )
-        new_hex_center = main_map.get_point_from_id( loc_id )
-        
-        new_hex = make_basic_hex( new_hex_center, main_map._drawscale)
-        new_hex.genkey = '11000000'
-        new_hex.fill = (99,88,60)
-        # it's unlikely, but possible that we sampled the same point multiple times 
-        try:
-            main_map.register_hex( new_hex, loc_id )
-            ids_to_propagate.append( loc_id )
-            # if it doesn't, break out of the while loop! 
-            break 
-        except NameError:
-            # if that happens, just run through this again
-            continue
+if size=='cont':
+    for i in range(zones):
+        x_center = 0.60*rnd.random()*dimensions[0] + 0.18*dimensions[1]
+        y_center = 0.60*rnd.random()*dimensions[1] + 0.18*dimensions[1]
+        for j in range(n_peaks):
+            while True:
+                place = Point( rnd.gauss( x_center, 400), rnd.gauss( y_center, 400) )
+                if not point_is_in(place):
+                    continue 
+                loc_id = main_map.get_id_from_point( place )
+                new_hex_center = main_map.get_point_from_id( loc_id )
+
+                new_hex = make_basic_hex(new_hex_center, main_map._drawscale)
+                new_hex.genkey = '11000000'
+                new_hex.fill = (99,88,60)
+                try:
+                    main_map.register_hex( new_hex, loc_id )
+                    ids_to_propagate.append( loc_id )
+                    break
+                except NameError:
+                        continue
 
 #                  Prepare Utilities
 # =====================================================
@@ -130,14 +156,18 @@ print("Forking Ridglines")
 # choose a direction the ridgeline will preferably go, and spread around that direction
 direction = 360*rnd.random()
 
-
+if size=='cont':
+    sigma = 60
+    avg_range = 15.
+else:
+    sigma = 60
+    avg_range = 30.
 
 # build the neighbor function
-sigma = 60
 distribution = get_distribution( direction, sigma)
 print("    Ridgeline Direction: {} +/- {}".format(direction, sigma))
 
-avg_range = 30.
+
 print("    Ridgline Avg Length: {}".format(avg_range))
 
 angles = [ 90., -90., 30., -30., 150., -150.]
@@ -253,10 +283,18 @@ while len(ids_to_propagate) != 0:
 #               Smooth Drop to Ocean level
 # ======================================================
 print("Spread Land Out")
-land_spread  = 0.03
-land_width   = 0.015
-water_spread = 0.10
-water_width  = 0.05
+
+if size=='cont':
+    land_spread  = 0.075
+    land_width   = 0.03
+    water_spread = 0.05
+    water_width  = 0.01
+else:
+    land_spread  = 0.03
+    land_width   = 0.015
+    water_spread = 0.10
+    water_width  = 0.05
+
 
 print("    Land Spread Factor  {} +/- {}".format(land_spread, land_width))
 print("    Ocean Spread Factor {} +/- {}".format(water_spread, water_width))
@@ -376,170 +414,173 @@ for i in range( n_rounds ):
 #                Establish Rainfall
 # ======================================================
 
+if False:
 
-print("Simulating Weather")
+    print("Simulating Weather")
 
-rthree = sqrt(3)
+    rthree = sqrt(3)
 
-n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
+    n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
 
-x_step          = 0.2*main_map._drawscale
-rain_rate       = 0.005
-evap_rate       = rain_rate*e
-diffusion       = 0.03
-plotting        = False ### warning!! Slow!!
+    x_step          = 0.2*main_map._drawscale
+    rain_rate       = 0.005
+    evap_rate       = rain_rate*e
+    diffusion       = 0.03
+    plotting        = False ### warning!! Slow!!
 
-if size=='large':
-    reservoir_init  = 140.
-elif size=='small':
-    reservoir_init  = 70.
-else:
-    reservoir_init  = 10. 
-    print("invalid size??")
+    if size=='large':
+        reservoir_init  = 140.
+    elif size=='small':
+        reservoir_init  = 70.
+    elif size=='cont':
+        reservoir_init  = 150.
+    else:
+        reservoir_init  = 10. 
+        print("invalid size??")
 
 
-def get_rate( reservoir , pressure ):
-    """
-    
-    @ param pressure - (0,1)
-    @ param reservoir - (0 , infty)
-    """
-    # pressure is like an approaching mountain, 
-    # reservoir is how much water is in the clouds
-    global rain_rate
-
-    if reservoir<5:
-        return(0.0)
-
-    rate = rain_rate * exp(2*(1.+2.5*pressure)*reservoir/100.)
-    return( rate )
-
-def index_to_y( index ):
-    return( index*main_map._drawscale*rthree/2. + 0.5*main_map._drawscale )
-
-# create cloud object. Reser
-clouds = [ [reservoir_init, 0.0] for i in range( n_cloud_units ) ]
-
-if plotting:
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-    plt.figure(1)
-    plt.xlim([0, dimensions[0]])
-    plt.ylim([0, dimensions[1]])
-    plt.ion()
-    plt.show()
-
-    plt.figure(2)
-    plt.ion()
-    plt.show()
-
-def step():
-    # just so it knows we're modifying this thing! 
-    global clouds 
-    global main_map
-
-    # copy the clouds object 
-    new_cloud = [ [clouds[i][0], clouds[i][1]] for i in range(len( clouds )) ]
-    
-    for index in range(len(clouds)):
-        here_id  = main_map.get_id_from_point( Point( clouds[index][1], index_to_y(index)))
-        neigh_id = main_map.get_id_from_point( Point( clouds[index][1]+2.7*main_map._drawscale, index_to_y(index)))
+    def get_rate( reservoir , pressure ):
+        """
         
-        pressure = 0.0
-        try:
-            here = main_map.catalogue[here_id]
-            skip_some = False
-        except KeyError:
-            skip_some = True
+        @ param pressure - (0,1)
+        @ param reservoir - (0 , infty)
+        """
+        # pressure is like an approaching mountain, 
+        # reservoir is how much water is in the clouds
+        global rain_rate
 
-        if not skip_some:
-            # get the pressure factor 
-            try:
-                neigh = main_map.catalogue[neigh_id]
-                pressure = neigh._altitude_base - here._altitude_base 
-            except KeyError:
-                pressure = 0.0
+        if reservoir<5:
+            return(0.0)
 
-            if pressure < 0.0:
-                pressure = 0.0
+        rate = rain_rate * exp(2*(1.+2.5*pressure)*reservoir/100.)
+        return( rate )
 
-            rain = get_rate( clouds[index][0], pressure)*x_step
-            if not here._is_land:
-                new_cloud[index][0] += evap_rate
-            
-            # drop rain from the reservoir into the thing beneath it
-            new_cloud[index][0] -= rain
-            main_map.catalogue[here_id]._rainfall_base += rain
+    def index_to_y( index ):
+        return( index*main_map._drawscale*rthree/2. + 0.5*main_map._drawscale )
 
-        # diffuse
-        if index!=(len(clouds)-1):
-            diff = new_cloud[index+1][0] - new_cloud[index][0]
-            new_cloud[index][0]   += diff*diffusion
-            new_cloud[index+1][0] -= diff*diffusion
-       
-        # cloud moves forward
-        new_cloud[index][1] += (1.0-pressure)*x_step
-        
-
-    for index in range(len(clouds)):
-        clouds[index] = [new_cloud[index][0], new_cloud[index][1]]
+    # create cloud object. Reser
+    clouds = [ [reservoir_init, 0.0] for i in range( n_cloud_units ) ]
 
     if plotting:
-        plot_it = [[clouds[index][0] for index in range(len(clouds))], [clouds[index][1]  for index in range(len(clouds)) ], [ index_to_y(index) for index in range(len(clouds))] ]
+        import matplotlib
+        matplotlib.use('TkAgg')
+        import matplotlib.pyplot as plt
         plt.figure(1)
-        plt.clf()
-        plt.plot(plot_it[2], plot_it[0],'d')
-        plt.title("Rainfall!")
-        plt.ylim([0,105])
-        plt.show()
-        plt.figure(2)
-        plt.clf()
-        plt.title("Cloud Loc")
-        plt.plot(plot_it[1], plot_it[2] )
         plt.xlim([0, dimensions[0]])
-        plt.show()#block=False)
-        plt.pause(0.05)
+        plt.ylim([0, dimensions[1]])
+        plt.ion()
+        plt.show()
 
-while( min( [ i[1] for i in clouds] )<= dimensions[0] ):
-    step()
+        plt.figure(2)
+        plt.ion()
+        plt.show()
 
-if plotting:
-    plt.close()
+    def step():
+        # just so it knows we're modifying this thing! 
+        global clouds 
+        global main_map
 
-#                     Change Colors
-# ======================================================
+        # copy the clouds object 
+        new_cloud = [ [clouds[i][0], clouds[i][1]] for i in range(len( clouds )) ]
+        
+        for index in range(len(clouds)):
+            here_id  = main_map.get_id_from_point( Point( clouds[index][1], index_to_y(index)))
+            neigh_id = main_map.get_id_from_point( Point( clouds[index][1]+2.7*main_map._drawscale, index_to_y(index)))
+            
+            pressure = 0.0
+            try:
+                here = main_map.catalogue[here_id]
+                skip_some = False
+            except KeyError:
+                skip_some = True
 
-min_rain = 10000.
-max_rain = -1
+            if not skip_some:
+                # get the pressure factor 
+                try:
+                    neigh = main_map.catalogue[neigh_id]
+                    pressure = neigh._altitude_base - here._altitude_base 
+                except KeyError:
+                    pressure = 0.0
+
+                if pressure < 0.0:
+                    pressure = 0.0
+
+                rain = get_rate( clouds[index][0], pressure)*x_step
+                if not here._is_land:
+                    new_cloud[index][0] += evap_rate
+                
+                # drop rain from the reservoir into the thing beneath it
+                new_cloud[index][0] -= rain
+                main_map.catalogue[here_id]._rainfall_base += rain
+
+            # diffuse
+            if index!=(len(clouds)-1):
+                diff = new_cloud[index+1][0] - new_cloud[index][0]
+                new_cloud[index][0]   += diff*diffusion
+                new_cloud[index+1][0] -= diff*diffusion
+           
+            # cloud moves forward
+            new_cloud[index][1] += (1.0-pressure)*x_step
+            
+
+        for index in range(len(clouds)):
+            clouds[index] = [new_cloud[index][0], new_cloud[index][1]]
+
+        if plotting:
+            plot_it = [[clouds[index][0] for index in range(len(clouds))], [clouds[index][1]  for index in range(len(clouds)) ], [ index_to_y(index) for index in range(len(clouds))] ]
+            plt.figure(1)
+            plt.clf()
+            plt.plot(plot_it[2], plot_it[0],'d')
+            plt.title("Rainfall!")
+            plt.ylim([0,105])
+            plt.show()
+            plt.figure(2)
+            plt.clf()
+            plt.title("Cloud Loc")
+            plt.plot(plot_it[1], plot_it[2] )
+            plt.xlim([0, dimensions[0]])
+            plt.show()#block=False)
+            plt.pause(0.05)
+
+    while( min( [ i[1] for i in clouds] )<= dimensions[0] ):
+        step()
+
+    if plotting:
+        plt.close()
+
+    #                     Change Colors
+    # ======================================================
+
+    min_rain = 10000.
+    max_rain = -1
 
 
-# set rainy thing
-for ID in main_map.catalogue.keys():
-    
-    this_hex = main_map.catalogue[ID]
-    if not this_hex._is_land:
-        continue
-    if this_hex.genkey[0]=='1':
-        continue
+    # set rainy thing
+    for ID in main_map.catalogue.keys():
+        
+        this_hex = main_map.catalogue[ID]
+        if not this_hex._is_land:
+            continue
+        if this_hex.genkey[0]=='1':
+            continue
 
-    if max_rain< this_hex._rainfall_base:
-        max_rain = this_hex._rainfall_base
-    if min_rain>this_hex._rainfall_base:
-        min_rain = this_hex._rainfall_base
-    
+        if max_rain< this_hex._rainfall_base:
+            max_rain = this_hex._rainfall_base
+        if min_rain>this_hex._rainfall_base:
+            min_rain = this_hex._rainfall_base
+        
 
-print("Rainfall variance {}-{}".format(min_rain, max_rain))
+    print("Rainfall variance {}-{}".format(min_rain, max_rain))
 
-for ID in main_map.catalogue.keys():
-    this_hex = main_map.catalogue[ID]
-    if not this_hex._is_land:
-        continue
-    if this_hex.genkey[0]=='1':
-        continue
+    for ID in main_map.catalogue.keys():
+        this_hex = main_map.catalogue[ID]
+        if not this_hex._is_land:
+            continue
+        if this_hex.genkey[0]=='1':
+            continue
 
-    green = 100 + int(min( 155, max( 155*main_map.catalogue[ID]._rainfall_base/max_rain, 0.0 )))
-    main_map.catalogue[ID].fill = ( main_map.catalogue[ID].fill[0],green ,main_map.catalogue[ID].fill[2])
+        green = 100 + int(min( 155, max( 155*main_map.catalogue[ID]._rainfall_base/max_rain, 0.0 )))
+        main_map.catalogue[ID].fill = ( main_map.catalogue[ID].fill[0],green ,main_map.catalogue[ID].fill[2])
 
 
 if not os.path.isdir("./saves"):
