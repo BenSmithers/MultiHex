@@ -109,6 +109,7 @@ class clicker_control(QtGui.QGraphicsScene):
 
     def mousePressEvent(self, event):
         event.accept()
+        print("Click Reg. at ({},{})".format(event.scenePos().x(), event.scenePos().y()))
         self._held = True
         self.step =  Point( event.scenePos().x(), event.scenePos().y())
         self.start = Point( event.scenePos().x(), event.scenePos().y())

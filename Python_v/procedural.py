@@ -3,18 +3,19 @@ from hex import Hex
 from hexmap import Hexmap, save_map, load_map
 from special_hexes import *
 
-from math import exp, floor
+from math import exp, floor, sqrt, e
 
 import os
 import sys
 
+import time
 import random as rnd 
 
 def make_basic_hex(arg1, arg2):
     new_one = Hex(arg1, arg2)
-    new_one.biodiversity = 0.0
-    new_one.humidity_base = 0.0
-    new_one.temperature_base = 0.0
+    new_one._biodiversity = 0.0
+    new_one._rainfall_base = 0.0
+    new_one._temperature_base = 0.0
     return( new_one )
 
 size = 'large'
@@ -34,6 +35,12 @@ main_map = Hexmap()
 #                Generate Mountain Peaks 
 # ======================================================
 print("Seeding Mountain Peaks")
+
+distribution_mean   = 0.65*dimensions[0]
+distribution_width  = 0.20*dimensions[0]
+print("    Y-Centered at {} +/- {}".format( distribution_mean, distribution_width))
+print("    Uniform Y Distribution")
+
 ids_to_propagate = []
 
 
@@ -44,7 +51,7 @@ def point_is_in(point):
 
 for i in range( n_peaks ):
     while True:
-        place = Point( rnd.gauss(0.65*dimensions[0], 0.2*dimensions[0]), rnd.random()*dimensions[1] )
+        place = Point( rnd.gauss(distribution_mean, distribution_width), rnd.random()*dimensions[1] )
         if not point_is_in( place ):
             # try again... 
             continue
@@ -300,7 +307,14 @@ while len(ids_to_propagate)!=0:
 # ======================================================
 n_rounds = 2
 
+print("Performing {} rounds of smoothing".format(n_rounds))
+
+# this is used to get some land color based off of the altitude of the point and also whether or not it's land
 def new_color(is_land, altitude):
+    """
+    generalize this for a any hex
+    """
+
     deep_ocean = ( 8,   32,  59)
     shallows   = (100, 173, 209)
 
@@ -324,10 +338,10 @@ def new_color(is_land, altitude):
                      -1*(deep_ocean[1] - shallows[1])*altitude*0.5 + shallows[1] ,
                     -1*(deep_ocean[2] - shallows[2])*altitude*0.5 + shallows[2] ) )
 
-print("Performing {} rounds of smoothing".format(n_rounds))
-
-def smooth():
+def smooth(what = ['alt'] ):
     print("    smoothing... ")
+    global main_map
+
     for ID in main_map.catalogue.keys():
         neighbors = main_map.get_hex_neighbors( ID )
 
@@ -335,17 +349,18 @@ def smooth():
         # skip mountains 
         if this_one.genkey[1]=='1':
             continue
-
-        existing = 1
-        total    = this_one._altitude_base
-
-        for neighbor in neighbors:
-            if neighbor in main_map.catalogue:
-                existing += 1
-                total    += main_map.catalogue[neighbor]._altitude_base 
+        
+        if 'alt' in what:
+            existing = 1
+            total    = this_one._altitude_base
+            for neighbor in neighbors:
+                if neighbor in main_map.catalogue:
+                    existing += 1
+                    total    += main_map.catalogue[neighbor]._altitude_base 
             
-        # make this altitude the average of it and its neighbors (which exist)
-        main_map.catalogue[ID]._altitude_base = total / float(existing)
+            # make this altitude the average of it and its neighbors (which exist)
+            main_map.catalogue[ID]._altitude_base = total / float(existing)
+
 
         # this may have made ocean become land and land become ocean... 
         if main_map.catalogue[ID]._altitude_base < 0.:
@@ -357,6 +372,175 @@ def smooth():
 
 for i in range( n_rounds ):
     smooth()
+
+#                Establish Rainfall
+# ======================================================
+
+
+print("Simulating Weather")
+
+rthree = sqrt(3)
+
+n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
+
+x_step          = 0.2*main_map._drawscale
+rain_rate       = 0.005
+evap_rate       = rain_rate*e
+diffusion       = 0.03
+plotting        = False ### warning!! Slow!!
+
+if size=='large':
+    reservoir_init  = 140.
+elif size=='small':
+    reservoir_init  = 70.
+else:
+    reservoir_init  = 10. 
+    print("invalid size??")
+
+
+def get_rate( reservoir , pressure ):
+    """
+    
+    @ param pressure - (0,1)
+    @ param reservoir - (0 , infty)
+    """
+    # pressure is like an approaching mountain, 
+    # reservoir is how much water is in the clouds
+    global rain_rate
+
+    if reservoir<5:
+        return(0.0)
+
+    rate = rain_rate * exp(2*(1.+2.5*pressure)*reservoir/100.)
+    return( rate )
+
+def index_to_y( index ):
+    return( index*main_map._drawscale*rthree/2. + 0.5*main_map._drawscale )
+
+# create cloud object. Reser
+clouds = [ [reservoir_init, 0.0] for i in range( n_cloud_units ) ]
+
+if plotting:
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+    plt.figure(1)
+    plt.xlim([0, dimensions[0]])
+    plt.ylim([0, dimensions[1]])
+    plt.ion()
+    plt.show()
+
+    plt.figure(2)
+    plt.ion()
+    plt.show()
+
+def step():
+    # just so it knows we're modifying this thing! 
+    global clouds 
+    global main_map
+
+    # copy the clouds object 
+    new_cloud = [ [clouds[i][0], clouds[i][1]] for i in range(len( clouds )) ]
+    
+    for index in range(len(clouds)):
+        here_id  = main_map.get_id_from_point( Point( clouds[index][1], index_to_y(index)))
+        neigh_id = main_map.get_id_from_point( Point( clouds[index][1]+2.7*main_map._drawscale, index_to_y(index)))
+        
+        pressure = 0.0
+        try:
+            here = main_map.catalogue[here_id]
+            skip_some = False
+        except KeyError:
+            skip_some = True
+
+        if not skip_some:
+            # get the pressure factor 
+            try:
+                neigh = main_map.catalogue[neigh_id]
+                pressure = neigh._altitude_base - here._altitude_base 
+            except KeyError:
+                pressure = 0.0
+
+            if pressure < 0.0:
+                pressure = 0.0
+
+            rain = get_rate( clouds[index][0], pressure)*x_step
+            if not here._is_land:
+                new_cloud[index][0] += evap_rate
+            
+            # drop rain from the reservoir into the thing beneath it
+            new_cloud[index][0] -= rain
+            main_map.catalogue[here_id]._rainfall_base += rain
+
+        # diffuse
+        if index!=(len(clouds)-1):
+            diff = new_cloud[index+1][0] - new_cloud[index][0]
+            new_cloud[index][0]   += diff*diffusion
+            new_cloud[index+1][0] -= diff*diffusion
+       
+        # cloud moves forward
+        new_cloud[index][1] += (1.0-pressure)*x_step
+        
+
+    for index in range(len(clouds)):
+        clouds[index] = [new_cloud[index][0], new_cloud[index][1]]
+
+    if plotting:
+        plot_it = [[clouds[index][0] for index in range(len(clouds))], [clouds[index][1]  for index in range(len(clouds)) ], [ index_to_y(index) for index in range(len(clouds))] ]
+        plt.figure(1)
+        plt.clf()
+        plt.plot(plot_it[2], plot_it[0],'d')
+        plt.title("Rainfall!")
+        plt.ylim([0,105])
+        plt.show()
+        plt.figure(2)
+        plt.clf()
+        plt.title("Cloud Loc")
+        plt.plot(plot_it[1], plot_it[2] )
+        plt.xlim([0, dimensions[0]])
+        plt.show()#block=False)
+        plt.pause(0.05)
+
+while( min( [ i[1] for i in clouds] )<= dimensions[0] ):
+    step()
+
+if plotting:
+    plt.close()
+
+#                     Change Colors
+# ======================================================
+
+min_rain = 10000.
+max_rain = -1
+
+
+# set rainy thing
+for ID in main_map.catalogue.keys():
+    
+    this_hex = main_map.catalogue[ID]
+    if not this_hex._is_land:
+        continue
+    if this_hex.genkey[0]=='1':
+        continue
+
+    if max_rain< this_hex._rainfall_base:
+        max_rain = this_hex._rainfall_base
+    if min_rain>this_hex._rainfall_base:
+        min_rain = this_hex._rainfall_base
+    
+
+print("Rainfall variance {}-{}".format(min_rain, max_rain))
+
+for ID in main_map.catalogue.keys():
+    this_hex = main_map.catalogue[ID]
+    if not this_hex._is_land:
+        continue
+    if this_hex.genkey[0]=='1':
+        continue
+
+    green = 100 + int(min( 155, max( 155*main_map.catalogue[ID]._rainfall_base/max_rain, 0.0 )))
+    main_map.catalogue[ID].fill = ( main_map.catalogue[ID].fill[0],green ,main_map.catalogue[ID].fill[2])
+
 
 if not os.path.isdir("./saves"):
     os.mkdir("saves")

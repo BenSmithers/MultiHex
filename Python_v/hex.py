@@ -21,7 +21,7 @@ class Hex:
         self._vertices = [ center for i in range(6) ]
 
         self._biodiversity     = 1.0
-        self._humidity_base    = 1.0
+        self._rainfall_base    = 0.0
         self._altitude_base    = 1.0
         self._temperature_base = 1.0
         self._is_land          = True
