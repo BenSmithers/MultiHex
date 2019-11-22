@@ -3,6 +3,7 @@ from hex import Hex
 from hexmap import Hexmap, save_map, load_map
 from special_hexes import *
 
+from numpy import histogram
 from math import exp, floor, sqrt, e
 
 import os
@@ -80,8 +81,8 @@ if size=='small' or size=='large':
 
 if size=='cont':
     for i in range(zones):
-        x_center = 0.60*rnd.random()*dimensions[0] + 0.18*dimensions[0]
-        y_center = 0.60*rnd.random()*dimensions[1] + 0.18*dimensions[1]
+        x_center = 0.80*rnd.random()*dimensions[0] + 0.10*dimensions[0]
+        y_center = 0.80*rnd.random()*dimensions[1] + 0.10*dimensions[1]
         for j in range(n_peaks):
             while True:
                 place = Point( rnd.gauss( x_center, 300), rnd.gauss( y_center, 300) )
@@ -343,7 +344,7 @@ while len(ids_to_propagate)!=0:
                 ids_to_propagate.append( neighbor )
             ids_to_propagate.pop(0)
 
-#                   Do Some Smoothing 
+#                   Define Smoothing Function 
 # ======================================================
 n_rounds = 2
 
@@ -379,37 +380,59 @@ def new_color(is_land, altitude):
                     -1*(deep_ocean[2] - shallows[2])*altitude*0.5 + shallows[2] ) )
 
 def smooth(what = ['alt'] ):
-    print("    smoothing... ")
+    full_str=""
+    for thing in what:
+        full_str += thing + "..."
+
+    print("    smoothing... "+full_str)
     global main_map
 
     for ID in main_map.catalogue.keys():
         neighbors = main_map.get_hex_neighbors( ID )
 
         this_one = main_map.catalogue[ID]
-        # skip mountains 
-        if this_one.genkey[1]=='1':
-            continue
-        
+                
         if 'alt' in what:
-            existing = 1
-            total    = this_one._altitude_base
-            for neighbor in neighbors:
-                if neighbor in main_map.catalogue:
-                    existing += 1
-                    total    += main_map.catalogue[neighbor]._altitude_base 
-            
-            # make this altitude the average of it and its neighbors (which exist)
-            main_map.catalogue[ID]._altitude_base = total / float(existing)
+            # skip mountains 
+            if not this_one.genkey[1]=='1':
+                existing = 1
+                total    = this_one._altitude_base
+                for neighbor in neighbors:
+                    if neighbor in main_map.catalogue:
+                        existing += 1
+                        total    += main_map.catalogue[neighbor]._altitude_base 
+                
+                # make this altitude the average of it and its neighbors (which exist)
+                main_map.catalogue[ID]._altitude_base = total / float(existing)
+                
+                # this may have made ocean become land and land become ocean... 
+                if main_map.catalogue[ID]._altitude_base < 0.:
+                    main_map.catalogue[ID]._is_land = False
+                    main_map.catalogue[ID].fill = new_color( False, total / float(existing))
+                else:
+                    main_map.catalogue[ID]._is_land = True
+                    main_map.catalogue[ID].fill = new_color( True, total/float(existing))
 
+        if 'rain' in what:
+            if this_one._is_land and not (this_one.genkey[0]=='1'): 
+                existing    = 1
+                total       = this_one._rainfall_base
+                for neighbor in neighbors:
+                    if neighbor in main_map.catalogue:
+                        if main_map.catalogue[neighbor]._is_land:
+                            existing += 1
+                            total    += main_map.catalogue[neighbor]._rainfall_base
+                            
+                
+                # make this altitude the average of it and its neighbors (which exist)
+                main_map.catalogue[ID]._rainfall_base = total / float(existing)
 
-        # this may have made ocean become land and land become ocean... 
-        if main_map.catalogue[ID]._altitude_base < 0.:
-            main_map.catalogue[ID]._is_land = False
-            main_map.catalogue[ID].fill = new_color( False, total / float(existing))
-        else:
-            main_map.catalogue[ID]._is_land = True
-            main_map.catalogue[ID].fill = new_color( True, total/float(existing))
-
+                green = 100 +  int(min( 120, max( 120*main_map.catalogue[ID]._rainfall_base, 0.0 )))
+                main_map.catalogue[ID].fill = ( 155, green, 0)
+            else:
+                # we're not smoothing the rainfall for the ocean
+                pass 
+        
 for i in range( n_rounds ):
     smooth()
 
@@ -429,13 +452,16 @@ if do_weather:
     evap_rate       = rain_rate*e
     diffusion       = 0.03
 
+    resr_weight = 1.25
+    pres_weight = 0.75
 
     if size=='large':
         reservoir_init  = 140.
     elif size=='small':
         reservoir_init  = 70.
     elif size=='cont':
-        reservoir_init  = 45.
+        reservoir_init  = 150.
+        rain_rate *= 1.2
     else:
         reservoir_init  = 10. 
         print("invalid size??")
@@ -454,7 +480,7 @@ if do_weather:
         if reservoir<5:
             return(0.0)
 
-        rate = rain_rate * exp(pressure)*exp(reservoir/reservoir_init)
+        rate = rain_rate * exp(pres_weight*pressure)*exp(resr_weight*reservoir/reservoir_init)
         return( rate )
 
     def index_to_y( index ):
@@ -463,10 +489,11 @@ if do_weather:
     # create cloud object. Reser
     clouds = [ [reservoir_init, 0.0] for i in range( n_cloud_units ) ]
 
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+
     if plotting:
-        import matplotlib
-        matplotlib.use('TkAgg')
-        import matplotlib.pyplot as plt
         plt.figure(1)
         plt.xlim([0, dimensions[0]])
         plt.ylim([0, dimensions[1]])
@@ -544,9 +571,10 @@ if do_weather:
             plt.show()#block=False)
             plt.pause(0.05)
 
-    percentages = [False for i in range(9)]
-        
-    
+    # maintain a %complete notice in the CLI while stepping the clouds forward
+    percentages = [False for i in range(9)] 
+
+    # keep going until the farthest back cloud traverses the world
     while( min( [ i[1] for i in clouds] )<= dimensions[0] ):
         perc = int( 100.*clouds[0][1]/dimensions[0] )
         
@@ -558,46 +586,76 @@ if do_weather:
                     print("{}% done".format((1.+test)*10.))
                     percentages[test] = True
 
-
+        # step the cloud forward
         step()
 
     if plotting:
         plt.close()
 
-    #                     Change Colors
+    #               Calculate Rainfal Statistics
     # ======================================================
 
-    min_rain = 10000.
-    max_rain = -1
-
+    
+    from collections import deque
+    rains = deque([])
 
     # set rainy thing
     for ID in main_map.catalogue.keys():
         
+        # we're not collecting statistics on the ocean. It's all very rainy
         this_hex = main_map.catalogue[ID]
         if not this_hex._is_land:
             continue
-        if this_hex.genkey[0]=='1':
-            continue
+       
+        rains.append( main_map.catalogue[ID]._rainfall_base )
 
-        if max_rain< this_hex._rainfall_base:
-            max_rain = this_hex._rainfall_base
-        if min_rain>this_hex._rainfall_base:
-            min_rain = this_hex._rainfall_base
-        
+    
+    # do some statistics with fiiine bins
+    summ = len(rains)
+    weights = [ 1./summ for i in rains]
+    from numpy import linspace
+    bins = list( linspace(0,1,100, endpoint=False)) + list( linspace(1,10,100))
+    occupation, edges = histogram( rains, normed=False, bins=bins, weights = weights)
+    del summ
+    del weights
 
-    print("Rainfall variance {}-{}".format(min_rain, max_rain))
-
+    percentiles = [oc for oc in occupation]
+    for i in range(len(occupation)):
+        if i==0:
+            percentiles[i]=occupation[i]
+        else:
+            percentiles[i]=occupation[i]+percentiles[i-1]
+    
+    # the hex _rainfall_base is is 1/100 the rainfall percentile 
     for ID in main_map.catalogue.keys():
         this_hex = main_map.catalogue[ID]
+
+        # don't set the rainfall in the ocean
         if not this_hex._is_land:
             continue
-        if this_hex.genkey[0]=='1':
-            continue
 
-        green = 100 + int(min( 155, max( 155*main_map.catalogue[ID]._rainfall_base/max_rain, 0.0 )))
-        main_map.catalogue[ID].fill = ( main_map.catalogue[ID].fill[0],green ,main_map.catalogue[ID].fill[2])
+        which = 0
+        while this_hex._rainfall_base > edges[which]:
+            which+=1
+            if which==len(edges):
+                break
 
+        if which==len(edges):
+            this_hex._rainfall_base = 1.0
+        if which==0:
+            # somehow this is beneath the binned region. Should be impossible
+            this_hex._rainfall_base = 0.0
+        
+        which -= 1
+        
+        main_map.catalogue[ID]._rainfall_base = percentiles[which]
+        
+    
+    n_rounds = 2
+    print("Performing {} round of Rainfall Smoothing".format(n_rounds))
+    for i in range(n_rounds):
+        smooth(['rain'])
+    
 
 if not os.path.isdir("./saves"):
     os.mkdir("saves")
