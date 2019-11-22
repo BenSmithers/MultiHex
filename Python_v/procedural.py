@@ -18,6 +18,8 @@ def make_basic_hex(arg1, arg2):
     new_one._temperature_base = 0.0
     return( new_one )
 
+plotting        = False ### warning!! Slow!!
+do_weather = True
 size = 'cont'
 out_file = './saves/generated.hexmap'
 
@@ -30,7 +32,7 @@ elif size=='large':
 elif size=='cont':
     dimensions = [6000, 3000]
     zones = 4
-    n_peaks = 11
+    n_peaks = 9
 else:
     raise Exception("'{}' size not implemented".format(size))
 
@@ -78,11 +80,11 @@ if size=='small' or size=='large':
 
 if size=='cont':
     for i in range(zones):
-        x_center = 0.60*rnd.random()*dimensions[0] + 0.18*dimensions[1]
+        x_center = 0.60*rnd.random()*dimensions[0] + 0.18*dimensions[0]
         y_center = 0.60*rnd.random()*dimensions[1] + 0.18*dimensions[1]
         for j in range(n_peaks):
             while True:
-                place = Point( rnd.gauss( x_center, 400), rnd.gauss( y_center, 400) )
+                place = Point( rnd.gauss( x_center, 300), rnd.gauss( y_center, 300) )
                 if not point_is_in(place):
                     continue 
                 loc_id = main_map.get_id_from_point( place )
@@ -285,9 +287,9 @@ while len(ids_to_propagate) != 0:
 print("Spread Land Out")
 
 if size=='cont':
-    land_spread  = 0.075
+    land_spread  = 0.060
     land_width   = 0.03
-    water_spread = 0.05
+    water_spread = 0.02
     water_width  = 0.01
 else:
     land_spread  = 0.03
@@ -414,7 +416,7 @@ for i in range( n_rounds ):
 #                Establish Rainfall
 # ======================================================
 
-if False:
+if do_weather:
 
     print("Simulating Weather")
 
@@ -426,14 +428,14 @@ if False:
     rain_rate       = 0.005
     evap_rate       = rain_rate*e
     diffusion       = 0.03
-    plotting        = False ### warning!! Slow!!
+
 
     if size=='large':
         reservoir_init  = 140.
     elif size=='small':
         reservoir_init  = 70.
     elif size=='cont':
-        reservoir_init  = 150.
+        reservoir_init  = 45.
     else:
         reservoir_init  = 10. 
         print("invalid size??")
@@ -452,7 +454,7 @@ if False:
         if reservoir<5:
             return(0.0)
 
-        rate = rain_rate * exp(2*(1.+2.5*pressure)*reservoir/100.)
+        rate = rain_rate * exp(pressure)*exp(reservoir/reservoir_init)
         return( rate )
 
     def index_to_y( index ):
@@ -542,7 +544,21 @@ if False:
             plt.show()#block=False)
             plt.pause(0.05)
 
+    percentages = [False for i in range(9)]
+        
+    
     while( min( [ i[1] for i in clouds] )<= dimensions[0] ):
+        perc = int( 100.*clouds[0][1]/dimensions[0] )
+        
+        for test in range(len(percentages)):
+            if percentages[test]:
+                continue
+            else:
+                if perc > (test+1)*10:
+                    print("{}% done".format((1.+test)*10.))
+                    percentages[test] = True
+
+
         step()
 
     if plotting:
