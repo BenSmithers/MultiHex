@@ -109,7 +109,6 @@ class clicker_control(QtGui.QGraphicsScene):
 
     def mousePressEvent(self, event):
         event.accept()
-        print("Click Reg. at ({},{})".format(event.scenePos().x(), event.scenePos().y()))
         self._held = True
         self.step =  Point( event.scenePos().x(), event.scenePos().y())
         self.start = Point( event.scenePos().x(), event.scenePos().y())
@@ -147,41 +146,63 @@ class clicker_control(QtGui.QGraphicsScene):
         self._active.move( event )
 
     def to_brush(self):
-        writer_control.set_brush_small()
         self._active = writer_control
-  #      app_instance.ui.hand.setChecked(False)
+        selector_control.drop_selector()
     def to_select(self):
-
         self._active = selector_control
- #       app_instance.ui.brush.setChecked(True)
+        writer_control.drop_brush()
 
   
-#    def setMouseTracking(self, flag):
-#        def recursive_set(parent):
-#            for child in parent.findChildren(QtCore.QObject):
-#                try:
-#                    child.setMouseTracking(flag)
-#                except:
-#                    pass
-#                recursive_set(child)
-#        QtGui.QWidget.setMouseTracking(self, flag)
-#        recursive_set(self)
-
-#controlle = clicker_control()
-
-#scene = clicker_control( app_instance.ui.centralwidget )
-
 scene = clicker_control( app_instance.ui.graphicsView )
 
 class selector(basic_tool):
     def __init__(self):
         self.start = Point(0.0,0.0)
-        self.selection = None
+        self.selected_id  = None
+        self.selected_out = None
+        
+        # configure brush and pen for showing selected hex 
+        self.QBrush = QtGui.QBrush()
+        self.QPen   = QtGui.QPen()
+        self.QBrush.setStyle(0)
+        self.QPen.setColor(QtGui.QColor(75,75,245))
+        self.QPen.setWidth(4)
 
     def press(self, place):
         pass
     def activate(self, place):
-        pass
+        here = Point( place.scenePos().x(), place.scenePos().y())
+        this_id = main_map.get_id_from_point( here )
+
+        if self.selected_id != this_id:
+            if self.selected_out is not None:
+                scene.removeItem( self.selected_out )
+
+            self.selected_out = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
+            self.selected_id = this_id
+
+            app_instance.ui.rainfall.setValue(max( 0, min( 255, int(main_map.catalogue[this_id]._rainfall_base*255/5. )))) 
+            app_instance.ui.temperature.setValue(max( 0, min( 255, int(main_map.catalogue[this_id]._temperature_base*255 ))))
+            app_instance.ui.biodiversity.setValue(max( 0, min( 255, int(main_map.catalogue[this_id]._biodiversity*255 ))))
+
+    def rainfall(self, value):
+        if self.selected_id is not None:
+            main_map.catalogue[self.selected_id]._rainfall_base = 5*value/255.
+    def altitude(self, value):
+        if self.selected_id is not None:
+            main_map.catalogue[self.selected_id]._rainfall_base = value/255.
+    def biodiversity(self, value):
+        if self.selected_id is not None:
+            main_map.catalogue[self.selected_id]._rainfall_base = value/255.
+        
+    def drop_selector(self):
+        if self.selected_out is not None:
+            scene.removeItem( self.selected_out )
+            self.selected_out = None
+            app_instance.ui.rainfall.setValue( 0 )
+            app_instance.ui.temperature.setValue( 0 )
+            app_instance.ui.biodiversity.setValue( 0 )
+        self.selected_id = None
 
 
 class hex_brush(basic_tool):
@@ -195,6 +216,10 @@ class hex_brush(basic_tool):
 
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
+    def drop_brush(self):
+        if main_map._outline is not None:
+            scene.removeItem( main_map._outline_obj )
+            main_map._outline_obj = None
 
     def activate(self, event):
         if self.writing:
@@ -330,16 +355,6 @@ selector_control = selector()
 
 scene._active = writer_control
 app_instance.ui.graphicsView.setMouseTracking(True)
-#app_instance.ui.graphicsView.setTransformationAnchor( 0 )
-#app_instance.ui.graphicsView.setVerticalScrollBarPolicy( QtCore.Qt.ScrollBarAlwaysOff )
-#app_instance.ui.graphicsView.setHorizontalScrollBarPolicy( QtCore.Qt.ScrollBarAlwaysOff )
-#app_instance.ui.graphicsView.horizontalScrollBar().disconnect()
-#app_instance.ui.graphicsView.verticalScrollBar().disconnect()
-
-
-#app_instance.ui.graphicsView = clicker_control( app_instance.ui.centralwidget )
-#app_instance.ui.graphicsView.setObjectName(_fromUtf8("graphicsView"))
-
 app_instance.ui.graphicsView.setScene( scene )
 
 
@@ -355,7 +370,12 @@ app_instance.ui.Ocean.clicked.connect( writer_control.switch_ocean )
 app_instance.ui.Grassland.clicked.connect( writer_control.switch_grass )
 app_instance.ui.brushTottle.clicked.connect( writer_control.toggle_brush_size )
 app_instance.ui.write_erase.clicked.connect( writer_control.toggle_write )
+QtCore.QObject.connect( app_instance.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), selector_control.rainfall)
+
+#app_instance.ui.rainfall.clicked.connect(selector_control.rainfall)
 #toggle_write
+
+app_instance.ui.brush.setChecked(True)
 
 if need_to_draw:
     newpen = QtGui.QPen()
