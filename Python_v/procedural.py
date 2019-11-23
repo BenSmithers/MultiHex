@@ -3,8 +3,9 @@ from hex import Hex
 from hexmap import Hexmap, save_map, load_map
 from special_hexes import *
 
+from numpy import arccos 
 from numpy import histogram
-from math import exp, floor, sqrt, e
+from math import exp, floor, sqrt, e, pi
 
 import os
 import sys
@@ -82,7 +83,8 @@ if size=='small' or size=='large':
 if size=='cont':
     for i in range(zones):
         x_center = 0.80*rnd.random()*dimensions[0] + 0.10*dimensions[0]
-        y_center = 0.80*rnd.random()*dimensions[1] + 0.10*dimensions[1]
+        y_cos  = 1.8*rnd.random() - 0.9
+        y_center = arccos( y_cos )*dimensions[1]/( pi )
         for j in range(n_peaks):
             while True:
                 place = Point( rnd.gauss( x_center, 300), rnd.gauss( y_center, 300) )
@@ -426,6 +428,8 @@ def smooth(what = ['alt'] ):
                 
                 # make this altitude the average of it and its neighbors (which exist)
                 main_map.catalogue[ID]._rainfall_base = total / float(existing)
+                if (total/float(existing)) > 1.0:
+                    print("Warn! Setting rainfall > 1: {}".format(total/float(existing)))
 
                 green = 100 +  int(min( 120, max( 120*main_map.catalogue[ID]._rainfall_base, 0.0 )))
                 main_map.catalogue[ID].fill = ( 155, green, 0)
@@ -444,8 +448,10 @@ if do_weather:
     print("Simulating Weather")
 
     rthree = sqrt(3)
-
-    n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
+    if size=='cont':
+        n_cloud_units = int(    dimensions[1] / (main_map._drawscale*rthree) )
+    else:
+        n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
 
     x_step          = 0.2*main_map._drawscale
     rain_rate       = 0.005
@@ -483,17 +489,28 @@ if do_weather:
         rate = rain_rate * exp(pres_weight*pressure)*exp(resr_weight*reservoir/reservoir_init)
         return( rate )
 
-    def index_to_y( index ):
-        return( index*main_map._drawscale*rthree/2. + 0.5*main_map._drawscale )
+    def index_to_y( index, eastern=False ):
+        if size=='cont': 
+            if eastern:
+                return( 0.5*dimensions[0] + 1.05*index*main_map._drawscale*rthree + 0.42*main_map._drawscale)
+            else:
+                return( 1.05*index*main_map._drawscale*rthree + 0.42*main_map._drawscale )
+        else:
+            return( index*main_map._drawscale*rthree/2. + 0.42*main_map._drawscale )
+
+
 
     # create cloud object. Reser
     clouds = [ [reservoir_init, 0.0] for i in range( n_cloud_units ) ]
+    if size=='cont':
+        clouds_east = [ [reservoir_init, dimensions[0]] for i in range( n_cloud_units ) ]
 
-    import matplotlib
-    matplotlib.use('TkAgg')
-    import matplotlib.pyplot as plt
-
+    
     if plotting:
+        import matplotlib
+        matplotlib.use('TkAgg')
+        import matplotlib.pyplot as plt
+
         plt.figure(1)
         plt.xlim([0, dimensions[0]])
         plt.ylim([0, dimensions[1]])
@@ -507,11 +524,16 @@ if do_weather:
     def step():
         # just so it knows we're modifying this thing! 
         global clouds 
+        if size=='cont':
+            global clouds_east
         global main_map
 
         # copy the clouds object 
         new_cloud = [ [clouds[i][0], clouds[i][1]] for i in range(len( clouds )) ]
-        
+        if size=='cont':
+            new_cloud_east = [ [clouds_east[i][0], clouds_east[i][1]] for i in range(len( clouds_east )) ]
+
+
         for index in range(len(clouds)):
             here_id  = main_map.get_id_from_point( Point( clouds[index][1], index_to_y(index)))
             neigh_id = main_map.get_id_from_point( Point( clouds[index][1]+2.7*main_map._drawscale, index_to_y(index)))
@@ -551,9 +573,49 @@ if do_weather:
             # cloud moves forward
             new_cloud[index][1] += (1.0-pressure)*x_step
             
+            if size=='cont':
+                here_id  = main_map.get_id_from_point( Point( clouds_east[index][1], index_to_y(index, True)))
+                neigh_id = main_map.get_id_from_point( Point( clouds_east[index][1]-2.7*main_map._drawscale, index_to_y(index, True)))
+                
+                pressure = 0.0
+                try:
+                    here = main_map.catalogue[here_id]
+                    skip_some = False
+                except KeyError:
+                    skip_some = True
+
+                if not skip_some:
+                    # get the pressure factor 
+                    try:
+                        neigh = main_map.catalogue[neigh_id]
+                        pressure = neigh._altitude_base - here._altitude_base 
+                    except KeyError:
+                        pressure = 0.0
+
+                    if pressure < 0.0:
+                        pressure = 0.0
+
+                    rain = get_rate( clouds_east[index][0], pressure)*x_step
+                    if not here._is_land:
+                        new_cloud_east[index][0] += evap_rate
+                    
+                    # drop rain from the reservoir into the thing beneath it
+                    new_cloud_east[index][0] -= rain
+                    main_map.catalogue[here_id]._rainfall_base += rain
+
+                # diffuse
+                if index!=(len(clouds_east)-1):
+                    diff = new_cloud_east[index+1][0] - new_cloud_east[index][0]
+                    new_cloud_east[index][0]   += diff*diffusion
+                    new_cloud_east[index+1][0] -= diff*diffusion
+               
+                # cloud moves forward
+                new_cloud_east[index][1] -= (1.0-pressure)*x_step
 
         for index in range(len(clouds)):
             clouds[index] = [new_cloud[index][0], new_cloud[index][1]]
+            if size=='cont':
+                clouds_east[index] = [new_cloud_east[index][0], new_cloud_east[index][1]]
 
         if plotting:
             plot_it = [[clouds[index][0] for index in range(len(clouds))], [clouds[index][1]  for index in range(len(clouds)) ], [ index_to_y(index) for index in range(len(clouds))] ]
@@ -575,7 +637,7 @@ if do_weather:
     percentages = [False for i in range(9)] 
 
     # keep going until the farthest back cloud traverses the world
-    while( min( [ i[1] for i in clouds] )<= dimensions[0] ):
+    while( min( [ i[1] for i in clouds] )<= dimensions[0] or (size=='cont' and min([i[1] for i in clouds_east])>=0) ):
         perc = int( 100.*clouds[0][1]/dimensions[0] )
         
         for test in range(len(percentages)):
@@ -647,10 +709,13 @@ if do_weather:
             this_hex._rainfall_base = 0.0
         
         which -= 1
-        
-        main_map.catalogue[ID]._rainfall_base = percentiles[which]
-        
-    
+        try:        
+            main_map.catalogue[ID]._rainfall_base = percentiles[which]
+        except IndexError:
+            print( "ID: {}".format(ID))
+            print( "which: {} of {}".format(which, len(percentiles)))
+            sys.exit()
+
     n_rounds = 2
     print("Performing {} round of Rainfall Smoothing".format(n_rounds))
     for i in range(n_rounds):
