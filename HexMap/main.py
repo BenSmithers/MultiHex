@@ -181,19 +181,20 @@ class selector(basic_tool):
             self.selected_out = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
             self.selected_id = this_id
 
-            app_instance.ui.rainfall.setValue(max( 0, min( 255, int(main_map.catalogue[this_id]._rainfall_base*255/5. )))) 
-            app_instance.ui.temperature.setValue(max( 0, min( 255, int(main_map.catalogue[this_id]._temperature_base*255 ))))
-            app_instance.ui.biodiversity.setValue(max( 0, min( 255, int(main_map.catalogue[this_id]._biodiversity*255 ))))
+            app_instance.ui.rainfall.setValue(    max( 0, min( 100, int(main_map.catalogue[this_id]._rainfall_base*100    )))) 
+            app_instance.ui.temperature.setValue( max( 0, min( 100, int(main_map.catalogue[this_id]._temperature_base*100 ))))
+            app_instance.ui.biodiversity.setValue(max( 0, min( 100, int(main_map.catalogue[this_id]._biodiversity*100     ))))
 
+            
     def rainfall(self, value):
         if self.selected_id is not None:
-            main_map.catalogue[self.selected_id]._rainfall_base = 5*value/255.
+            main_map.catalogue[self.selected_id]._rainfall_base = value/100.
     def altitude(self, value):
         if self.selected_id is not None:
-            main_map.catalogue[self.selected_id]._rainfall_base = value/255.
+            main_map.catalogue[self.selected_id]._rainfall_base = value/100.
     def biodiversity(self, value):
         if self.selected_id is not None:
-            main_map.catalogue[self.selected_id]._rainfall_base = value/255.
+            main_map.catalogue[self.selected_id]._rainfall_base = value/100.
         
     def drop_selector(self):
         if self.selected_out is not None:

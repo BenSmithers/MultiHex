@@ -23,7 +23,7 @@ def make_basic_hex(arg1, arg2):
 plotting        = False ### warning!! Slow!!
 do_weather = True
 size = 'cont'
-out_file = './saves/generated.hexmap'
+out_file = '../saves/generated.hexmap'
 
 if size=='small':
     dimensions = [1920, 1080]
@@ -722,7 +722,7 @@ if do_weather:
         smooth(['rain'])
     
 
-if not os.path.isdir("./saves"):
-    os.mkdir("saves")
+if not os.path.isdir("../saves"):
+    os.mkdir("../saves")
 
 save_map( main_map, out_file )

@@ -49,7 +49,9 @@ class Hex:
 
     def build_name(self):
         return("")
-    
+    def reset_color(self):
+        pass
+
     def get_flattened_points(self, displacement=None, zoom=1.0):
         """
         deprecated
