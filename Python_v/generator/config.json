@@ -1,0 +1,78 @@
+{
+    "cont": {
+        "land": {
+            "land_spread": 0.06,
+            "land_width": 0.03,
+            "water_spread": 0.02,
+            "water_width": 0.01
+        },
+        "mountains": {
+            "avg_range": 15.0,
+            "dimensions": [
+                6000,
+                3000
+            ],
+            "mnt_thicc": 2.3,
+            "n_peaks": 9,
+            "sigma": 60,
+            "zones": 4
+        },
+        "weather": {
+            "diffusion": 0.03,
+            "pres_weight": 0.75,
+            "rain_rate": 0.007,
+            "reservoir_init": 150.0,
+            "resr_weight": 1.25
+        }
+    },
+    "large": {
+        "land": {
+            "land_spread": 0.03,
+            "land_width": 0.015,
+            "water_spread": 0.1,
+            "water_width": 0.05
+        },
+        "mountains": {
+            "avg_range": 30.0,
+            "dimensions": [
+                3840,
+                2160
+            ],
+            "mnt_thicc": 2.3,
+            "n_peaks": 25,
+            "sigma": 60.0
+        },
+        "weather": {
+            "diffusion": 0.03,
+            "pres_weight": 0.75,
+            "rain_rate": 0.005,
+            "reservoir_init": 140.0,
+            "resr_weight": 1.25
+        }
+    },
+    "small": {
+        "land": {
+            "land_spread": 0.03,
+            "land_width": 0.015,
+            "water_spread": 0.1,
+            "water_width": 0.05
+        },
+        "mountains": {
+            "avg_range": 30.0,
+            "dimensions": [
+                1920,
+                1080
+            ],
+            "mnt_thicc": 2.3,
+            "n_peaks": 15,
+            "sigma": 60.0
+        },
+        "weather": {
+            "diffusion": 0.03,
+            "pres_weight": 0.75,
+            "rain_rate": 0.005,
+            "reservoir_init": 70.0,
+            "resr_weight": 1.25
+        }
+    }
+}
