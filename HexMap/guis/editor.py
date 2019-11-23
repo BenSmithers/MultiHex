@@ -49,7 +49,7 @@ class PicButton(QtGui.QAbstractButton):
 
 
 
-class Ui_MainWindow(object):
+class Ui_MainWindow(QtGui.QMainWindow):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
         MainWindow.resize(1168, 695)

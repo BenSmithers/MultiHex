@@ -5,40 +5,36 @@ from HexMap.hex import Hex
 from HexMap.hexmap import Hexmap
 from HexMap.hexmap import save_map, load_map
 from HexMap.special_hexes import *
+from HexMap.tools import *
 try:
     from PyQt4 import QtCore, QtGui
 except ImportError:
     from PyQt4 import QtCore, QtGui
 
 #from PyQt4.QtWidgets import QGraphicsScene
-from display import Ui_MainWindow
+from HexMap.guis.editor import Ui_MainWindow
+from HexMap.guis.main_menu import Ui_MainWindow as main_menu
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
 
 screen_ratio = 0.8
 
-try:
-    _fromUtf8 = QtCore.QString.fromUtf8
-except AttributeError:
-    def _fromUtf8(s):
-        return s
-
 # loaded maps need to be drawn
-need_to_draw = False
-if len(sys.argv) > 1:
-    in_file = sys.argv[1]
-    if in_file.split(".")[-1]=="hexmap":
-        if os.path.exists( in_file ):
-            print("Loading "+in_file)
-            main_map = load_map( in_file )
-            need_to_draw = True
-        else:
-            main_map = Hexmap() 
-    else:
-        main_map = Hexmap() 
-else:
-    main_map = Hexmap() 
+#need_to_draw = False
+#if len(sys.argv) > 1:
+#    in_file = sys.argv[1]
+#    if in_file.split(".")[-1]=="hexmap":
+#        if os.path.exists( in_file ):
+#            print("Loading "+in_file)
+#            main_map = load_map( in_file )
+#            need_to_draw = True
+#        else:
+#            main_map = Hexmap() 
+#    else:
+#        main_map = Hexmap() 
+#else:
+#    main_map = Hexmap() 
 
 # open the gui
 class gui(QtGui.QMainWindow):
@@ -47,48 +43,6 @@ class gui(QtGui.QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-app = QtGui.QApplication(sys.argv)
-app_instance = gui()
-
-
-def savesave():
-    save_map(main_map, "saves/test.hexmap")
-
-class basic_tool:
-    """
-    Prototype a basic tool 
-    """
-    def __init__(self):
-        pass
-    def press(self,event):
-        """
-        Called when the mouse is pressed
-
-        @param event 
-        """
-        pass
-    def activate(self, event):
-        """
-        This is called when the mouse is released from a localized click. 
-
-        @param event - location of release
-        """
-        pass
-    def hold(self,event, step):
-        """
-        Called continuously while the mouse is held
-
-        @param event - current mouse location
-        @param setp  - vector pointing from last called location to @place
-        """
-        pass
-    def move(self, event):
-        """
-        Called continuously while the mouse is in the widget
-
-        @param place - where the mouse is 
-        """
-        pass
 
 
 class clicker_control(QtGui.QGraphicsScene):
@@ -153,7 +107,7 @@ class clicker_control(QtGui.QGraphicsScene):
         writer_control.drop_brush()
 
   
-scene = clicker_control( app_instance.ui.graphicsView )
+
 
 class selector(basic_tool):
     def __init__(self):
@@ -178,13 +132,16 @@ class selector(basic_tool):
             if self.selected_out is not None:
                 scene.removeItem( self.selected_out )
 
-            self.selected_out = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
-            self.selected_id = this_id
+            if this_id in main_map.catalogue:
+                self.selected_out = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
+                self.selected_id = this_id
 
-            app_instance.ui.rainfall.setValue(    max( 0, min( 100, int(main_map.catalogue[this_id]._rainfall_base*100    )))) 
-            app_instance.ui.temperature.setValue( max( 0, min( 100, int(main_map.catalogue[this_id]._temperature_base*100 ))))
-            app_instance.ui.biodiversity.setValue(max( 0, min( 100, int(main_map.catalogue[this_id]._biodiversity*100     ))))
-
+                editor_instance.ui.rainfall.setValue(    max( 0, min( 100, int(main_map.catalogue[this_id]._rainfall_base*100    )))) 
+                editor_instance.ui.temperature.setValue( max( 0, min( 100, int(main_map.catalogue[this_id]._temperature_base*100 ))))
+                editor_instance.ui.biodiversity.setValue(max( 0, min( 100, int(main_map.catalogue[this_id]._biodiversity*100     ))))
+            else:
+                self.selected_out = None
+                self.selected_id = None
             
     def rainfall(self, value):
         if self.selected_id is not None:
@@ -200,9 +157,9 @@ class selector(basic_tool):
         if self.selected_out is not None:
             scene.removeItem( self.selected_out )
             self.selected_out = None
-            app_instance.ui.rainfall.setValue( 0 )
-            app_instance.ui.temperature.setValue( 0 )
-            app_instance.ui.biodiversity.setValue( 0 )
+            editor_instance.ui.rainfall.setValue( 0 )
+            editor_instance.ui.temperature.setValue( 0 )
+            editor_instance.ui.biodiversity.setValue( 0 )
         self.selected_id = None
 
 
@@ -350,35 +307,56 @@ class hex_brush(basic_tool):
     def switch_arctic(self):
         self._brush_type = Arctic_Hex
 
-
 writer_control = hex_brush()
 selector_control = selector()
 
+application = QtGui.QApplication(sys.argv)
+editor_instance = gui()
+
+scene = clicker_control( editor_instance.ui.graphicsView )
+
+#def open_map( target = '' ):
+#    global main_map    
+#    global editor_instance
+#    global scene
+#    global applicaiton
+
 scene._active = writer_control
-app_instance.ui.graphicsView.setMouseTracking(True)
-app_instance.ui.graphicsView.setScene( scene )
+editor_instance.ui.graphicsView.setMouseTracking(True)
+editor_instance.ui.graphicsView.setScene( scene )
 
 
-app_instance.ui.brush.clicked.connect( scene.to_brush )
-app_instance.ui.hand.clicked.connect( scene.to_select )
+editor_instance.ui.brush.clicked.connect( scene.to_brush )
+editor_instance.ui.hand.clicked.connect( scene.to_select )
 
 
-app_instance.ui.pushButton_7.clicked.connect( writer_control.switch_desert )
-app_instance.ui.pushButton_8.clicked.connect( writer_control.switch_arctic )
-app_instance.ui.pushButton_9.clicked.connect( writer_control.switch_mountain )
-app_instance.ui.Forest.clicked.connect( writer_control.switch_forest )
-app_instance.ui.Ocean.clicked.connect( writer_control.switch_ocean )
-app_instance.ui.Grassland.clicked.connect( writer_control.switch_grass )
-app_instance.ui.brushTottle.clicked.connect( writer_control.toggle_brush_size )
-app_instance.ui.write_erase.clicked.connect( writer_control.toggle_write )
-QtCore.QObject.connect( app_instance.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), selector_control.rainfall)
+editor_instance.ui.pushButton_7.clicked.connect( writer_control.switch_desert )
+editor_instance.ui.pushButton_8.clicked.connect( writer_control.switch_arctic )
+editor_instance.ui.pushButton_9.clicked.connect( writer_control.switch_mountain )
+editor_instance.ui.Forest.clicked.connect( writer_control.switch_forest )
+editor_instance.ui.Ocean.clicked.connect( writer_control.switch_ocean )
+editor_instance.ui.Grassland.clicked.connect( writer_control.switch_grass )
+editor_instance.ui.brushTottle.clicked.connect( writer_control.toggle_brush_size )
+editor_instance.ui.write_erase.clicked.connect( writer_control.toggle_write )
+QtCore.QObject.connect( editor_instance.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), selector_control.rainfall)
 
-#app_instance.ui.rainfall.clicked.connect(selector_control.rainfall)
+#editor_instance.ui.rainfall.clicked.connect(selector_control.rainfall)
 #toggle_write
 
-app_instance.ui.brush.setChecked(True)
+editor_instance.ui.brush.setChecked(True)
 
-if need_to_draw:
+target =''
+if target!='':
+    main_map = load_map( in_file )
+    need_to_draw = True
+else:
+    main_map = Hexmap()
+    need_to_draw = False
+
+
+#if need_to_draw:
+def draw_map():
+    global main_map
     newpen = QtGui.QPen()
     newbrush=QtGui.QBrush()
     newbrush.setStyle(1)
@@ -390,9 +368,15 @@ if need_to_draw:
         main_map.drawn_hexes[ID] = scene.addPolygon( QtGui.QPolygonF(main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
 
 
-#update again
-if __name__=="__main__":
-    app_instance.show()
-    sys.exit(app.exec_())
 
-# frame.destroy()
+#thing = open_map()
+#thing.show()
+#sys.exit( applicaiton.exec_() )
+    #    return( editor_instance )
+
+if __name__=="__main__":
+    draw_map()
+    editor_instance.show()
+    sys.exit(application.exec_())
+
+

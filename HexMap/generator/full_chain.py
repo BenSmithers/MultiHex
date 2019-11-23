@@ -7,5 +7,9 @@ def full_sim( size, name ):
     fill_land.generate(size, name)
     sim_weather.generate( size, name )
 
+def ridge_onward( size, name ):
+    fill_land.generate( size, name )
+    sim_weather.generate( size, name )
+
 if __name__=='__main__':
     full_sim( 'cont', '../saves/generated.hexmap' )

@@ -27,6 +27,7 @@ def Forest_Hex(center,radius):
 def Mountain_Hex(center,radius):
     temp = Hex( center, radius )
     temp.fill = (158,140,96)
+    temp.genkey = '11000000'
     return(temp)
 
 def Arctic_Hex(center,radius):
