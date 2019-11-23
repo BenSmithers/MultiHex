@@ -1,5 +1,5 @@
-from hex import Hex
-from point import Point
+from HexMap.hex import Hex
+from HexMap.point import Point
 
 default_p = Point(0.0,0.0)
 

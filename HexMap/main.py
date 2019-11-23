@@ -1,10 +1,10 @@
 ## #!/usr/bin/python3.6m
 
-from point import Point
-from hex import Hex
-from hexmap import Hexmap
-from hexmap import save_map, load_map
-from special_hexes import *
+from HexMap.point import Point
+from HexMap.hex import Hex
+from HexMap.hexmap import Hexmap
+from HexMap.hexmap import save_map, load_map
+from HexMap.special_hexes import *
 try:
     from PyQt4 import QtCore, QtGui
 except ImportError:
