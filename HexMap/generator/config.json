@@ -3,6 +3,7 @@
         "land": {
             "land_spread": 0.06,
             "land_width": 0.03,
+            "mnt_thicc": 2.3,
             "water_spread": 0.02,
             "water_width": 0.01
         },
@@ -12,7 +13,6 @@
                 6000,
                 3000
             ],
-            "mnt_thicc": 2.3,
             "n_peaks": 9,
             "sigma": 60,
             "zones": 4
@@ -29,6 +29,7 @@
         "land": {
             "land_spread": 0.03,
             "land_width": 0.015,
+            "mnt_thicc": 2.3,
             "water_spread": 0.1,
             "water_width": 0.05
         },
@@ -54,6 +55,7 @@
         "land": {
             "land_spread": 0.03,
             "land_width": 0.015,
+            "mnt_thicc": 2.3,
             "water_spread": 0.1,
             "water_width": 0.05
         },
