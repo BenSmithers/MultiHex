@@ -24,6 +24,11 @@ b.smithers.actual@gmail.com
 """
 
 def save_map(h_map, filename):
+    h_map.drawn_hexes = {}
+    h_map._active_id = None
+    h_map._outline = None
+    h_map.outline_obj = None
+
     file_object = open(filename, 'wb')
     pickle.dump( h_map, file_object, -1)
     file_object.close()
