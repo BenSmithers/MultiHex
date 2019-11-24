@@ -11,12 +11,11 @@ try:
 except ImportError:
     from PyQt4 import QtCore, QtGui
 
-#from PyQt4.QtWidgets import QGraphicsScene
 from HexMap.guis.editor import Ui_MainWindow
-from HexMap.guis.main_menu import Ui_MainWindow as main_menu
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
+
 
 screen_ratio = 0.8
 
@@ -37,11 +36,6 @@ screen_ratio = 0.8
 #    main_map = Hexmap() 
 
 # open the gui
-class gui(QtGui.QMainWindow):
-    def __init__(self,parent=None):
-        QtGui.QWidget.__init__(self,parent)
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
 
 
 
@@ -49,7 +43,7 @@ class clicker_control(QtGui.QGraphicsScene):
     """
     Manages the mouse interface for to the canvas 
     """
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, master=None):
         QtGui.QGraphicsScene.__init__(self, parent)
 
 
@@ -60,6 +54,7 @@ class clicker_control(QtGui.QGraphicsScene):
         self._active = None
         self._held = False
         
+        self.master = master
 
     def mousePressEvent(self, event):
         event.accept()
@@ -100,21 +95,23 @@ class clicker_control(QtGui.QGraphicsScene):
         self._active.move( event )
 
     def to_brush(self):
-        self._active = writer_control
-        selector_control.drop_selector()
+        self._active = self.master.writer_control
+        self.master.selector_control.drop_selector()
     def to_select(self):
-        self._active = selector_control
-        writer_control.drop_brush()
+        self._active = self.master.selector_control
+        self.master.writer_control.drop_brush()
 
   
 
 
 class selector(basic_tool):
-    def __init__(self):
+    def __init__(self, parent):
         self.start = Point(0.0,0.0)
         self.selected_id  = None
         self.selected_out = None
         
+        self.parent = parent
+
         # configure brush and pen for showing selected hex 
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
@@ -126,40 +123,40 @@ class selector(basic_tool):
         pass
     def activate(self, place):
         here = Point( place.scenePos().x(), place.scenePos().y())
-        this_id = main_map.get_id_from_point( here )
+        this_id = self.parent.main_map.get_id_from_point( here )
 
         if self.selected_id != this_id:
             if self.selected_out is not None:
-                scene.removeItem( self.selected_out )
+                self.parent.scene.removeItem( self.selected_out )
 
-            if this_id in main_map.catalogue:
-                self.selected_out = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
+            if this_id in self.parent.main_map.catalogue:
+                self.selected_out = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self.parent.main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
                 self.selected_id = this_id
 
-                editor_instance.ui.rainfall.setValue(    max( 0, min( 100, int(main_map.catalogue[this_id]._rainfall_base*100    )))) 
-                editor_instance.ui.temperature.setValue( max( 0, min( 100, int(main_map.catalogue[this_id]._temperature_base*100 ))))
-                editor_instance.ui.biodiversity.setValue(max( 0, min( 100, int(main_map.catalogue[this_id]._biodiversity*100     ))))
+                self.parent.ui.rainfall.setValue(    max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._rainfall_base*100    )))) 
+                self.parent.ui.temperature.setValue( max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._temperature_base*100 ))))
+                self.parent.ui.biodiversity.setValue(max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._biodiversity*100     ))))
             else:
                 self.selected_out = None
                 self.selected_id = None
             
     def rainfall(self, value):
         if self.selected_id is not None:
-            main_map.catalogue[self.selected_id]._rainfall_base = value/100.
-    def altitude(self, value):
+            self.parent.main_map.catalogue[self.selected_id]._rainfall_base = float(value)/100.
+    def temperature(self, value):
         if self.selected_id is not None:
-            main_map.catalogue[self.selected_id]._rainfall_base = value/100.
+            self.parent.main_map.catalogue[self.selected_id]._temperature_base = float(value)/100.
     def biodiversity(self, value):
         if self.selected_id is not None:
-            main_map.catalogue[self.selected_id]._rainfall_base = value/100.
+            self.parent.main_map.catalogue[self.selected_id]._biodiversity_base = float(value)/100.
         
     def drop_selector(self):
         if self.selected_out is not None:
-            scene.removeItem( self.selected_out )
+            self.parent.scene.removeItem( self.selected_out )
             self.selected_out = None
-            editor_instance.ui.rainfall.setValue( 0 )
-            editor_instance.ui.temperature.setValue( 0 )
-            editor_instance.ui.biodiversity.setValue( 0 )
+            self.parent.ui.rainfall.setValue( 0 )
+            self.parent.ui.temperature.setValue( 0 )
+            self.parent.ui.biodiversity.setValue( 0 )
         self.selected_id = None
 
 
@@ -167,17 +164,19 @@ class hex_brush(basic_tool):
     """
     Writes hexes.
     """
-    def __init__(self):
+    def __init__(self, parent):
         self.writing = True
         self._brush_type = Grassland_Hex
         self._brush_size = 2
 
+        self.parent = parent
+
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
     def drop_brush(self):
-        if main_map._outline is not None:
-            scene.removeItem( main_map._outline_obj )
-            main_map._outline_obj = None
+        if self.parent.main_map._outline is not None:
+            self.parent.scene.removeItem( self.parent.main_map._outline_obj )
+            self.parent.main_map._outline_obj = None
 
     def activate(self, event):
         if self.writing:
@@ -192,18 +191,18 @@ class hex_brush(basic_tool):
     def move(self, event):
         # get center, 
         place = Point( event.scenePos().x(), event.scenePos().y())
-        center_id = main_map.get_id_from_point( place )
+        center_id = self.parent.main_map.get_id_from_point( place )
         self.QPen.setWidth(5)
         
-        if main_map._outline == center_id:
+        if self.parent.main_map._outline == center_id:
             # the mouse hasn't moved, skip this
             pass
         else:
             # new center! 
-            main_map._outline = center_id
+            self.parent.main_map._outline = center_id
 
             # get the outline
-            outline = main_map.get_neighbor_outline( center_id , self._brush_size)
+            outline = self.parent.main_map.get_neighbor_outline( center_id , self._brush_size)
 
             if self.writing:
                 self.QPen.setColor(QtGui.QColor(15,255,15))
@@ -212,30 +211,30 @@ class hex_brush(basic_tool):
 
 
             # remove previous outline object
-            if main_map._outline_obj is not None:
-                scene.removeItem( main_map._outline_obj )
+            if self.parent.main_map._outline_obj is not None:
+                self.parent.scene.removeItem( self.parent.main_map._outline_obj )
             # redraw the selection outline
 
             self.QBrush.setStyle(0)
-            main_map._outline_obj = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
+            self.parent.main_map._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
 
     def erase(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
-        loc_id = main_map.get_id_from_point( place )
+        loc_id = self.parent.main_map.get_id_from_point( place )
         try:
-            scene.removeItem( main_map.drawn_hexes[ loc_id ] ) 
-            del main_map.drawn_hexes[loc_id]
-            main_map.remove_hex(loc_id)
+            self.parent.scene.removeItem( self.parent.main_map.drawn_hexes[ loc_id ] ) 
+            del self.parent.main_map.drawn_hexes[loc_id]
+            self.parent.main_map.remove_hex(loc_id)
         except KeyError:
             pass 
 
         if self._brush_size ==2:
-            neighbors = main_map.get_hex_neighbors(loc_id)
+            neighbors = self.parent.main_map.get_hex_neighbors(loc_id)
             for neighbor in neighbors:
                 try:
-                    scene.removeItem( main_map.drawn_hexes[neighbor])
-                    del main_map.drawn_hexes[neighbor]
-                    main_map.remove_hex( neighbor )
+                    self.parent.scene.removeItem( self.parent.main_map.drawn_hexes[neighbor])
+                    del self.parent.main_map.drawn_hexes[neighbor]
+                    self.parent.main_map.remove_hex( neighbor )
                 except KeyError:
                     pass
 
@@ -245,12 +244,12 @@ class hex_brush(basic_tool):
         self.QPen.setWidth(1)
         place = Point( event.scenePos().x() , event.scenePos().y() )
         # get the nearest relevant ID
-        loc_id = main_map.get_id_from_point( place )
+        loc_id = self.parent.main_map.get_id_from_point( place )
 
         # calculate the center of a hex that would have that id
-        new_hex_center = main_map.get_point_from_id( loc_id )
+        new_hex_center = self.parent.main_map.get_point_from_id( loc_id )
         # create a hex at that point, with a radius given by the current drawscale 
-        new_hex= self._brush_type( new_hex_center, main_map._drawscale )
+        new_hex= self._brush_type( new_hex_center, self.parent.main_map._drawscale )
         
         # get the pen ready (does the outlines)
         self.QPen.setColor(QtGui.QColor( new_hex.outline[0], new_hex.outline[1], new_hex.outline[2] ))
@@ -258,26 +257,26 @@ class hex_brush(basic_tool):
 
         # register that hex in the hexmap 
         try:
-            main_map.register_hex( new_hex, loc_id )
+            self.parent.main_map.register_hex( new_hex, loc_id )
 
             self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2] ))
-            main_map.drawn_hexes[loc_id] = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
+            self.parent.main_map.drawn_hexes[loc_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
 
-            #main_map.draw_one_hex( event.widget, loc_id )
+            #self.parent.main_map.draw_one_hex( event.widget, loc_id )
         except NameError:
             # don't actually want this
-            # main_map.set_active_hex( loc_id )
+            # self.parent.main_map.set_active_hex( loc_id )
             # if there is already a hex there, just set that hex as the active one
             pass
         if self._brush_size ==2:
-            neighbors = main_map.get_hex_neighbors( loc_id )
+            neighbors = self.parent.main_map.get_hex_neighbors( loc_id )
             for neighbor in neighbors:
-                new_hex_center = main_map.get_point_from_id( neighbor )
-                new_hex = self._brush_type( new_hex_center, main_map._drawscale)
+                new_hex_center = self.parent.main_map.get_point_from_id( neighbor )
+                new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
                 try:
-                    main_map.register_hex( new_hex, neighbor )            
+                    self.parent.main_map.register_hex( new_hex, neighbor )            
                     self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2]))
-                    main_map.drawn_hexes[neighbor] = scene.addPolygon( QtGui.QPolygonF( main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush)
+                    self.parent.main_map.drawn_hexes[neighbor] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush)
         
                 except NameError:
                     pass
@@ -307,76 +306,76 @@ class hex_brush(basic_tool):
     def switch_arctic(self):
         self._brush_type = Arctic_Hex
 
-writer_control = hex_brush()
-selector_control = selector()
 
-application = QtGui.QApplication(sys.argv)
-editor_instance = gui()
+class editor_gui(QtGui.QMainWindow):
+    def __init__(self,parent=None):
+        QtGui.QWidget.__init__(self,parent)
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
+        
+        self.writer_control = hex_brush(self)
+        self.selector_control = selector(self)
 
-scene = clicker_control( editor_instance.ui.graphicsView )
+        self.scene = clicker_control( self.ui.graphicsView, self )
 
-#def open_map( target = '' ):
-#    global main_map    
-#    global editor_instance
-#    global scene
-#    global applicaiton
+        #def open_map( target = '' ):
+        #    global main_map    
+        #    global editor_instance
+        #    global scene
+        #    global applicaiton
 
-scene._active = writer_control
-editor_instance.ui.graphicsView.setMouseTracking(True)
-editor_instance.ui.graphicsView.setScene( scene )
-
-
-editor_instance.ui.brush.clicked.connect( scene.to_brush )
-editor_instance.ui.hand.clicked.connect( scene.to_select )
-
-
-editor_instance.ui.pushButton_7.clicked.connect( writer_control.switch_desert )
-editor_instance.ui.pushButton_8.clicked.connect( writer_control.switch_arctic )
-editor_instance.ui.pushButton_9.clicked.connect( writer_control.switch_mountain )
-editor_instance.ui.Forest.clicked.connect( writer_control.switch_forest )
-editor_instance.ui.Ocean.clicked.connect( writer_control.switch_ocean )
-editor_instance.ui.Grassland.clicked.connect( writer_control.switch_grass )
-editor_instance.ui.brushTottle.clicked.connect( writer_control.toggle_brush_size )
-editor_instance.ui.write_erase.clicked.connect( writer_control.toggle_write )
-QtCore.QObject.connect( editor_instance.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), selector_control.rainfall)
-
-#editor_instance.ui.rainfall.clicked.connect(selector_control.rainfall)
-#toggle_write
-
-editor_instance.ui.brush.setChecked(True)
-
-target =''
-if target!='':
-    main_map = load_map( in_file )
-    need_to_draw = True
-else:
-    main_map = Hexmap()
-    need_to_draw = False
+        self.scene._active = self.writer_control
+        self.ui.graphicsView.setMouseTracking(True)
+        self.ui.graphicsView.setScene( self.scene )
 
 
-#if need_to_draw:
-def draw_map():
-    global main_map
-    newpen = QtGui.QPen()
-    newbrush=QtGui.QBrush()
-    newbrush.setStyle(1)
-    for ID in main_map.catalogue:
-        dahex = main_map.catalogue[ID]
-        newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
-        newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
-        newpen.setWidth(1)
-        main_map.drawn_hexes[ID] = scene.addPolygon( QtGui.QPolygonF(main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
+        self.ui.brush.clicked.connect( self.scene.to_brush )
+        self.ui.hand.clicked.connect( self.scene.to_select )
 
 
+        self.ui.pushButton_7.clicked.connect( self.writer_control.switch_desert )
+        self.ui.pushButton_8.clicked.connect( self.writer_control.switch_arctic )
+        self.ui.pushButton_9.clicked.connect( self.writer_control.switch_mountain )
+        self.ui.Forest.clicked.connect( self.writer_control.switch_forest )
+        self.ui.Ocean.clicked.connect( self.writer_control.switch_ocean )
+        self.ui.Grassland.clicked.connect( self.writer_control.switch_grass )
+        self.ui.brushTottle.clicked.connect( self.writer_control.toggle_brush_size )
+        self.ui.write_erase.clicked.connect( self.writer_control.toggle_write )
+        QtCore.QObject.connect( self.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.rainfall)
+        QtCore.QObject.connect( self.ui.temperature, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.temperature)
+        QtCore.QObject.connect( self.ui.biodiversity, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.biodiversity)
+        #self.ui.rainfall.clicked.connect(selector_control.rainfall)
+        #toggle_write
+
+        self.ui.brush.setChecked(True)
+    
+        self.main_map = Hexmap()
+
+    def prep_map(self, file_name ):
+        self.main_map = load_map( file_name )
+        
+        newpen = QtGui.QPen()
+        newbrush=QtGui.QBrush()
+        newbrush.setStyle(1)
+        for ID in self.main_map.catalogue:
+            dahex = self.main_map.catalogue[ID]
+            newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
+            newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
+            newpen.setWidth(1)
+            self.main_map.drawn_hexes[ID] = self.scene.addPolygon( QtGui.QPolygonF(self.main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
+
+
+#application = QtGui.QApplication(sys.argv)
+#editor_instance = gui()
 
 #thing = open_map()
 #thing.show()
 #sys.exit( applicaiton.exec_() )
     #    return( editor_instance )
 
-if __name__=="__main__":
-    draw_map()
-    editor_instance.show()
-    sys.exit(application.exec_())
+#if __name__=="__main__":
+#    
+#    editor_instance.show()
+#    sys.exit(application.exec_())
 
 
