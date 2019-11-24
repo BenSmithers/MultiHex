@@ -52,6 +52,11 @@ class Hex:
     def reset_color(self):
         pass
 
+    def rescale_color(self):
+        self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+
     def get_flattened_points(self, displacement=None, zoom=1.0):
         """
         deprecated
