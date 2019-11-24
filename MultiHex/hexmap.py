@@ -1,6 +1,6 @@
-from HexMap.point import Point #fundamental point, allows vector algegbra
-from HexMap.hex import Hex #your standard hexagon. Holds all the metadata
-from HexMap.special_hexes import *
+from MultiHex.point import Point #fundamental point, allows vector algegbra
+from MultiHex.hex import Hex #your standard hexagon. Holds all the metadata
+from MultiHex.special_hexes import *
 
 from PyQt4.QtCore import QPointF
 

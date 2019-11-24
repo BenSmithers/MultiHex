@@ -1,5 +1,5 @@
 from math import exp
-from HexMap.hexmap import Hexmap, load_map, save_map
+from MultiHex.hexmap import Hexmap, load_map, save_map
 
 #                  Prepare Utilities
 # =====================================================

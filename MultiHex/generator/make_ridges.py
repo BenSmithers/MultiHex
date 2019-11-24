@@ -1,8 +1,8 @@
-from HexMap.point import Point
-from HexMap.hex import Hex
-from HexMap.hexmap import Hexmap, save_map, load_map
-from HexMap.special_hexes import *
-from HexMap.generator.util import *
+from MultiHex.point import Point
+from MultiHex.hex import Hex
+from MultiHex.hexmap import Hexmap, save_map, load_map
+from MultiHex.special_hexes import *
+from MultiHex.generator.util import *
 
 from numpy import arccos 
 from numpy import histogram

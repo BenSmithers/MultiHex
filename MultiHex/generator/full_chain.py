@@ -1,6 +1,6 @@
-from HexMap.generator import make_ridges
-from HexMap.generator import fill_land
-from HexMap.generator import sim_weather
+from MultiHex.generator import make_ridges
+from MultiHex.generator import fill_land
+from MultiHex.generator import sim_weather
 
 """
 Provides macros for running the simulation chain

@@ -1,4 +1,4 @@
-import HexMap.point as point
+import MultiHex.point as point
 import numpy as np
 
 default_p = point.Point(0.0,0.0)

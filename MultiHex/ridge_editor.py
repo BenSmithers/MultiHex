@@ -1,15 +1,15 @@
-from HexMap.point import Point
-from HexMap.hex import Hex
-from HexMap.hexmap import Hexmap
-from HexMap.hexmap import save_map
-from HexMap.special_hexes import Mountain_Hex
+from MultiHex.point import Point
+from MultiHex.hex import Hex
+from MultiHex.hexmap import Hexmap
+from MultiHex.hexmap import save_map
+from MultiHex.special_hexes import Mountain_Hex
 
-from HexMap.tools import *
+from MultiHex.tools import *
 
 from PyQt4 import QtCore, QtGui
-from HexMap.guis.ridge_editor_gui import ridge_gui_window
+from MultiHex.guis.ridge_editor_gui import ridge_gui_window
 
-from HexMap.generator.full_chain import ridge_onward
+from MultiHex.generator.full_chain import ridge_onward
 
 import sys
 

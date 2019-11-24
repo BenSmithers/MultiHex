@@ -1,9 +1,9 @@
 #!/usr/bin/python3.6
 from PyQt4 import QtCore, QtGui
-from HexMap.guis.main_menu import Ui_MainWindow as main_menu
-from HexMap.map_paint import editor_gui
-from HexMap.guis.new_map_dialogue import Ui_Dialog as nmd
-from HexMap.ridge_editor import ridge_gui
+from MultiHex.guis.main_menu import Ui_MainWindow as main_menu
+from MultiHex.map_paint import editor_gui
+from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
+from MultiHex.ridge_editor import ridge_gui
 
 import sys
 import time

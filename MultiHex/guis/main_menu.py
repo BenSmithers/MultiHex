@@ -87,7 +87,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow", None))
-        self.label.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:36pt;\">Hexmap</span></p></body></html>", None))
+        self.label.setText(_translate("MainWindow", "<html><head/><body><p><span style=\" font-size:36pt;\">MultiHex</span></p></body></html>", None))
         self.pushButton.setText(_translate("MainWindow", "Open Map", None))
         self.pushButton_4.setText(_translate("MainWindow", "Edit Map", None))
         self.pushButton_3.setText(_translate("MainWindow", "New Map", None))

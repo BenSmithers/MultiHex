@@ -1,19 +1,19 @@
 ## #!/usr/bin/python3.6m
 
-from HexMap.point import Point
-from HexMap.hex import Hex
-from HexMap.hexmap import Hexmap
-from HexMap.hexmap import save_map, load_map
-from HexMap.special_hexes import *
+from MultiHex.point import Point
+from MultiHex.hex import Hex
+from MultiHex.hexmap import Hexmap
+from MultiHex.hexmap import save_map, load_map
+from MultiHex.special_hexes import *
 
 # need these to define all the interfaces between the canvas and the user
-from HexMap.tools import *
+from MultiHex.tools import *
 try:
     from PyQt4 import QtCore, QtGui
 except ImportError:
     from PyQt4 import QtCore, QtGui
 
-from HexMap.guis.editor import Ui_MainWindow
+from MultiHex.guis.editor import Ui_MainWindow
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os

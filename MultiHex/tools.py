@@ -1,5 +1,5 @@
-from HexMap.point import Point
-from HexMap.special_hexes import *
+from MultiHex.point import Point
+from MultiHex.special_hexes import *
 
 from PyQt4 import QtGui
 
