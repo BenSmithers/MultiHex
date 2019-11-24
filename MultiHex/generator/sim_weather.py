@@ -15,7 +15,7 @@ import json
 def generate(size, sim='../saves/generated.hexmap'):
 
     # load the config file
-    file_object = open( 'config.json', 'r' )
+    file_object = open( os.path.join(os.path.dirname(__file__), 'config.json'), 'r' )
     config  = json.load( file_object )
     file_object.close()
 
