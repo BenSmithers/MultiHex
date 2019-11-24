@@ -41,6 +41,9 @@ class basic_tool:
         pass
 
 class selector(basic_tool):
+    """
+    Tool with clicker_control interfacing used to select and spot-edit hexes
+    """
     def __init__(self, parent):
         self.start = Point(0.0,0.0)
         self.selected_id  = None
@@ -98,7 +101,7 @@ class selector(basic_tool):
 
 class hex_brush(basic_tool):
     """
-    Writes hexes.
+    Another tool with clicker-control interfacing used to paint hexes on a hexmap. 
     """
     def __init__(self, parent):
         self.writing = True
@@ -107,12 +110,15 @@ class hex_brush(basic_tool):
 
         self.parent = parent
 
+        self.drawn_hexes = {}
+        self._outline_obj = None
+
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
     def drop_brush(self):
         if self.parent.main_map._outline is not None:
-            self.parent.scene.removeItem( self.parent.main_map._outline_obj )
-            self.parent.main_map._outline_obj = None
+            self.parent.scene.removeItem( self._outline_obj )
+            self._outline_obj = None
 
     def activate(self, event):
         if self.writing:
@@ -147,19 +153,19 @@ class hex_brush(basic_tool):
 
 
             # remove previous outline object
-            if self.parent.main_map._outline_obj is not None:
-                self.parent.scene.removeItem( self.parent.main_map._outline_obj )
+            if self._outline_obj is not None:
+                self.parent.scene.removeItem( self._outline_obj )
             # redraw the selection outline
 
             self.QBrush.setStyle(0)
-            self.parent.main_map._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
+            self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
 
     def erase(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
         try:
-            self.parent.scene.removeItem( self.parent.main_map.drawn_hexes[ loc_id ] ) 
-            del self.parent.main_map.drawn_hexes[loc_id]
+            self.parent.scene.removeItem( self.drawn_hexes[ loc_id ] ) 
+            del self.drawn_hexes[loc_id]
             self.parent.main_map.remove_hex(loc_id)
         except KeyError:
             pass 
@@ -168,8 +174,8 @@ class hex_brush(basic_tool):
             neighbors = self.parent.main_map.get_hex_neighbors(loc_id)
             for neighbor in neighbors:
                 try:
-                    self.parent.scene.removeItem( self.parent.main_map.drawn_hexes[neighbor])
-                    del self.parent.main_map.drawn_hexes[neighbor]
+                    self.parent.scene.removeItem( self.drawn_hexes[neighbor])
+                    del self.drawn_hexes[neighbor]
                     self.parent.main_map.remove_hex( neighbor )
                 except KeyError:
                     pass
@@ -196,7 +202,7 @@ class hex_brush(basic_tool):
             self.parent.main_map.register_hex( new_hex, loc_id )
 
             self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2] ))
-            self.parent.main_map.drawn_hexes[loc_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
+            self.drawn_hexes[loc_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
 
             #self.parent.main_map.draw_one_hex( event.widget, loc_id )
         except NameError:
@@ -212,7 +218,7 @@ class hex_brush(basic_tool):
                 try:
                     self.parent.main_map.register_hex( new_hex, neighbor )            
                     self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2]))
-                    self.parent.main_map.drawn_hexes[neighbor] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush)
+                    self.drawn_hexes[neighbor] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush)
         
                 except NameError:
                     pass
@@ -242,4 +248,58 @@ class hex_brush(basic_tool):
     def switch_arctic(self):
         self._brush_type = Arctic_Hex
 
+class clicker_control(QtGui.QGraphicsScene):
+    """
+    Manages the mouse interface for to the canvas.
+    """
+    def __init__(self, parent=None, master=None):
+        QtGui.QGraphicsScene.__init__(self, parent)
 
+
+        self.start = Point(0.0, 0.0)
+        self.step = Point(0.0, 0.0)
+        self.end   = Point(0.0, 0.0)
+
+        self._active = None
+        self._held = False
+        
+        self.master = master
+
+    def mousePressEvent(self, event):
+        event.accept()
+        self._held = True
+        self.step =  Point( event.scenePos().x(), event.scenePos().y())
+        self.start = Point( event.scenePos().x(), event.scenePos().y())
+        # temp to stop break break
+        self._active.press( event )
+
+    def mouseReleaseEvent( self, event):
+        event.accept()
+        self._held = False
+        self.end = Point(event.scenePos().x(), event.scenePos().y())
+        diff = self.start - self.end
+    #    if diff.magnitude <=5.0:
+        self._active.activate(event)
+            #event.widget.create_line(self.start.x, self.start.y, self.end.x, self.end.y)
+            #main_map.draw_relative_to = self.end - self.start
+            # self._active.hold(self.end, self.step)
+ 
+   #mouseMoveEvent 
+    def mouseMoveEvent(self,event):
+        event.accept()
+        if self._held:
+            self._active.hold( event, self.start )
+            self.step = Point( event.scenePos().x(), event.scenePos().y() )
+
+        #    self.mouseHeld( event )
+        
+        self._active.move( event )
+
+    def to_brush(self):
+        self._active = self.master.writer_control
+        self.master.selector_control.drop_selector()
+    def to_select(self):
+        self._active = self.master.selector_control
+        self.master.writer_control.drop_brush()
+
+ 

@@ -5,6 +5,8 @@ from HexMap.hex import Hex
 from HexMap.hexmap import Hexmap
 from HexMap.hexmap import save_map, load_map
 from HexMap.special_hexes import *
+
+# need these to define all the interfaces between the canvas and the user
 from HexMap.tools import *
 try:
     from PyQt4 import QtCore, QtGui
@@ -19,80 +21,19 @@ import os  # basic file-checking, detecting os
 
 screen_ratio = 0.8
 
-class clicker_control(QtGui.QGraphicsScene):
-    """
-    Manages the mouse interface for to the canvas 
-    """
-    def __init__(self, parent=None, master=None):
-        QtGui.QGraphicsScene.__init__(self, parent)
-
-
-        self.start = Point(0.0, 0.0)
-        self.step = Point(0.0, 0.0)
-        self.end   = Point(0.0, 0.0)
-
-        self._active = None
-        self._held = False
-        
-        self.master = master
-
-    def mousePressEvent(self, event):
-        event.accept()
-        self._held = True
-        self.step =  Point( event.scenePos().x(), event.scenePos().y())
-        self.start = Point( event.scenePos().x(), event.scenePos().y())
-        # temp to stop break break
-        self._active.press( event )
-
-    def mouseReleaseEvent( self, event):
-        event.accept()
-        self._held = False
-        self.end = Point(event.scenePos().x(), event.scenePos().y())
-        diff = self.start - self.end
-    #    if diff.magnitude <=5.0:
-        self._active.activate(event)
-            #event.widget.create_line(self.start.x, self.start.y, self.end.x, self.end.y)
-            #main_map.draw_relative_to = self.end - self.start
-            # self._active.hold(self.end, self.step)
-
-    def scroll(self, event):
-        #print("change: {}".format(event.delta))
-        
-        main_map.draw_relative_to += (main_map.origin_shift - Point(event.scenePos().x(),event.scenePos().y()) )*(1./main_map._zoom)
-        main_map.origin_shift = Point(event.scenePos().x(), event.scenePos().y())
-        main_map._zoom += (event.delta/120.)*0.05
-        main_map.draw( event.widget )
-
-   #mouseMoveEvent 
-    def mouseMoveEvent(self,event):
-        event.accept()
-        if self._held:
-            self._active.hold( event, self.start )
-            self.step = Point( event.scenePos().x(), event.scenePos().y() )
-
-        #    self.mouseHeld( event )
-        
-        self._active.move( event )
-
-    def to_brush(self):
-        self._active = self.master.writer_control
-        self.master.selector_control.drop_selector()
-    def to_select(self):
-        self._active = self.master.selector_control
-        self.master.writer_control.drop_brush()
-
   
 
 class editor_gui(QtGui.QMainWindow):
     def __init__(self,parent=None):
         QtGui.QWidget.__init__(self,parent)
-        self.paent = parent
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         
+        # writes hexes on the screen
         self.writer_control = hex_brush(self)
         self.selector_control = selector(self)
 
+        # manages the writer and selector controls. This catches clicky-events on the graphicsView
         self.scene = clicker_control( self.ui.graphicsView, self )
 
         #def open_map( target = '' ):
@@ -101,10 +42,12 @@ class editor_gui(QtGui.QMainWindow):
         #    global scene
         #    global applicaiton
 
+        # start with the hex as the currently used tool
         self.scene._active = self.writer_control
+
+        
         self.ui.graphicsView.setMouseTracking(True)
         self.ui.graphicsView.setScene( self.scene )
-
 
         self.ui.brush.clicked.connect( self.scene.to_brush )
         self.ui.hand.clicked.connect( self.scene.to_select )
@@ -127,14 +70,19 @@ class editor_gui(QtGui.QMainWindow):
         self.ui.brush.setChecked(True)
     
         self.main_map = Hexmap()
+
     def go_away(self):
+        # drop the map, allow it to be garbage collected 
         self.main_map = None
+        # show the main menu and disappear 
         self.parent().show()
+        # need to clear the canvas too!
+        self.writer_control.drawn_hexes = {}
         self.hide()
 
     def prep_map(self, file_name ):
         self.scene.clear()
-        self.ui.graphicsView.update
+        self.ui.graphicsView.update()
         self.main_map = load_map( file_name )
         
         newpen = QtGui.QPen()
@@ -145,8 +93,10 @@ class editor_gui(QtGui.QMainWindow):
             newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
             newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
             newpen.setWidth(1)
-            self.main_map.drawn_hexes[ID] = self.scene.addPolygon( QtGui.QPolygonF(self.main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
+            self.writer_control.drawn_hexes[ID] = self.scene.addPolygon( QtGui.QPolygonF(self.main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
 
+
+# this stuff is commented out since this script is not meant to be called directly! 
 
 #application = QtGui.QApplication(sys.argv)
 #editor_instance = gui()
