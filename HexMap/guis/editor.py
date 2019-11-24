@@ -131,7 +131,7 @@ class Ui_MainWindow(QtGui.QMainWindow):
         # -------------------- quit
         self.pushButton_5 = QtGui.QPushButton(self.centralwidget)
         self.pushButton_5.setObjectName(_fromUtf8("pushButton_5"))
-        self.pushButton_5.clicked.connect( QtCore.QCoreApplication.instance().quit)
+        #self.pushButton_5.clicked.connect( QtCore.QCoreApplication.instance().quit)
 
         self.verticalLayout_2.addWidget(self.pushButton_5)
         self.gridLayout_2.addLayout(self.verticalLayout_2, 1, 1, 1, 1)
@@ -171,6 +171,6 @@ class Ui_MainWindow(QtGui.QMainWindow):
         self.label.setText(_translate("MainWindow", "Bio  Temp  Rain", None))
         self.pushButton_4.setText(_translate("MainWindow", "Save", None))
         self.pushButton_6.setText(_translate("MainWindow", "Save as...", None))
-        self.pushButton_5.setText(_translate("MainWindow", "Quit", None))
+        self.pushButton_5.setText(_translate("MainWindow", "Back", None))
         self.label_2.setText(_translate("MainWindow", "Unnamed", None))
 
