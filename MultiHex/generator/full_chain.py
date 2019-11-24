@@ -1,6 +1,7 @@
 from MultiHex.generator import make_ridges
 from MultiHex.generator import fill_land
 from MultiHex.generator import sim_weather
+from MultiHex.generator import region_maker
 
 """
 Provides macros for running the simulation chain
@@ -15,6 +16,7 @@ both refer to the file `config.json` for simulation parameters
 def ridge_onward( size, name ):
     fill_land.generate( size, name )
     sim_weather.generate( size, name )
+    region_maker.generate( size, name )
 
 def full_sim( size, name ):
     make_ridges.generate( size, name )

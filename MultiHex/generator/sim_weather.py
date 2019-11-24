@@ -6,11 +6,18 @@ from MultiHex.generator.util import *
 
 from numpy import arccos 
 from numpy import histogram
-from math import exp, floor, sqrt, e, pi
+from math import exp, floor, sqrt, e, pi, sin
 
 import random as rnd
 import os
 import json
+
+
+"""
+Runs a toy weather model to get a rainfall map of the world
+
+Ues basic geometry for a spherical planet to determine relative sunlight exposure, and stores that as the hexes' temperature_base criteria.
+"""
 
 def generate(size, sim='../saves/generated.hexmap'):
 
@@ -291,7 +298,17 @@ def generate(size, sim='../saves/generated.hexmap'):
             print( "which: {} of {}".format(which, len(percentiles)))
             sys.exit()        
 
+    print("Applying Sunlight Gradient")
+    for ID in main_map.catalogue:
+        point_y = main_map.catalogue[ID]._center.y
+        # sine arg goes from 0->pi
+        # so the temperature goes from 0->1
+        
+        # 0 at arg=0 or pi, 1 at pi/2
+        temperature = sin( (pi*point_y/dimensions[1]) )
+        main_map.catalogue[ID]._temperature_base = temperature 
 
+    
     save_map( main_map, sim )
 
     n_rounds = 2
@@ -299,6 +316,7 @@ def generate(size, sim='../saves/generated.hexmap'):
     for i in range(n_rounds):
         smooth(['rain'], sim)
 
+    
 
 if __name__=='__main__':
     generate('cont')
