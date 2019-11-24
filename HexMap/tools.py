@@ -5,7 +5,7 @@ class basic_tool:
     """
     Prototype a basic tool 
     """
-    def __init__(self):
+    def __init__(self, parent=None):
         pass
     def press(self,event):
         """
