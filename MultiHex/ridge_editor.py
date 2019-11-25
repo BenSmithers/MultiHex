@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import QMainWindow, QWidget
 from MultiHex.guis.ridge_editor_gui import ridge_gui_window
 from MultiHex.generator.full_chain import ridge_onward
 
+import os
 import sys
 
 class ridge_gui(QMainWindow):
@@ -39,7 +40,7 @@ class ridge_gui(QMainWindow):
         self.ui.pushButton_3.clicked.connect( self.go_away ) #quit
 
 
-        self.save_name = "./saves/generated.hexmap"
+        self.save_name = os.path.join(os.path.dirname(__file__),"saves","generated.hexmap")
 
     def save_continue(self):
         dupl = self.main_map

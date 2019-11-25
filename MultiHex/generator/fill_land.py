@@ -12,7 +12,7 @@ import random as rnd
 import os
 import json
 
-def generate(size, sim = '../saves/generated.hexmap' ):
+def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
 
     # load the config file
     file_object = open( os.path.join( os.path.dirname(__file__), 'config.json'), 'r' )
@@ -147,9 +147,8 @@ def generate(size, sim = '../saves/generated.hexmap' ):
                     ids_to_propagate.append( neighbor )
                 ids_to_propagate.pop(0)
 
-
-    if not os.path.isdir("../saves"):
-        os.mkdir("../saves")
+    if not os.path.isdir(os.path.join(os.path.dirname(__file__), '..', 'saves')):
+        os.mkdir(os.path.join( os.path.dirname(__file__), '..','saves'))
 
     save_map( main_map, sim )
     

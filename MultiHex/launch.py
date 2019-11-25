@@ -8,6 +8,7 @@ from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
 from MultiHex.ridge_editor import ridge_gui
 from MultiHex.generator import full_chain
 
+import os
 import sys
 import time
 
@@ -27,7 +28,7 @@ class main_gui(QMainWindow):
         self.ui.pushButton_4.clicked.connect( self.editor )
         self.ui.civEdit.clicked.connect(self.civ_edit)
 
-        self.new_name   = "./saves/generated.hexmap"
+        self.new_name   = os.path.join(os.path.dirname(__file__), "saves", "generated.hexmap")
         self.setting    = -1
 
     def load_int(self, filename=''):
@@ -87,7 +88,7 @@ class mod_accept(QDialog):
         self.ui.full.clicked.connect(self.full_gen)
 
     def accept(self):
-        self.parent().new_name = "./saves/"+self.ui.lineEdit.text()
+        self.parent().new_name = os.path.join(os.path.dirname(__file__),"saves", self.ui.lineEdit.text())
         super(mod_accept, self).accept()
     def reject(self):
         self.parent().setting = -1
@@ -107,6 +108,11 @@ app_instance = main_gui()
 
 # quit button
 if __name__=="__main__":
+    # make sure the base saves folder exists 
+    try:
+        os.mkdir(os.path.join( os.path.dirname(__file__), "saves" ))
+    except FileExistsError:
+        pass
     app_instance.show()
     sys.exit(app.exec_())
 

@@ -1,6 +1,8 @@
 from math import exp
 from MultiHex.hexmap import Hexmap, load_map, save_map
 
+import os
+
 #                  Prepare Utilities
 # =====================================================
 
@@ -85,7 +87,7 @@ def new_color(is_land, altitude):
                      -1*(deep_ocean[1] - shallows[1])*altitude*0.5 + shallows[1] ,
                     -1*(deep_ocean[2] - shallows[2])*altitude*0.5 + shallows[2] ) )
 
-def smooth(what = ['alt'] , which = '../saves/generated.hexmap'):
+def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
     
     main_map = load_map(which)
 

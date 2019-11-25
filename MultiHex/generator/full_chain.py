@@ -3,6 +3,8 @@ from MultiHex.generator import fill_land
 from MultiHex.generator import sim_weather
 from MultiHex.generator import region_maker
 
+import os
+
 """
 Provides macros for running the simulation chain
 
@@ -23,4 +25,4 @@ def full_sim( size, name ):
     ridge_onward( size, name )
 
 if __name__=='__main__':
-    full_sim( 'cont', '../saves/generated.hexmap' )
+    full_sim( 'cont', os.path.join( os.path.dirname(__file__), '..', 'saves', 'generated.hexmap' ))

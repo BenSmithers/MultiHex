@@ -19,8 +19,7 @@ Runs a toy weather model to get a rainfall map of the world
 Ues basic geometry for a spherical planet to determine relative sunlight exposure, and stores that as the hexes' temperature_base criteria.
 """
 
-def generate(size, sim='../saves/generated.hexmap'):
-
+def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
     # load the config file
     file_object = open( os.path.join(os.path.dirname(__file__), 'config.json'), 'r' )
     config  = json.load( file_object )
