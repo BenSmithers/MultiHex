@@ -44,7 +44,6 @@ class editor_gui(QtGui.QMainWindow):
 
         # start with the hex as the currently used tool
         self.scene._active = self.writer_control
-
         
         self.ui.graphicsView.setMouseTracking(True)
         self.ui.graphicsView.setScene( self.scene )
@@ -66,25 +65,44 @@ class editor_gui(QtGui.QMainWindow):
         QtCore.QObject.connect( self.ui.biodiversity, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.biodiversity)
         #self.ui.rainfall.clicked.connect(selector_control.rainfall)
         #toggle_write
-
+        self.ui.pushButton_5.clicked.connect( self.go_away )
+        self.ui.pushButton_4.clicked.connect( self.save_map )
+        self.ui.pushButton_6.clicked.connect( self.save_as )
         self.ui.brush.setChecked(True)
-    
+        
+        
+        self.file_name = ''
         self.main_map = Hexmap()
 
     def go_away(self):
-        # drop the map, allow it to be garbage collected 
-        self.main_map = None
         # show the main menu and disappear 
         self.parent().show()
         # need to clear the canvas too!
-        self.writer_control.drawn_hexes = {}
         self.hide()
+        
+        self.selector_control.selected_id = None
+        self.selector_control.selected_out = None
+        self.writer_control.drawn_hexes = {}
+        self.writer_control._outline_obj = None
+        self.scene._held = None
+
+    def save_map(self):
+        save_map( self.main_map, self.file_name)
+        self.ui.label_2.setText("Saved!")
+
+    def save_as(self):
+        self.file_name = QtGui.QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
+        self.save_map()
+
+
 
     def prep_map(self, file_name ):
         self.scene.clear()
+            
         self.ui.graphicsView.update()
         self.main_map = load_map( file_name )
-        
+        self.file_name = file_name 
+
         newpen = QtGui.QPen()
         newbrush=QtGui.QBrush()
         newbrush.setStyle(1)
