@@ -13,7 +13,7 @@ The c++ code is just there incase I ever decided to go back to it.
 
 # Prerequesites
 
-You will need PyQt4 and Python 3. 
+You will need PyQt5 and Python 3. 
 Not tested in Python2, and **known to fail in different verisons of Qt**
 
 # Installing and Running
