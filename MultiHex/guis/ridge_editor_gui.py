@@ -6,7 +6,8 @@
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSpacerItem, QPushButton, QGraphicsView, QMenuBar, QStatusBar, QSizePolicy, QApplication
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -15,49 +16,49 @@ except AttributeError:
         return s
 
 try:
-    _encoding = QtGui.QApplication.UnicodeUTF8
+    _encoding = QApplication.UnicodeUTF8
     def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+        return QApplication.translate(context, text, disambig, _encoding)
 except AttributeError:
     def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig)
+        return QApplication.translate(context, text, disambig)
 
 class ridge_gui_window(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
         MainWindow.resize(1067, 749)
-        self.centralwidget = QtGui.QWidget(MainWindow)
+        self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
-        self.horizontalLayout = QtGui.QHBoxLayout(self.centralwidget)
+        self.horizontalLayout = QHBoxLayout(self.centralwidget)
         self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
-        self.verticalLayout = QtGui.QVBoxLayout()
+        self.verticalLayout = QVBoxLayout()
         self.verticalLayout.setObjectName(_fromUtf8("verticalLayout"))
-        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacerItem)
-        self.pushButton_2 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_2 = QPushButton(self.centralwidget)
         self.pushButton_2.setObjectName(_fromUtf8("pushButton_2"))
         self.verticalLayout.addWidget(self.pushButton_2)
-        self.pushButton = QtGui.QPushButton(self.centralwidget)
+        self.pushButton = QPushButton(self.centralwidget)
         self.pushButton.setObjectName(_fromUtf8("pushButton"))
         self.verticalLayout.addWidget(self.pushButton)
-        spacerItem1 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        spacerItem1 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.verticalLayout.addItem(spacerItem1)
-        self.pushButton_4 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_4 = QPushButton(self.centralwidget)
         self.pushButton_4.setObjectName(_fromUtf8("pushButton_4"))
         self.verticalLayout.addWidget(self.pushButton_4)
-        self.pushButton_3 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_3 = QPushButton(self.centralwidget)
         self.pushButton_3.setObjectName(_fromUtf8("pushButton_3"))
         self.verticalLayout.addWidget(self.pushButton_3)
         self.horizontalLayout.addLayout(self.verticalLayout)
-        self.graphicsView = QtGui.QGraphicsView(self.centralwidget)
+        self.graphicsView = QGraphicsView(self.centralwidget)
         self.graphicsView.setObjectName(_fromUtf8("graphicsView"))
         self.horizontalLayout.addWidget(self.graphicsView)
         MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtGui.QMenuBar(MainWindow)
+        self.menubar = QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1067, 25))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtGui.QStatusBar(MainWindow)
+        self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
         MainWindow.setStatusBar(self.statusbar)
 

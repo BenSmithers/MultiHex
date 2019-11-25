@@ -2,7 +2,7 @@ from MultiHex.point import Point #fundamental point, allows vector algegbra
 from MultiHex.hex import Hex #your standard hexagon. Holds all the metadata
 from MultiHex.special_hexes import *
 
-from PyQt4.QtCore import QPointF
+from PyQt5.QtCore import QPointF
 
 # prefer to import the numpy functions since they are faster,
 # but if the user doesn't have them installed let's just use the math ones 
@@ -34,6 +34,8 @@ def save_map(h_map, filename):
     file_object.close()
 
 def load_map(filename):
+    if type(filename)==tuple:
+        print(filename)
     file_object = open(filename, 'rb')
     hex_pickle = pickle.load(file_object)
     file_object.close()

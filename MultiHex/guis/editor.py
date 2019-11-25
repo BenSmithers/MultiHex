@@ -5,10 +5,8 @@
 # Created by: PyQt4 UI code generator 4.12.1
 #
 # WARNING! All changes made in this file will be lost!
-try:
-    from PyQt4 import QtCore, QtGui
-except ImportError:
-    from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QGridLayout, QPushButton, QGraphicsView, QVBoxLayout, QRadioButton, QSpacerItem, QSizePolicy, QSlider, QLabel, QLCDNumber, QMenuBar, QStatusBar, QApplication
 
 
 try:
@@ -18,118 +16,95 @@ except AttributeError:
         return s
 
 try:
-    _encoding = QtGui.QApplication.UnicodeUTF8
+    _encoding = QApplication.UnicodeUTF8
     def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig, _encoding)
+        return QApplication.translate(context, text, disambig, _encoding)
 except AttributeError:
     def _translate(context, text, disambig):
-        return QtGui.QApplication.translate(context, text, disambig)
-
-class PicButton(QtGui.QAbstractButton):
-    def __init__(self, pixmap, pixmap_hover, pixmap_pressed, parent=None):
-        super(PicButton, self).__init__(parent)
-        self.pixmap = pixmap
-        self.pixmap_hover = pixmap_hover
-        self.pixmap_pressed = pixmap_pressed
-    def paintEvent(self, event):
-        pix = self.pixmap_hover if self.underMouse() else self.pixmap
-        if self.isDown():
-            pix=self.pixmap_pressed
-
-        painter = QtGui.QPainter(self)
-        painter.drawPixmap(event.rect(), pix)
-
-    def enterEvent(self, event):
-        self.update()
-    def leaveEvent(Self, event):
-        self.update()
-
-    def sizeHint(self):
-        return(QtCore.QSize(200,40))
+        return QApplication.translate(context, text, disambig)
 
 
-
-class Ui_MainWindow(QtGui.QMainWindow):
+class Ui_MainWindow(QMainWindow):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName(_fromUtf8("MainWindow"))
         MainWindow.resize(1168, 695)
-        self.centralwidget = QtGui.QWidget(MainWindow)
+        self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
-        self.gridLayout_2 = QtGui.QGridLayout(self.centralwidget)
+        self.gridLayout_2 = QGridLayout(self.centralwidget)
         self.gridLayout_2.setObjectName(_fromUtf8("gridLayout_2"))
-        self.horizontalLayout = QtGui.QHBoxLayout()
+        self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setObjectName(_fromUtf8("horizontalLayout"))
-        self.Forest = QtGui.QPushButton(self.centralwidget)
+        self.Forest = QPushButton(self.centralwidget)
         self.Forest.setObjectName(_fromUtf8("Forest"))
         self.horizontalLayout.addWidget(self.Forest)
-        self.Grassland = QtGui.QPushButton(self.centralwidget)
+        self.Grassland = QPushButton(self.centralwidget)
         self.Grassland.setObjectName(_fromUtf8("Grassland"))
         self.horizontalLayout.addWidget(self.Grassland)
-        self.Ocean = QtGui.QPushButton(self.centralwidget)
+        self.Ocean = QPushButton(self.centralwidget)
         self.Ocean.setObjectName(_fromUtf8("Ocean"))
         self.horizontalLayout.addWidget(self.Ocean)
-        self.pushButton_8 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_8 = QPushButton(self.centralwidget)
         self.pushButton_8.setObjectName(_fromUtf8("pushButton_8"))
         self.horizontalLayout.addWidget(self.pushButton_8)
-        self.pushButton_7 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_7 = QPushButton(self.centralwidget)
         self.pushButton_7.setObjectName(_fromUtf8("pushButton_7"))
         self.horizontalLayout.addWidget(self.pushButton_7)
-        self.pushButton_9 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_9 = QPushButton(self.centralwidget)
         self.pushButton_9.setObjectName(_fromUtf8("pushButton_9"))
         self.horizontalLayout.addWidget(self.pushButton_9)
         self.gridLayout_2.addLayout(self.horizontalLayout, 0, 0, 1, 1)
-        self.graphicsView = QtGui.QGraphicsView(self.centralwidget)
+        self.graphicsView = QGraphicsView(self.centralwidget)
         self.graphicsView.setObjectName(_fromUtf8("graphicsView"))
         self.gridLayout_2.addWidget(self.graphicsView, 1, 0, 1, 1)
-        self.verticalLayout_2 = QtGui.QVBoxLayout()
+        self.verticalLayout_2 = QVBoxLayout()
         self.verticalLayout_2.setObjectName(_fromUtf8("verticalLayout_2"))
-        self.brush = QtGui.QRadioButton(self.centralwidget)
+        self.brush = QRadioButton(self.centralwidget)
         self.brush.setObjectName(_fromUtf8("brush"))
         self.verticalLayout_2.addWidget(self.brush)
-        self.hand = QtGui.QRadioButton(self.centralwidget)
+        self.hand = QRadioButton(self.centralwidget)
         self.hand.setObjectName(_fromUtf8("hand"))
         self.verticalLayout_2.addWidget(self.hand)
-        spacerItem = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        spacerItem = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.verticalLayout_2.addItem(spacerItem)
         
-        self.brushTottle = QtGui.QPushButton(self.centralwidget)
+        self.brushTottle = QPushButton(self.centralwidget)
         self.brushTottle.setObjectName(_fromUtf8("brushTottle"))
         self.verticalLayout_2.addWidget(self.brushTottle)
-        self.write_erase = QtGui.QPushButton(self.centralwidget)
+        self.write_erase = QPushButton(self.centralwidget)
         self.write_erase.setObjectName(_fromUtf8("write_erase"))
         self.verticalLayout_2.addWidget(self.write_erase)
-        spacerItem1 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        spacerItem1 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.verticalLayout_2.addItem(spacerItem1)
-        self.horizontalLayout_2 = QtGui.QHBoxLayout()
+        self.horizontalLayout_2 = QHBoxLayout()
         self.horizontalLayout_2.setObjectName(_fromUtf8("horizontalLayout_2"))
-        self.biodiversity = QtGui.QSlider(self.centralwidget)
+        self.biodiversity = QSlider(self.centralwidget)
         self.biodiversity.setOrientation(QtCore.Qt.Vertical)
         self.biodiversity.setObjectName(_fromUtf8("biodiversity"))
         self.horizontalLayout_2.addWidget(self.biodiversity)
-        self.temperature = QtGui.QSlider(self.centralwidget)
+        self.temperature = QSlider(self.centralwidget)
         self.temperature.setOrientation(QtCore.Qt.Vertical)
         self.temperature.setObjectName(_fromUtf8("temperature"))
         self.horizontalLayout_2.addWidget(self.temperature)
-        self.rainfall = QtGui.QSlider(self.centralwidget)
+        self.rainfall = QSlider(self.centralwidget)
         self.rainfall.setOrientation(QtCore.Qt.Vertical)
         self.rainfall.setObjectName(_fromUtf8("rainfall"))
         self.horizontalLayout_2.addWidget(self.rainfall)
         self.verticalLayout_2.addLayout(self.horizontalLayout_2)
-        self.label = QtGui.QLabel(self.centralwidget)
+        self.label = QLabel(self.centralwidget)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName(_fromUtf8("label"))
         self.verticalLayout_2.addWidget(self.label)
-        spacerItem2 = QtGui.QSpacerItem(20, 40, QtGui.QSizePolicy.Minimum, QtGui.QSizePolicy.Expanding)
+        spacerItem2 = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.verticalLayout_2.addItem(spacerItem2)
-        self.pushButton_4 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_4 = QPushButton(self.centralwidget)
         self.pushButton_4.setObjectName(_fromUtf8("pushButton_4"))
         self.verticalLayout_2.addWidget(self.pushButton_4)
-        self.pushButton_6 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_6 = QPushButton(self.centralwidget)
         self.pushButton_6.setObjectName(_fromUtf8("pushButton_6"))
         self.verticalLayout_2.addWidget(self.pushButton_6)
 
         # -------------------- quit
-        self.pushButton_5 = QtGui.QPushButton(self.centralwidget)
+        self.pushButton_5 = QPushButton(self.centralwidget)
         self.pushButton_5.setObjectName(_fromUtf8("pushButton_5"))
         #self.pushButton_5.clicked.connect( QtCore.QCoreApplication.instance().quit)
 
@@ -137,19 +112,19 @@ class Ui_MainWindow(QtGui.QMainWindow):
         self.gridLayout_2.addLayout(self.verticalLayout_2, 1, 1, 1, 1)
 
         # ------------------------- lcd! 
-        self.idBar = QtGui.QLCDNumber(self.centralwidget)
+        self.idBar = QLCDNumber(self.centralwidget)
         self.idBar.setObjectName(_fromUtf8("idBar"))
         self.gridLayout_2.addWidget(self.idBar, 2, 0, 1, 1)
-        self.label_2 = QtGui.QLabel(self.centralwidget)
+        self.label_2 = QLabel(self.centralwidget)
         self.label_2.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.label_2.setObjectName(_fromUtf8("label_2"))
         self.gridLayout_2.addWidget(self.label_2, 2, 1, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtGui.QMenuBar(MainWindow)
+        self.menubar = QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1168, 25))
         self.menubar.setObjectName(_fromUtf8("menubar"))
         MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtGui.QStatusBar(MainWindow)
+        self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(_fromUtf8("statusbar"))
         MainWindow.setStatusBar(self.statusbar)
 

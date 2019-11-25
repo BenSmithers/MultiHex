@@ -8,10 +8,8 @@ from MultiHex.special_hexes import *
 
 # need these to define all the interfaces between the canvas and the user
 from MultiHex.tools import *
-try:
-    from PyQt4 import QtCore, QtGui
-except ImportError:
-    from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QMainWindow, QWidget
 
 from MultiHex.guis.editor import Ui_MainWindow
 
@@ -23,9 +21,9 @@ screen_ratio = 0.8
 
   
 
-class editor_gui(QtGui.QMainWindow):
+class editor_gui(QMainWindow):
     def __init__(self,parent=None):
-        QtGui.QWidget.__init__(self,parent)
+        QWidget.__init__(self,parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         
@@ -60,9 +58,13 @@ class editor_gui(QtGui.QMainWindow):
         self.ui.Grassland.clicked.connect( self.writer_control.switch_grass )
         self.ui.brushTottle.clicked.connect( self.writer_control.toggle_brush_size )
         self.ui.write_erase.clicked.connect( self.writer_control.toggle_write )
-        QtCore.QObject.connect( self.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.rainfall)
-        QtCore.QObject.connect( self.ui.temperature, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.temperature)
-        QtCore.QObject.connect( self.ui.biodiversity, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.biodiversity)
+        
+        # need to fix the sliders
+        #QtCore.QObject.connect( self.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.rainfall)
+        #QtCore.QObject.connect( self.ui.temperature, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.temperature)
+        #QtCore.QObject.connect( self.ui.biodiversity, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.biodiversity)
+        
+        
         #self.ui.rainfall.clicked.connect(selector_control.rainfall)
         #toggle_write
         self.ui.pushButton_5.clicked.connect( self.go_away )

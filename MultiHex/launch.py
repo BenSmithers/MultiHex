@@ -1,5 +1,7 @@
 #!/usr/bin/python3.6
-from PyQt4 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDialog, QApplication, QWidget
+
 from MultiHex.guis.main_menu import Ui_MainWindow as main_menu
 from MultiHex.map_paint import editor_gui
 from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
@@ -10,9 +12,9 @@ import sys
 import time
 
 # open the gui
-class main_gui(QtGui.QMainWindow):
+class main_gui(QMainWindow):
     def __init__(self,parent=None):
-        QtGui.QWidget.__init__(self,parent)
+        QWidget.__init__(self,parent)
         self.ui = main_menu()
         self.ui.setupUi(self)
 
@@ -30,7 +32,7 @@ class main_gui(QtGui.QMainWindow):
 
     def load_int(self, filename=''):
         if filename=='':
-            filename = QtGui.QFileDialog.getOpenFileName(None, 'Open HexMap', './saves', 'HexMaps (*.hexmap)')
+            filename = QFileDialog.getOpenFileName(None, 'Open HexMap', './saves', 'HexMaps (*.hexmap)')[0]
 
         if filename=='':
             return()
@@ -41,7 +43,7 @@ class main_gui(QtGui.QMainWindow):
         pass
 
     def editor(self):
-        filename = QtGui.QFileDialog.getOpenFileName(None, 'Edit HexMap', './saves', 'HexMaps (*.hexmap)')
+        filename = QFileDialog.getOpenFileName(None, 'Edit HexMap', './saves', 'HexMaps (*.hexmap)')[0]
         self.hide()        
         if filename!='':
             print("Loading {}".format(filename))
@@ -72,7 +74,7 @@ class main_gui(QtGui.QMainWindow):
                 full_chain.full_sim('cont', self.new_name )
                 self.show()
 
-class mod_accept(QtGui.QDialog):
+class mod_accept(QDialog):
     def __init__(self, parent=None):
         super(mod_accept, self).__init__(parent)
         self.ui=nmd()
@@ -99,7 +101,7 @@ class mod_accept(QtGui.QDialog):
         self.parent().setting = 2
 
 
-app = QtGui.QApplication(sys.argv)
+app = QApplication(sys.argv)
 app_instance = main_gui()
 
 

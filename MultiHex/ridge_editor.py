@@ -6,16 +6,17 @@ from MultiHex.special_hexes import Mountain_Hex
 
 from MultiHex.tools import *
 
-from PyQt4 import QtCore, QtGui
-from MultiHex.guis.ridge_editor_gui import ridge_gui_window
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QMainWindow, QWidget
 
+from MultiHex.guis.ridge_editor_gui import ridge_gui_window
 from MultiHex.generator.full_chain import ridge_onward
 
 import sys
 
-class ridge_gui(QtGui.QMainWindow):
+class ridge_gui(QMainWindow):
     def __init__(self, parent=None):
-        QtGui.QWidget.__init__(self, parent)
+        QWidget.__init__(self, parent)
         self.ui = ridge_gui_window()
         self.ui.setupUi(self)
 

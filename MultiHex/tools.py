@@ -1,8 +1,8 @@
 from MultiHex.point import Point
 from MultiHex.special_hexes import *
 
-from PyQt4 import QtGui
-
+from PyQt5 import QtGui
+from PyQt5.QtWidgets import QGraphicsScene
 
 class basic_tool:
     """
@@ -248,12 +248,12 @@ class hex_brush(basic_tool):
     def switch_arctic(self):
         self._brush_type = Arctic_Hex
 
-class clicker_control(QtGui.QGraphicsScene):
+class clicker_control(QGraphicsScene):
     """
     Manages the mouse interface for to the canvas.
     """
     def __init__(self, parent=None, master=None):
-        QtGui.QGraphicsScene.__init__(self, parent)
+        QGraphicsScene.__init__(self, parent)
 
 
         self.start = Point(0.0, 0.0)
