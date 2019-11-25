@@ -4,6 +4,7 @@ from MultiHex.guis.main_menu import Ui_MainWindow as main_menu
 from MultiHex.map_paint import editor_gui
 from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
 from MultiHex.ridge_editor import ridge_gui
+from MultiHex.generator import full_chain
 
 import sys
 import time
@@ -22,12 +23,13 @@ class main_gui(QtGui.QMainWindow):
         self.ui.pushButton.clicked.connect( self.load_int )
         self.ui.pushButton_3.clicked.connect( self.new )
         self.ui.pushButton_4.clicked.connect( self.editor )
+        self.ui.civEdit.clicked.connect(self.civ_edit)
 
         self.new_name   = "./saves/generated.hexmap"
         self.setting    = -1
 
-    def load_int(self, name_is=''):
-        if name_is=='':
+    def load_int(self, filename=''):
+        if filename=='':
             filename = QtGui.QFileDialog.getOpenFileName(None, 'Open HexMap', './saves', 'HexMaps (*.hexmap)')
 
         if filename=='':
@@ -35,6 +37,8 @@ class main_gui(QtGui.QMainWindow):
         else:
             print("Loading {}".format(filename))
             print("The main program hasn't been implemented yet")
+    def civ_edit(self):
+        pass
 
     def editor(self):
         filename = QtGui.QFileDialog.getOpenFileName(None, 'Edit HexMap', './saves', 'HexMaps (*.hexmap)')
@@ -64,8 +68,9 @@ class main_gui(QtGui.QMainWindow):
                 self.ridge_ui.show()
             else:
                 print("Generating from scratch, name {}".format(self.new_name))
-                
-
+                self.hide()
+                full_chain.full_sim('cont', self.new_name )
+                self.show()
 
 class mod_accept(QtGui.QDialog):
     def __init__(self, parent=None):
