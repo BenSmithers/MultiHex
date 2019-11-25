@@ -13,7 +13,8 @@ The c++ code is just there incase I ever decided to go back to it.
 
 # Prerequesites
 
-You will need PyQt5 and Python 3. 
+You will need PyQt5, Python 3, and numpy.
+Ensure you install numpy and Qt for python 3, and not python 2!
 Not tested in Python2, and **known to fail in different verisons of Qt**
 
 # Installing and Running
