@@ -16,6 +16,11 @@ import os
 import sys
 
 class ridge_gui(QMainWindow):
+    """
+    Basically just a shitty version of the main map editor... 
+
+    just has fewer buttons. yay
+    """
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self.ui = ridge_gui_window()

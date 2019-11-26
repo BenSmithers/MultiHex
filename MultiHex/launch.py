@@ -14,14 +14,20 @@ import time
 
 # open the gui
 class main_gui(QMainWindow):
+    """"
+    Main Menu Gui creator! 
+    """
     def __init__(self,parent=None):
         QWidget.__init__(self,parent)
         self.ui = main_menu()
         self.ui.setupUi(self)
 
+        # it always has these two editors (and soon more!) loaded and ready to go.
+        # because of that it's important that these two clean themselves up when told to hide 
         self.editor_ui = editor_gui(self)
         self.ridge_ui  = ridge_gui(self)
 
+        # connecting buttons 
         self.ui.pushButton_2.clicked.connect( QtCore.QCoreApplication.instance().quit )
         self.ui.pushButton.clicked.connect( self.load_int )
         self.ui.pushButton_3.clicked.connect( self.new )
@@ -32,6 +38,9 @@ class main_gui(QMainWindow):
         self.setting    = -1
 
     def load_int(self, filename=''):
+        """
+        This will be the stepping off point for interfacing with the map in an interactive way. Hence the 'ing' suffix 
+        """
         if filename=='':
             filename = QFileDialog.getOpenFileName(None, 'Open HexMap', './saves', 'HexMaps (*.hexmap)')[0]
 
@@ -41,9 +50,15 @@ class main_gui(QMainWindow):
             print("Loading {}".format(filename))
             print("The main program hasn't been implemented yet")
     def civ_edit(self):
+        """
+        Will be a stepping off point for editing and viewing the civilizations in the world. 
+        """
         pass
 
     def editor(self):
+        """
+        Opens the world editor 
+        """
         filename = QFileDialog.getOpenFileName(None, 'Edit HexMap', './saves', 'HexMaps (*.hexmap)')[0]
         self.hide()        
         if filename!='':
@@ -55,10 +70,13 @@ class main_gui(QMainWindow):
         self.editor_ui.show()
 
     def new(self):
+        """
+        Brings up the "new map" dialog
+        """
         dialog = mod_accept(self)
         dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         dialog.exec_()
-        if self.setting<0:
+        if self.setting<0: # indicates a cancel response. Do nothing 
             pass
         else:
             if self.setting==0:
@@ -76,6 +94,9 @@ class main_gui(QMainWindow):
                 self.show()
 
 class mod_accept(QDialog):
+    """
+    This defines the way the new map dialog interfaces with the main menu
+    """
     def __init__(self, parent=None):
         super(mod_accept, self).__init__(parent)
         self.ui=nmd()

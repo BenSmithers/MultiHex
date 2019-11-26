@@ -1,4 +1,7 @@
-import numpy as np
+try:
+    from numpy import sqrt
+except ImportError:
+    from math import sqrt
 
 def is_number(object):
     try:
@@ -73,7 +76,7 @@ class Point:
         if cls._calculated:
             return( cls._magnitude )
         else:
-            cls._magnitude = np.sqrt( cls.x**2 + cls.y**2 )
+            cls._magnitude = sqrt( cls.x**2 + cls.y**2 )
             cls._calculated = True
             return(cls._magnitude)
     

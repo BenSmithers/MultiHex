@@ -12,6 +12,12 @@ import random as rnd
 import os
 import json
 
+"""
+Uses some simple thresholds to determine what kind of Hex a given Hex is
+
+Is it a forest? A Desert? Let's find out! 
+"""
+
 def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
 
     # load the config file
@@ -27,7 +33,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         config = config[size]['land']
 
 
-
+    # these aren't used, obviously. 
+    # will want to swap these out for the threshholds used 
     land_spread     = config['land_spread']
     land_width      = config['land_width']
     mnt_thicc       = config['mnt_thicc']

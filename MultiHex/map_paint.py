@@ -22,6 +22,22 @@ screen_ratio = 0.8
   
 
 class editor_gui(QMainWindow):
+    """
+    This class creates the gui for the main world editor.
+    It imports the gui definitions from the guis folder and plugs buttons, switches, and sliders  in to various functions 
+
+    Some important TOOLS used are 
+        clicker control
+        hex brush
+        selector
+    All are defined in the tools folder 
+
+    It also needs a  
+        Hexmap
+    object which defines the hexmap it shows and edits. 
+
+    """
+
     def __init__(self,parent=None):
         QWidget.__init__(self,parent)
         self.ui = Ui_MainWindow()
@@ -33,22 +49,17 @@ class editor_gui(QMainWindow):
 
         # manages the writer and selector controls. This catches clicky-events on the graphicsView
         self.scene = clicker_control( self.ui.graphicsView, self )
-
-        #def open_map( target = '' ):
-        #    global main_map    
-        #    global editor_instance
-        #    global scene
-        #    global applicaiton
-
         # start with the hex as the currently used tool
         self.scene._active = self.writer_control
-        
+
+        # Allow the graphics view to follow the mouse when it isn't being clicked, and associate the clicker control with the ui 
         self.ui.graphicsView.setMouseTracking(True)
         self.ui.graphicsView.setScene( self.scene )
 
         self.ui.brush.clicked.connect( self.scene.to_brush )
         self.ui.hand.clicked.connect( self.scene.to_select )
 
+        # connect all the buttons to the writer, selector, and some ui functions
         self.ui.pushButton_5.clicked.connect( self.go_away )
         self.ui.pushButton_7.clicked.connect( self.writer_control.switch_desert )
         self.ui.pushButton_8.clicked.connect( self.writer_control.switch_arctic )
@@ -59,14 +70,12 @@ class editor_gui(QMainWindow):
         self.ui.brushTottle.clicked.connect( self.writer_control.toggle_brush_size )
         self.ui.write_erase.clicked.connect( self.writer_control.toggle_write )
         
-        # need to fix the sliders
+        # TODO fix the sliders
         #QtCore.QObject.connect( self.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.rainfall)
         #QtCore.QObject.connect( self.ui.temperature, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.temperature)
         #QtCore.QObject.connect( self.ui.biodiversity, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.biodiversity)
         
         
-        #self.ui.rainfall.clicked.connect(selector_control.rainfall)
-        #toggle_write
         self.ui.pushButton_5.clicked.connect( self.go_away )
         self.ui.pushButton_4.clicked.connect( self.save_map )
         self.ui.pushButton_6.clicked.connect( self.save_as )
@@ -93,12 +102,18 @@ class editor_gui(QMainWindow):
         self.ui.label_2.setText("Saved!")
 
     def save_as(self):
+        """
+        Opens a dialog to accept a filename from the user, then calls the save_map function
+        """
         self.file_name = QtGui.QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
         self.save_map()
 
 
 
     def prep_map(self, file_name ):
+        """
+        Needs to be alled when the map is first loaded. This actually has Qt draw all the hexes in the map's hexmap
+        """
         self.scene.clear()
             
         self.ui.graphicsView.update()

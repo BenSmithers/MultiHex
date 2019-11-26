@@ -54,6 +54,10 @@ def get_distribution( direction, variance=20. ):
     return( distribution )
 
 # check if point is in the map
+# used literally all of the time 
+
+# TODO: generalize to different map shapes? 
+# could be cool to do a Mollweide like projection 
 def point_is_in(point, dimensions):
     return( point.x < dimensions[0] and point.x > 0 and point.y < dimensions[1] and point.y>0)
 
@@ -61,7 +65,7 @@ def point_is_in(point, dimensions):
 
 def new_color(is_land, altitude):
     """
-    generalize this for a any hex
+    TODO generalize this for a any hex
     """
 
     deep_ocean = ( 8,   32,  59)
@@ -88,7 +92,12 @@ def new_color(is_land, altitude):
                     -1*(deep_ocean[2] - shallows[2])*altitude*0.5 + shallows[2] ) )
 
 def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
-    
+    """
+    smooths some feature of all the hexes
+
+    So far only elevation and rainfall can be smoothed, but this can be generalized for almost anything at the moment.
+    Would be better to use the getattr('whatever') command, and then I could literally generalize this to anything 
+    """
     main_map = load_map(which)
 
     full_str=""

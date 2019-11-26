@@ -1,6 +1,12 @@
 from MultiHex.hex import Hex
 from MultiHex.point import Point
 
+"""
+Defines some presets for drawing hexes. 
+
+For the most part this is just used to set the colors... 
+"""
+
 default_p = Point(0.0,0.0)
 
 class hcolor:

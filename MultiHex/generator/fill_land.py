@@ -13,6 +13,11 @@ import os
 import json
 
 def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
+    """
+    Follows the ridge spawning.
+
+    Spreads land and ocean around those ridges until the world is filled up 
+    """
 
     # load the config file
     file_object = open( os.path.join( os.path.dirname(__file__), 'config.json'), 'r' )
@@ -27,9 +32,15 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         config = config[size]['land']
 
     
+    # avearge decrease in altitude from one regular land tile to another
     land_spread     = config['land_spread']
+    # standard deviation 
     land_width      = config['land_width']
+
+    # average thickness of mountainness around ridgeline 
     mnt_thicc       = config['mnt_thicc']
+
+    # average decrease in elevation from water tile to another Plus its standard deviatino
     water_spread    = config['water_spread']
     water_width     = config['water_width']
     
@@ -154,7 +165,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     
     n_rounds = 2
     print("Performing {} rounds of smoothing".format(n_rounds))
-    
+        
+    # this process usually leaves the map super gross looking, so I do some smoothing where I just average the elevation around the hex
     for i in range( n_rounds ):
         smooth( ['alt'], sim )
 
