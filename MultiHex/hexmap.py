@@ -55,16 +55,12 @@ class Hexmap:
     @ rescale           - unused
     @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
     @ get_neighbor_outline      - retursn list of points to outline cursor 
-    @ map_to_draw       - converts map coordinates to draw coordinates (Point)
-    @ draw_to_map       - converts draw coordinates to map coordinates (Point)
     @ points_to_draw    - takes list of map-Points, prepares flattened list of draw coordinates 
-    @ draw              - draws the map on a canvas
     @ get_id_from_point - constructs neares ID to point
     @ get_point_from_id - constructs point from ID
     """
     def __init__(self):
         self.catalogue = {}
-        self.drawn_hexes = {}
 
         # overal scaling factor 
         self._drawscale = 15.0
@@ -183,23 +179,6 @@ class Hexmap:
             #print("{}\n".format(perimeter_points))
             return( perimeter_points ) 
 
-
-
-    def map_to_draw(self, vector):
-        """
-        translates a given point from map space to a point in draw space 
-        """
-        vector += self.draw_relative_to
-        vector *= self._zoom
-        vector += self.origin_shift
-        return(vector)
-    
-    def draw_to_map(self,vector):
-        vector -= self.origin_shift
-        vector /= self._zoom
-        vector -= self.draw_relative_to
-        return(vector)
-
     def points_to_draw( self, list_of_points ):
         """
         Takes list of map-space points, converts it to list of QPoints in draw space
@@ -207,43 +186,9 @@ class Hexmap:
         list_of_coords = []
         # transform and flatten
         for point in list_of_points:
-            point = self.map_to_draw(point)
             list_of_coords += [QPointF( point.x, point.y )]
         return( list_of_coords )
         
-    def draw_outline(self, canvas):
-        if self._outline_obj is not None:
-            canvas.delete( self._outline_obj )
-        pass
-        # hrmmm
-#        self._outline_obj = canvas.create_polygon( self.points_to_draw(self._outline), outline='gold', fill='', width=2)
-
-
-    def draw_one_hex( self, canvas, ID):
-        """
-        DEPRECATED - moving this up a level so the hexmap doesn't draw 
-
-        draws and registers one hex
-        """
-        get_hex = self.catalogue[ID]
-        self.drawn_hexes[ ID ] = canvas.create_polygon( self.points_to_draw( get_hex._vertices ), outline = get_hex.outline, fill=get_hex.fill, width=1.5, tag='background')
-
-    def draw(self, canvas):
-        """
-        Draws the canvas! 
-        """
-        #clear the canvas
-        canvas.delete("all")
-        # draw all the hexes
-        for tile in self.catalogue.values():
-            canvas.create_polygon( self.points_to_draw(tile._vertices), outline=tile.outline, fill=tile.fill, width=1.5,tag='background')
-        
-        # draw the selected one 
-        if self._active_id is not None:
-            canvas.create_polygon( self.points_to_draw(self.catalogue[ self._active_id ]._vertices), outline= self.catalogue[self._active_id].outline, fill=self.catalogue[self._active_id].fill, width=1.5, tag='background')
-    
-        if self._outline is not None:
-            canvas.create_polygon( self.points_to_draw(self._outline), outline='gold',fill='',width=2,tag='background')
 
     def get_id_from_point(self, point):
         """
@@ -251,10 +196,7 @@ class Hexmap:
         """
         if type(point)!=Point:
             raise TypeError("{} is not a Point, it is {}".format(point, type(point)))
-
-        # need to account for any zoom and translations applied to the drawing relative to the base global coordinates 
-        point = self.draw_to_map(point)
-        
+ 
         # keep a copy of the untranslated point! 
         og_point = Point( point.x, point.y )
                 

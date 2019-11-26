@@ -8,8 +8,8 @@ class Hex:
     """
     Datastructure to represent a single hex on a hex map
 
-    @ build_name            - creates a name for hex biome
-    @ get_flattened_points  - returns vertices in flattened list [x1 , y1, x2, ... ]
+    @ build_name            - creates a name for hex biome - not implemented
+    @ rescale_color         - recalculates the color based off of the current color and altitude
     """
     def __init__(self, center=default_p, radius=1.0 ):
         self._center = center
@@ -56,22 +56,7 @@ class Hex:
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
-
-    def get_flattened_points(self, displacement=None, zoom=1.0):
-        """
-        deprecated
-
-        functionality moved up to hexmap.py
-        """
-        flat = []
-        if displacement is None:
-            for obj in self._vertices:
-                flat+=[ obj.x*zoom, obj.y*zoom ]
-        else:
-            for obj in self._vertices:
-                flat+=[ (obj.x + displacement.x)*zoom , (obj.y + displacement.y)*zoom ]
-        return(flat)
-              
+             
    
     def __repr__(self):
         return("{}@{}".format(self.__clas__, self.id))
