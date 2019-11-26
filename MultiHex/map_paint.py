@@ -108,11 +108,13 @@ class editor_gui(QMainWindow):
         newpen = QtGui.QPen()
         newbrush=QtGui.QBrush()
         newbrush.setStyle(1)
+        newpen.setWidth( self.writer_control.pen_size )
+        newpen.setStyle( self.writer_control.pen_style )
+
         for ID in self.main_map.catalogue:
             dahex = self.main_map.catalogue[ID]
             newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
             newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
-            newpen.setWidth(1)
             self.writer_control.drawn_hexes[ID] = self.scene.addPolygon( QtGui.QPolygonF(self.main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
 
 

@@ -48,7 +48,7 @@ class selector(basic_tool):
         self.start = Point(0.0,0.0)
         self.selected_id  = None
         self.selected_out = None
-        
+      
         self.parent = parent
 
         # configure brush and pen for showing selected hex 
@@ -108,6 +108,9 @@ class hex_brush(basic_tool):
         self._brush_type = Grassland_Hex
         self._brush_size = 2
 
+        self.pen_style = 0
+        self.pen_size = 2
+
         self.parent = parent
 
         self.drawn_hexes = {}
@@ -135,7 +138,8 @@ class hex_brush(basic_tool):
         place = Point( event.scenePos().x(), event.scenePos().y())
         center_id = self.parent.main_map.get_id_from_point( place )
         self.QPen.setWidth(5)
-        
+        self.QPen.setStyle(1)
+
         if self.parent.main_map._outline == center_id:
             # the mouse hasn't moved, skip this
             pass
@@ -183,7 +187,8 @@ class hex_brush(basic_tool):
 
 
     def write(self, event):
-        self.QPen.setWidth(1)
+        self.QPen.setWidth(self.pen_size)
+        self.QPen.setStyle(self.pen_style)
         place = Point( event.scenePos().x() , event.scenePos().y() )
         # get the nearest relevant ID
         loc_id = self.parent.main_map.get_id_from_point( place )
