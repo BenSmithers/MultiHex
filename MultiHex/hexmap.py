@@ -19,8 +19,8 @@ Ben Smithers
 b.smithers.actual@gmail.com 
 
 @ HexMap        - the fundamental class for a map of hexes
-@ construct_id  - 
-@ deconstruct_id- 
+@ construct_id  - builds the hexmap ID for a x_coord, y_coord, and grid specifier
+@ deconstruct_id- returns the x_coord, y_coord, and grid specifier for a given ID 
 """
 
 def save_map(h_map, filename):
@@ -189,6 +189,33 @@ class Hexmap:
             list_of_coords += [QPointF( point.x, point.y )]
         return( list_of_coords )
         
+    def get_ids_around_vertex( self, place, v_type = None):
+        """
+        This returns three IDs. It is assumed that `place` is a vertex. will return inconsistent results otherwise 
+        """
+
+        # there are one of two kinds of vertices:
+        #
+        #  1  __/   \__  2 
+        #       \   /
+        #
+        # We don't know which 
+
+        if v_type is None:
+            # deduce the vertex type 
+            pass
+
+        assert(type(v_type)==int)
+        if v_type==1:
+            return([ self.get_id_from_point(place+Point(self._drawscale,0.)), 
+                        self.get_id_from_point(place+Point(-0.5*self._drawscale,    rthree*0.5*self._drawscale )),
+                        self.get_id_from_point(place+Point(-0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
+        elif v_type==2:
+            return([ -self.get_id_from_point(place+Point(self._drawscale,0.)), 
+                        self.get_id_from_point(place+Point( 0.5*self._drawscale,    rthree*0.5*self._drawscale )),
+                        self.get_id_from_point(place+Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
+        else:
+            raise ValueError("Invalid Vertex Type")
 
     def get_id_from_point(self, point):
         """
@@ -222,7 +249,6 @@ class Hexmap:
             return( construct_id(base_idx, base_idy, True ))
         else:
             return( construct_id(base_idx_2, base_idy_2, False ))
-        
     
     def get_point_from_id(self, id):
         """
@@ -245,6 +271,15 @@ class Hexmap:
 def construct_id( base_idx, base_idy, main_grid):
     """
     Takes grid coordinates and grid identifier, and returns the global ID
+
+    bit      1 - grid specifier 
+    bit      2 - unused
+    bit      3 - x coord sign
+    bits  4-33 - x coordinate 
+    bit     34 - y coord sign
+    bits 35-64 - y coordinate
+    
+    These are all ligned up, and it is treated as a 64 bit unsigned integer. 
     """
     if type(main_grid)!=bool:
         raise TypeError("Expected type {} for object {}, got {}".format(bool, main_grid, type(main_grid) ))
@@ -269,6 +304,8 @@ def deconstruct_id( id ):
     
     """
     takes global ID, returns tuple ( x_coordinate, y_coordinate, grid)
+
+    Opposite process as described in 'construct id'
     """
 
     # the first bit specifies which grid the hex is on. The second bit is unused 
