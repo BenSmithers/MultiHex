@@ -1,7 +1,7 @@
 try:
-    from numpy import sqrt
+    from numpy import sqrt, atan, pi
 except ImportError:
-    from math import sqrt
+    from math import sqrt, atan, pi
 
 def is_number(object):
     try:
@@ -24,9 +24,12 @@ class Point:
         self.y = why
         
         # use the bool so that we only have to calculate the magnitude once 
-        self._calculated = False
+        self._mcalculated   = False
         self._magnitude     = 0.0
-    
+        
+        self._acalculated   = False
+        self._angle         = 0.0
+
     def __add__(self, obj):
         """
         Used to add a point to another one through vector addition 
@@ -73,13 +76,36 @@ class Point:
         """
         Return the magnitude of the vector. If it hasn't been calculated, calculate it.
         """
-        if cls._calculated:
+        if cls._mcalculated:
             return( cls._magnitude )
         else:
             cls._magnitude = sqrt( cls.x**2 + cls.y**2 )
-            cls._calculated = True
+            cls._mcalculated = True
             return(cls._magnitude)
     
+    @property
+    def angle(cls):
+        """
+        returns the angle of the vector as measured from the x-axis. Calculates only once
+        """
+        if cls._acalculated:
+            return( cls._angle )
+        else:
+            cls._acalculated = True
+            prelim_angle = atan( cls.y / cls.x )
+
+            if cls.y<0 and cls.x<0:
+                prelim_angle += pi
+            elif cls.y<0 and cls.x >0:
+                prelim_angle += 2*pi
+            elif cls.y>0 and cls.x<0:
+                prelim_angle += pi
+            else:
+                # angle is in Quadrant I, this is fine
+                pass
+            cls._angle = prelim_angle 
+            
+
     # casting this object as a string 
     def __str__(self):
         return( "({},{})".format( self.x, self.y ) )
