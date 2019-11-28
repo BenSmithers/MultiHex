@@ -14,8 +14,8 @@ The c++ code is just there incase I ever decided to go back to it.
 # Prerequesites
 
 You will need PyQt5, Python 3, and numpy.
-Ensure you install numpy and Qt for python 3, and not python 2!
-Not tested in Python2, and **known to fail in different verisons of Qt**
+Ensure you install numpy and Qt for python 3, and not python 2! 
+Python2 is unsupported (and won't work due to some changes in the way python handles class instance types between 2 and 3), and this is **known to fail in different verisons of Qt**.
 
 # Installing and Running
 
@@ -40,11 +40,11 @@ b. Drawing out the mountainous ridge contours of your world, and letting *MultiH
 c. Filling in all the dtails yourself, starting with just a blank canvas and creativity.
 
 *MultiHex* uses a seeded algorithm to generate the world's topography and oceans. 
-Then, it uses a nuanced weather model to propagate storm systems across your new world to map out areas of intense rainfall and arid deserts. 
+Then, it uses a 'nuanced' weather model to propagate storm systems across your new world to map out areas of intense rainfall and arid deserts. 
 
 ## World Editor
 
-need to fill
+The current way to view and edit a *MultiHex* hexmap. 
 
 # Future Plans
 
@@ -57,7 +57,8 @@ Keeps track of the days, the hours, the months and years.
 Quickly check the time of day, the light level, the seasons and the phase of the moon.
 Time can be skipped forward to simulated down-time
 
-* WeatherSim. A toy-model weather simulator will propagate storm systems across the world, after spawning them on occasion out in the ocean. 
+* WeatherSim. 
+A toy-model weather simulator will propagate storm systems across the world, after spawning them on occasion out in the ocean. 
 
 * Entity tracking. Keep track of entities on the map, like a party in a ttrpg.
 Allow the entities to travel plan travel across the map, to travel immeditely, or teleport. 
@@ -80,15 +81,18 @@ Define regions belonging to civilizations
 
 Improvements and additions to the world generation
 
+* Gui for modifying world generation parameters. Currently the world gen params are stored in the `config.json` file in the generator folder; this is not ideal. 
+
 * region definitions. 
 Regions will be collections of like hexes, which will share some features and an identifying name. 
+Drawing the regions will require breaking down a region and its enclaves into triangles, and drawing those triangles. _(in progress)_
 
 * rivers, lakes.
-Rivers will flow between hexes to areas of lower altitude. Rivers eventually reach the ocean, a lake, or dry up. 
+Rivers will flow between hexes to areas of lower altitude. Rivers eventually reach the ocean, a lake, or dry up. _(in progress)_
 
 * biodiversity. Will be influenced by rainfall, temperature 
 
-* temperature gradients 
+* ~~temperature gradients~~ (implemented)
 
 * hex feature-dependent color.
 At the moment hex color is just ridge and rainfall dependent. 
