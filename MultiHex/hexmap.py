@@ -49,18 +49,23 @@ class Hexmap:
     """
     mObject to maintain the whole hex catalogue, draw the hexes, registers the hexes
 
-    @ remove_hex        - unregister hex from catalogue
-    @ register_hex      - register a hex in the catalogue
-    @ set_active_hex    - sets hex to "active"
-    @ rescale           - unused
+    @ remove_hex            - unregister hex from catalogue
+    @ register_hex          - register a hex in the catalogue
+    @ set_active_hex        - sets hex to "active"
     @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
     @ get_neighbor_outline      - retursn list of points to outline cursor 
-    @ points_to_draw    - takes list of map-Points, prepares flattened list of draw coordinates 
-    @ get_id_from_point - constructs neares ID to point
-    @ get_point_from_id - constructs point from ID
+    @ points_to_draw        - takes list of map-Points, prepares flattened list of draw coordinates 
+    @ get_id_from_point     - constructs neares ID to point
+    @ get_point_from_id     - constructs point from ID
+    @ register_new_region   - takes a region, registers it in the rid_catalogue with a unique region id (rid)
+    @ add_to_region         - adds a single hex to a region
+    @ remove_from_region    - removes hex from region
+    @ merge_regions         - takes two rids, merges the regions
     """
     def __init__(self):
         self.catalogue = {}
+        self.rid_catalogue = {} #region_id -> region object
+        self.id_map = {} # hex_id -> reg_id 
 
         # overal scaling factor 
         self._drawscale = 15.0
@@ -74,6 +79,92 @@ class Hexmap:
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
+    def register_new_region( self, target_region ):
+        # first settle on a new rid - want the smallest, unused rid 
+        new_rid = 1
+        while new_rid in self.rid_catalogue:
+            new_rid += 1
+        
+        # register the region in the hexmap's region catalogue 
+        self.rid_catalogue[ new_rid ] = target_region
+        # register the connections between the new region's hexes and the new rid
+        # this allows for quick correlations from point->hex->region
+        for hex_id in target_region.ids:
+            self.id_map[ hex_id ] = new_rid 
+        
+        # return the new_rid
+        return( new_rid )
+
+    def add_to_region( self, rID, hex_id ):
+        """
+        Adds a hex to a region. If the hex belongs to a different region, we remove if from that region first
+
+        @param rID      - rID of region to which we are adding
+        @param hex_id   - ID of hex to add to region
+        """
+        # throws KeyError if rID not in catalogue
+        # we aren't handling that error. Downstream problem...
+        if rID not in self.rid_catalogue:
+            raise KeyError("Region no. {} not recognized.".format( rID) )
+        if hex_id not in self.catalogue:
+            raise KeyError("Hex id no. {} not recognized.".format( hex_id ))
+
+        # If the hex is already in a region, remove it from that region 
+        if hex_id in self.id_map:
+            if self.id_map[hex_id]==rID:
+                return # nothing to do
+            else:
+                self.remove_from_region( hex_id )
+
+        # the hex does not belong to a catalog
+        # add the hex to the region and update the id map
+        self.rid_catalogue[ rID ].add_hex_to_self( hex_id )
+        self.id_map[ hex_id ] = rID 
+
+    def remove_from_region( self, hex_id ):
+        """
+        Removes a hex from a region
+
+        @param hex_id   - ID of hex from which to remove region affiliation 
+        """
+        # removes the hex_id from whichever region it's in
+        if hex_id not in self.id_map:
+            raise KeyError("Hex no. {} not registered".format(hex_id))
+        
+        # update the region extents 
+        self.id_map[hex_id].pop_hexid_from_self( hex_id )
+        
+        # check if region still has size, if not, delete the region
+        if len(self.id_map[hex_id].ids)==0:
+            del self.rid_catalogue[ self.id_map[hex_id] ]
+
+        # delete the hexes' association to the now non-existent region
+        del self.id_map[hex_id]
+        
+
+    def merge_regions( self, rID_main, rID_loser ):
+        """
+        Merges two regions
+
+        @param rID_main  - rID of region which will accept the hexes from rID_loser
+        @param rID_loser - rID of region which will be absorbed into rID_main
+        """
+        
+        if (rID_main not in self.rid_catalogue):
+            raise KeyError ("Region {} not recognized".format(rID_main))
+        if (rID_loser not in self.rid_catalogue):
+            raise KeyError("Region {} not recognized".format(rID_loser))
+ 
+        # update the entries in the id_map to point to the new region
+        for hex_id in self.rid_catalogue[rID_loser].ids:
+            self.id_map[ hex_id ] = rID_main
+       
+        # merge second region into first one
+        self.rid_catalogue[ rID_main ].merge_with_region( self.rid_catalogue[rID_loser] )
+        
+        # delete the old region
+        del self.rid_catalogue[ rID_loser ]
+
 
     def remove_hex( self, target_id):
         """
@@ -96,6 +187,7 @@ class Hexmap:
         else:
             self.catalogue[new_id] = target_hex
     
+
     def set_active_hex(self, id):
         if self._active_id is not None:
             self.catalogue[self._active_id].outline = '#ddd'
@@ -103,9 +195,6 @@ class Hexmap:
         self._active_id = id
         self.catalogue[self._active_id].outline = '#f00'
     
-    def rescale(self):
-        pass
-
     def get_hex_neighbors(self, ID):
         """
         Calculates the IDs of a given Hexes' neighbors
