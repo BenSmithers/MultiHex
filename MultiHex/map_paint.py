@@ -9,7 +9,7 @@ from MultiHex.special_hexes import *
 # need these to define all the interfaces between the canvas and the user
 from MultiHex.tools import *
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QMainWindow, QWidget
+from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
 
 from MultiHex.guis.editor import Ui_MainWindow
 
@@ -105,7 +105,7 @@ class editor_gui(QMainWindow):
         """
         Opens a dialog to accept a filename from the user, then calls the save_map function
         """
-        self.file_name = QtGui.QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
+        self.file_name = QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
         self.save_map()
 
 
