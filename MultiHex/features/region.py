@@ -6,15 +6,19 @@ except ImportError:
 class Region:
     """
     A Region is a collection of Hexes on a Hexmap
+
+    **Fuck this shit**
     """
 
     def __init__(self, hex_id, parent):
         self.enclaves = [  ]
         self.ids = [ hex_id ]
+        self.reg_id = 0
         self.name = ""
         
         self.parent_map = parent
         
+        # may throw KeyError! That's okay
         self.perimeter = self.parent_map.catalog[hex_id]._vertices
 
     def merge_with_region( self, other_region ):
@@ -26,7 +30,6 @@ class Region:
 
         # determine if Internal or External region merge
         internal = False  # is 
-        n_borders = 0
 
         # we need to start on the beginning of a border, so we get the first point that's on the border
         start_index = 0
@@ -39,34 +42,40 @@ class Region:
         # if we found a border on the perimeter, this is an external type merge
         if start_index!=len(self.perimeter):
             internal = False
+                
 
-        # count the number of borders, find the "starting points" for the new enclaves and perimeter
-        on_border = False
-        start_indices = []
-        for point in range(len(self.perimeter)):
-            if self.perimeter[ (point+start_index)%len(self.perimeter) ] in other_region.perimeter:
-                if not on_border:
-                    on_border = True
-                    n_borders += 1
-            else:
-                if on_border:
-                    start_indices.append( (point+start_index)%len(self.perimeter)) 
-                    on_border = False
-            
+        if not internal: #external merge!  
+            # count the number of borders, find the "starting points" for the new enclaves and perimeter
+            on_border = False   
+            start_indices = []
+            for point in range(len(self.perimeter)):
+                if self.perimeter[ (point+start_index)%len(self.perimeter) ] in other_region.perimeter:
+                    if not on_border:
+                        on_border = True
+                else:
+                    if on_border:
+                        start_indices.append( (point+start_index)%len(self.perimeter)) 
+                        on_border = False
 
-        if not internal:
             loops = [glom( self.perimeter, other_region.perimeter, index ) for index in start_indices]
             found = False
-            new_encalves = []
+            max_x = None
+            which = None
+            # the perimeter loop will, of course, have a greater extent in every direction. So we just find the loop which goes the furthest in x and know that's the perimeter
+            #   all the other loops are enclaves 
             for loop in loops:
-                if self.get_shape_type( loop ) == 1:
-                    if found:
-                        raise Exception(" This should be impossible ")
-                    found = True
-                    self.perimeter = loop
-                else: # type 2
-                    new_enclaves.append( loop )
-            
+                for point in loop:
+                    if max_x is None:
+                        max_x = point.x
+                    else:
+                        if point.x>max_x:
+                            max_X = point.x
+                            which = loop
+            self.perimeter = which 
+            for loop in loops:
+                if loop!=which:
+                    self.enclaves += loop
+
         else:
             # need to find the enclave this other region is bordering 
             found_enclave = False
@@ -106,53 +115,146 @@ class Region:
         self.enclaves   += other_region.enclaves 
         self.ids        += other_region.ids
     
+    def cut_region_from_self( self, other_region):
+        for ID in other_region.ids:
+            if ID in self.ids:
+                self.pop_hexid_from_self( ID )
 
-    def add_hex_to_region( self, other_hex ):
-        """
-        Adds a hex to this region
-        """
         
-        # plugs an enclave?
-        # closes part of the perimeter and creates an enclave? 
-        pass
-        
-    def pop_hex_from_region( self, pop_hex ):
+    def pop_hexid_from_self( self, hex_id ):
         """
         Pops a hex from this region
+
+        Why was this the hardest thing to write in all of MultiHex... 
         """
+
+        which = None
+        for each in range(len( self.ids )):
+            if hex_id==self.ids[each]:
+                break
+                which=each
+        if which is None:
+            raise ValueError("id not in region")
+       
+        self.ids.pop( which )
         
-        # Creates an enclave, try merging it with enclaves or perimeter 
-        # 
+        # countable number of cases
+        #    1. hex shares no border with either perimeter or any enclave: popped and made into enclave
+        #    2. hex _only_ shares border with perimeter: glom perimeter to hex
         
-        pass
+        this_hex = self.parent.main_map.catalog[ hex_id ]
+        hex_perim = this_hex[::-1]
 
-    
-    def get_shape_type( self, shape ):
-        """
-        Returns "Type" of a closed shape
+        # check perimeter
 
-        Type 1 - shape encloses a  region. By walking clockwise around a type 1 shape, hexes to the right will be in the region.
-        Type 2 - shape encloses an enclave. By walking clockwise around a type 2 shape, hexes to theright will *not* be in the region.
-        """
+        outer_hex = False
+        for point in self.perimeter:
+            if point in hex_perim:
+                outer_hex = True
+                break
+        
+        enclave_start_points = []
+        # check the enclaves
+        for enclave in self.enclaves:
+            index = 0
+            while index <len(enclave) :
+                if (enclave[index] in hex_perim) and (enclave[(index + 1) % len(enclave)] not in hex_perim):
+                    # note the hex indices where we'll switch to an enclave, and also note which enclave to switch to! 
+                    enclave_start_points.append( [ hex_perim.index( enclave[index] ), enclave ] )
+                    break
+                index += 1
 
-        point_1 = shape[0]
-        point_2 = shape[1] # "clockwise" is, by convention, adding one to the index 
 
-        step_vec = point_2 - point_1
-        right_point = step_vec + Point( self.parent._drawscale*cos( step_vec.angle - 90), self.parent._drawscale*sin( step_vec.angle - 90 ))
-        that_id = self.parent.get_id_from_point( right_point )
+        # It is now known whether the hex is on the outer rim or within the region
+        if outer_hex:
+            new_perim = []
 
-        if that_id in self.ids:
-            return( 1 )
+            # walk around the outer perimeter until we get to a point 
+            start_index = 0
+            while self.perimeter[start_index] not in hex_perim:
+                start_index += 1
+
+            index = start_index
+            while self.perimeter[index % len(self.perimeter)] not in hex_perim:
+                new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
+                index += 1
+            new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
+
+            hex_index = hex_perim.index( self.perimeter[index]%len(self.perimeter) ) + 1 
+
+            while hex_perim[hex_index % len(hex_perim)] not in self.perimeter:
+                
+                # check if this is the beginning of a thingy
+                loop_complete = False
+                for possibility in enclave_start_points:
+                    if possibility[0]==(hex_index % len(hex_perim)):
+                        new_perim.append( hex_perim[possibility[0]])
+                        enclave_counter = possibility[1].index( hex_perim[possibility[0]] ) + 1
+
+                        while possibility[1][ enclave_counter % len(possibility[1]) ] not in hex_perim:
+                            new_perim.append( possibility[1][ enclave_counter % len(possibility[1])] )
+                            enclave_counter += 1
+                        
+                        hex_index = hex_perim.index( possibility[1][ enclave_counter % len(possibility[1])] )
+                        loop_complete = True
+                        break
+                if not loop_complete:
+                    new_perim.append( hex_perim[ hex_index % len(hex_perim)] )
+                    hex_index += 1
+            
+            index = self.perimeter.index( hex_perim[hex_index % len(hex_perim)] )
+            while (index % len(self.perimeter))!=start_index:
+                new_perim.append( self.perimeter[index % len(self.perimeter)])
+                index+=1
+            
+            self.perimeter = new_perim
+            for possibility in enclave_start_points:
+                self.enclaves.pop( self.enclaves.index( possibility[1] ) )
+            
         else:
-            return( 2 )
+            # internal placement. Perimeter will remain unchanged! 
+            # will be adding an enclave (may merge 2-3 enclaves into 1)
+            # already have all of those neighbor enclaves! 
+            # popping internal hex. This will probably be a lot like the other case 
+            hex_start = 0
+            while( hex_perim[hex_start % len(hex_perim)] not in [part[0] for part in enclave_start_points] ):
+                hex_start += 1
+            
+            new_enclave = []
+            counter = hex_start
+            while True:
+                loop_complete = False
+                for part in enclave_start_points:
 
+                    if ( counter % len(hex_perim)) == part[0]:
+                        new_enclave.append( hex_perim[ part[0] ] )
+                        enclave_counter = part[1].index( hex_perim[part[0]] ) + 1
+                        while part[1][ enclave_counter % len( part[1] )] not in hex_perim:
+                            new_enclave.append( part[1][enclave_counter % len(part[1])]) 
 
-def glom( original, new, start_index ):
+                        counter = hex_perim.index( part[1][ enclave_counter % len( part[1] )] )
+                
+                        new_enclave.append( hex_perim[ (hex_start + counter) % len(hex_perim) ] )
+                        loop_complete = True
+                if not loop_complete:
+                    counter += 1
+                    new_enclave.append( hex_perim[ counter % len(hex_perim)])
+                if (counter%len(hex_perim))==hex_start:
+                    break
+                
+                # each of the old enclaves that we found need tobe popped
+                for part in enclave_start_points:
+                    self.enclaves.pop( self.enclaves.index( part[1] ))
+
+                self.enclaves.append( new_enclave )
+
+        
+
+def glom( original, new, start_index):
     """
-    Partially gloms two perimeters together. This part is being written for the External Type merge
+    Partially gloms two perimeters together.
 
-    Used to grab one of the new enclaves and the new perimeter 
+    Walks clockwise around one perimeter, switches to the other, walks more, switches back, and eventually forms a closed loop. 
     """
 
     new_perimeter = []
@@ -162,11 +264,13 @@ def glom( original, new, start_index ):
         new_perimeter += original[ index % len(original) ]
         index += 1
 
+    # returns index for start of border on "new" loop 
     intersect_index = new.index( original[index % len(original)] )
+
 
     while new[ index % len(new) ] not in original:
         new_perimeter += new[index % len( new) ]
-        index -= 1 #going counterclockwise
+        index += 1
 
     intersect_index = original.index( new[index % len(new)])
     
