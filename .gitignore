@@ -10,3 +10,6 @@
 Python_v/~$Plans.docx
 
 *.ui
+
+# vim swap files
+.swp
