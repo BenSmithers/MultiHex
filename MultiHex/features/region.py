@@ -19,7 +19,12 @@ class Region:
         self.parent_map = parent
         
         # may throw KeyError! That's okay
-        self.perimeter = self.parent_map.catalog[hex_id]._vertices
+        self.perimeter = self.parent.catalog[hex_id]._vertices
+
+    def add_hex_to_self( self, hex_id ):
+        # build a region around this hex and merge with it
+        temp_region = Region( hex_id , self.parent )
+        self.merge_with_region( temp_region )
 
     def merge_with_region( self, other_region ):
         """
@@ -142,7 +147,7 @@ class Region:
         #    1. hex shares no border with either perimeter or any enclave: popped and made into enclave
         #    2. hex _only_ shares border with perimeter: glom perimeter to hex
         
-        this_hex = self.parent.main_map.catalog[ hex_id ]
+        this_hex = self.parent.catalog[ hex_id ]
         hex_perim = this_hex[::-1]
 
         # check perimeter
