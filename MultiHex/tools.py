@@ -1,8 +1,10 @@
 from MultiHex.point import Point
 from MultiHex.special_hexes import *
+from MultiHex.features.region import Region, RegionMergeError
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsScene
+
 
 class basic_tool:
     """
@@ -39,6 +41,165 @@ class basic_tool:
         @param place - where the mouse is 
         """
         pass
+    def drop(self):
+        """
+        Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles)
+        """
+
+class region_brush(basic_tool):
+    def __init__(self, parent):
+        self.start = Point(0.0, 0.0)
+        self.selected_rid = None
+
+        self.parent = parent
+        self._writing = True
+
+        self.QBrush = QtGui.QBrush()
+        self.QPen   = QtGui.QPen()
+        
+        self.QBrush.setStyle(6)
+        self.QPen.setWidth(3)
+
+        self._outline_obj = None
+        self._drawn_regions = {} # map from rid to drawn region
+
+    def _set_color(self, color):
+        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 170))
+        self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
+
+    def hold(self, event, step):
+        self.activate( event )
+
+    def activate(self, event):
+        if self._writing:
+            self.reg_add(event)
+        else:
+            self.reg_remove(event)
+    def move(self, event):
+        """
+        While moving it continuously removes and redraws the outline - reimplimentation of the 'move' function in the hex brush
+        """
+        # get center, 
+        place = Point( event.scenePos().x(), event.scenePos().y())
+        center_id = self.parent.main_map.get_id_from_point( place )
+        
+        self.QPen.setWidth(5)
+        self.QPen.setStyle(1)
+        
+        self._brush_size = 1
+
+        if self.parent.main_map._outline == center_id:
+            # the mouse hasn't moved, skip this
+            pass
+        else:
+            # new center! 
+            self.parent.main_map._outline = center_id
+
+            # get the outline
+            outline = self.parent.main_map.get_neighbor_outline( center_id , self._brush_size)
+
+            # if we're writing draw green, if erasing draw red 
+            if self._writing:
+                self.QPen.setColor(QtGui.QColor(114,218,232))
+            else:
+                self.QPen.setColor(QtGui.QColor(201,113,24))
+
+
+            # remove previous outline object
+            if self._outline_obj is not None:
+                self.parent.scene.removeItem( self._outline_obj )
+            # redraw the selection outline
+
+            self.QBrush.setStyle(0)
+            self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
+
+    def reg_add(self, event):
+        # set up the pen and brush to draw a region
+        
+        place = Point( event.scenePos().x() , event.scenePos().y() )
+        # get the nearest relevant ID
+        loc_id = self.parent.main_map.get_id_from_point( place )
+        
+        if loc_id not in self.parent.main_map.catalogue:
+            return
+
+
+        if self.selected_rid is None:
+            # if the hex here is not mapped to a registered region, 
+            if (loc_id not in self.parent.main_map.id_map):
+                # make a new region here, set it to the active region, and draw it
+                new_reg = Region( loc_id, self.parent.main_map )
+                                
+                # get the newely created rid, set it to active 
+                self.selected_rid = self.parent.main_map.register_new_region( new_reg )
+                
+                # self.parent.main_map.id_map( loc_id )
+
+                self.redraw_region( self.selected_rid )
+            else:
+                # no active region, but the hex here belongs to a region. 
+                # set this hexes' region to the active one 
+                self.selected_rid = self.parent.main_map.id_map[ loc_id ]
+        else:
+            try:
+                # try adding it
+                # if it can't, it raises a RegionMergeError exception
+                self.parent.main_map.add_to_region(self.selected_rid, loc_id )
+                self.redraw_region( self.selected_rid )
+            except RegionMergeError:
+                try:
+                    # so let's try setting the region that's there as the active region
+                    self.selected_rid = self.parent.main_map.id_map[ loc_id ]
+                except KeyError:
+                    # if this hex doesn't belong to a region, do nothing
+                    pass
+
+    def reg_remove(self, event):
+        place   = Point( event.scenePos().x(), event.scenePos().y() )
+        loc_id  = self.parent.main_map.get_id_from_point( place )
+        if loc_id not in self.parent.main_map.catalogue:
+            return
+
+        if loc_id not in self.id_map:
+            # nothing to pop
+            return
+        else:
+            # get this hexes's region id 
+            this_rid = self.parent.main_map.id_map[ loc_id ]
+            # remvoe this hex from that region
+            self.parent.main_map.rid_catalogue[ this_rid  ].remove_from_region( loc_id )
+            # redraw that region
+            self.redraw_region( this_rid )
+
+
+    def redraw_region(self, reg_id ):
+
+        self.QBrush.setStyle(6)
+        self.QPen.setWidth(3)
+
+        if reg_id in self._drawn_regions:
+            self.parent.scene.removeItem( self._drawn_regions[ reg_id ] )
+        
+        reg_obj = self.parent.main_map.rid_catalogue[ reg_id ]
+        self._set_color( reg_obj.color )
+
+        path = QtGui.QPainterPath()
+        outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( reg_obj.perimeter + [reg_obj.perimeter[0]] ) )
+        path.addPolygon( outline )
+
+        for enclave in reg_obj.enclaves:
+            enc_path = QtGui.QPainterPath()
+            enc_outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw(enclave+[enclave[0]])) 
+            enc_path.addPolygon( enc_outline )
+            path = path.subtracted( enc_path )
+
+        self._drawn_regions[reg_id] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush) 
+
+    
+    def drop(self):
+        if self._outline_obj is not None:
+            self.parent.scene.removeItem( self._outline_obj )
+
 
 class selector(basic_tool):
     """
@@ -104,7 +265,7 @@ class selector(basic_tool):
             self.parent.main_map.catalogue[self.selected_id]._biodiversity_base = float(value)/100.
         
     # clean yoself up 
-    def drop_selector(self):
+    def drop(self):
         if self.selected_out is not None:
             self.parent.scene.removeItem( self.selected_out )
             self.selected_out = None
@@ -135,7 +296,7 @@ class hex_brush(basic_tool):
 
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
-    def drop_brush(self):
+    def drop(self):
         if self.parent.main_map._outline is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
@@ -147,7 +308,6 @@ class hex_brush(basic_tool):
         else:
             self.erase(event)
     def hold(self, event, step):
-        self.move(event)
         self.activate(event)
     
     def move(self, event):
@@ -340,13 +500,13 @@ class clicker_control(QGraphicsScene):
         """
         We need to switch over to calling the writer control, and have the selector clean itself up. These two cleaners are used to git rid of any drawn selection outlines 
         """
+        self._active.drop()
         self._active = self.master.writer_control
-        self.master.selector_control.drop_selector()
     def to_select(self):
         """
         same for the above, but opposite 
         """
+        self._active.drop()
         self._active = self.master.selector_control
-        self.master.writer_control.drop_brush()
 
  
