@@ -57,7 +57,7 @@ class Point:
         else:
             raise TypeError("Cannot multiply type {} with Point object".format(obj.__class__))
     def __eq__(self, obj):
-        return( self.x==obj.x and self.y==obj.y)
+        return( abs(self.x-obj.x)<0.01  and abs(self.y-obj.y)<0.01 )
     def __truediv__(self, obj):
         if not is_number(obj):
             raise TypeError("Cannot divide Point by object of type '{}'".format(type(obj)))
