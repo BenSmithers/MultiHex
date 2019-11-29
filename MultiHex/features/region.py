@@ -3,26 +3,60 @@ try:
 except ImportError:
     from math import cos, sin
 
+import sys
+
+"""
+@class  Region  - representation of a collection of hexes
+@method glom    - combines two lists of points into a single list of points
+"""
+
+# by the four-color theorem, we only need four colors
+# six just makes it easier and prettier 
+region_colors= (    (187,122,214),
+                    (29,207,189),
+                    (74,16,54),
+                    (255,81,0),
+                    (30,255,0),
+                    (74,255,255) )
+
+class RegionMergeError( Exception ):
+    pass
+class RegionPopError( Exception ):
+    pass
+
 class Region:
     """
-    A Region is a collection of Hexes on a Hexmap
+    A Region is a colleciton of neighboring of Hexes on a Hexmap. Regions are continuous.
 
-    **Fuck this shit**
+    @ add_hex_to_self       - take the hex at hex_id and add its extent to this region
+    @ merge_with_region     - take the given region, merge with it
+    @ cut_region_from_self  - remove the extent of any hexes in other region form self
+    @ pop_hexid_from_self   - remove the extent of one hex from the self
     """
 
     def __init__(self, hex_id, parent):
         self.enclaves = [  ]
         self.ids = [ hex_id ]
-        self.reg_id = 0
+        # regions don't know their own region_id. That's a hexmap thing
+        # self.reg_id = 0
         self.name = ""
+
+        self.color = (0, 0, 0)
         
-        self.parent_map = parent
+        self.parent = parent
         
-        # may throw KeyError! That's okay
-        self.perimeter = self.parent.catalog[hex_id]._vertices
+        # may throw KeyError! That's okay, should be handled downstream 
+        self.perimeter = self.parent.catalogue[hex_id]._vertices
+
+    def set_color(self, number):
+        # not hard-coding the number of colors in case I add more
+        self.color = region_colors[ number % len(region_colors) ]
 
     def add_hex_to_self( self, hex_id ):
         # build a region around this hex and merge with it
+        if hex_id in self.ids:
+            return #nothing to do...
+        
         temp_region = Region( hex_id , self.parent )
         self.merge_with_region( temp_region )
 
@@ -38,17 +72,19 @@ class Region:
 
         # we need to start on the beginning of a border, so we get the first point that's on the border
         start_index = 0
-        while self.perimeter[start_index] not in other_region.perimeter:
-            start_index+=1 
-            if start_index==len(self.perimeter): #if we've gotten all the way around, break
-                internal = True
-                break
-        
-        # if we found a border on the perimeter, this is an external type merge
-        if start_index!=len(self.perimeter):
-            internal = False
-                
+        while (self.perimeter[start_index] not in other_region.perimeter) and (self.perimeter[(start_index+1)%len(self.perimeter)] in other_region.perimeter):
+            start_index+=1  
 
+        internal = True
+        for point in self.perimeter:
+            if point in other_region.perimeter:
+                internal = False
+
+
+        # if we found a border on the perimeter, this is an external type merge
+        #if start_index!=len(self.perimeter):
+        #    internal = False
+                
         if not internal: #external merge!  
             # count the number of borders, find the "starting points" for the new enclaves and perimeter
             on_border = False   
@@ -61,9 +97,7 @@ class Region:
                     if on_border:
                         start_indices.append( (point+start_index)%len(self.perimeter)) 
                         on_border = False
-
-            loops = [glom( self.perimeter, other_region.perimeter, index ) for index in start_indices]
-            found = False
+            loops = [glom( self.perimeter, other_region.perimeter, ind ) for ind in start_indices]
             max_x = None
             which = None
             # the perimeter loop will, of course, have a greater extent in every direction. So we just find the loop which goes the furthest in x and know that's the perimeter
@@ -72,19 +106,22 @@ class Region:
                 for point in loop:
                     if max_x is None:
                         max_x = point.x
+                        which = loop
                     else:
                         if point.x>max_x:
-                            max_X = point.x
+                            max_x = point.x
                             which = loop
-            self.perimeter = which 
+            if which is None:
+                raise TypeError("Some bullshit has happened. Tell Ben because this shouldn't happen.")
+            self.perimeter = which
             for loop in loops:
                 if loop!=which:
-                    self.enclaves += loop
+                    self.enclaves += [ loop ]
 
         else:
             # need to find the enclave this other region is bordering 
             found_enclave = False
-            for enclave in self.enclave:
+            for enclave in self.enclaves:
                 start_index = 0
                 while enclave[start_index] not in other_region.perimeter:
                     start_index+= 1
@@ -96,7 +133,7 @@ class Region:
                     continue
                 
                 # if the new region borders two distinct enclaves, there needs to be overlap between the regions, and this method is broken
-                assert( not found_enclave )
+                #assert( not found_enclave )
                 found_enclave = True
                 
                 # same as before, we walk around 
@@ -114,7 +151,10 @@ class Region:
                 # that old enclave is split into multiple new enclaves (or even just one)
                 self.enclaves.pop( self.enclaves.index( enclave ) )
                 self.enclaves += [ glom( enclave, other_region.perimeter, index) for index in start_indices ] 
-
+            if not found_enclave:
+                # the target region doesn't border an enclave and it doesn't border the perimeter.
+                # we can't merge these 
+                raise RegionMergeError("Regions must share some border/enclave")
 
         # these are just added on in
         self.enclaves   += other_region.enclaves 
@@ -133,6 +173,14 @@ class Region:
         Why was this the hardest thing to write in all of MultiHex... 
         """
 
+        #TODO: Case where removing a hex splits the region into 2-3 smaller regions 
+        #           + such cases are distringuished by their perimeters having more than 1 border with the pop hex
+
+        if len(self.ids)==1:
+            if self.ids[0]==hex_id:
+                self.ids.pop(0)
+                self.perimeter = []
+
         which = None
         for each in range(len( self.ids )):
             if hex_id==self.ids[each]:
@@ -147,16 +195,26 @@ class Region:
         #    1. hex shares no border with either perimeter or any enclave: popped and made into enclave
         #    2. hex _only_ shares border with perimeter: glom perimeter to hex
         
-        this_hex = self.parent.catalog[ hex_id ]
+        #    3. hex borders perimeter multiple times. Popping hex will create multiple hexes
+
+        this_hex = self.parent.catalogue[ hex_id ]
         hex_perim = this_hex[::-1]
 
         # check perimeter
 
         outer_hex = False
+        n_borders = 0
+        on_border = False
         for point in self.perimeter:
             if point in hex_perim:
-                outer_hex = True
-                break
+                if not on_border:
+                    outer_hex = True
+                    n_borders+=1 
+            else:
+                if on_border:
+                    outer_hex = False
+        if n_borders>1:
+            raise RegionPopError("Can't pop a hex that would divide a region into several")
         
         enclave_start_points = []
         # check the enclaves
@@ -263,31 +321,44 @@ def glom( original, new, start_index):
     """
 
     new_perimeter = []
-    
-    index = start_inex 
+
+    index = start_index 
     while original[ index % len(original) ] not in new:
-        new_perimeter += original[ index % len(original) ]
+        new_perimeter += [original[ index % len(original) ]]
         index += 1
-
-    # returns index for start of border on "new" loop 
-    intersect_index = new.index( original[index % len(original)] )
-
-
-    while new[ index % len(new) ] not in original:
-        new_perimeter += new[index % len( new) ]
-        index += 1
-
-    intersect_index = original.index( new[index % len(new)])
     
-    index = intersect_index 
+    new_perimeter+= [ original[index % len(original)] ]
+    # returns index for start of border on "new" loop 
+    index = (new.index( original[index % len(original)] ) + 1) % len(new)
+
+    
+    while (new[ index % len(new) ] not in original): # and (new[(index+1)%len(new)] not in original):
+        new_perimeter += [new[index % len( new) ]]
+        index += 1
+    
+    new_perimeter+= [ new[index%len(new)] ]
+    try:
+        index = (original.index( new[index % len(new)] ) + 1)%len(original)
+    except ValueError as e:
+        print( original)
+        print( new)
+        print(e)
+        sys.exit()
+
     while (index % len(original) != start_index ):
-        new_perimeter += [ original[index % len(original)]]
-        index +=1 
+        new_perimeter += [ original[index % len(original)] ]
+        index +=1
+    
+
+    if new_perimeter == []:
+        raise Exception("Something terribly unexpected happened: {}, {}, {}".format(original, new, start_index))
 
     return( new_perimeter )
 
 
 
+# This is currently unused
+# it prototyped the merge algorithm, and has been replaced by a more generic approach 
 def merge(group_vertices, other_vertices, shift=False):
     """
     Takes two lists of points, each interpreted as a closed shape. The two need to share a border. 

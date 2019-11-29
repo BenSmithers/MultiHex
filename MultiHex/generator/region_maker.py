@@ -11,6 +11,7 @@ from math import exp, floor, sqrt, e, pi
 import random as rnd
 import os
 import json
+import sys
 
 """
 Uses some simple thresholds to determine what kind of Hex a given Hex is
@@ -88,9 +89,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     main_map.catalogue[ID].fill = colors.fores
         else:
             # within the tropics
-            if this_hex._rainfall_base < 0.3:
+            if this_hex._rainfall_base < 0.4:
                 main_map.catalogue[ID].fill = colors.savan
-            elif this_hex._rainfall_base < 0.8:
+            elif this_hex._rainfall_base < 0.6:
                 main_map.catalogue[ID].fill = colors.grass
             else:
                 main_map.catalogue[ID].fill = colors.rainf
@@ -102,4 +103,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     
 
 if __name__=='__main__':
-    generate('cont')
+    if len(sys.argv)>1:
+        generate( 'cont', sys.argv[1])
+    else:
+        generate('cont')

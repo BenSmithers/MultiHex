@@ -1,6 +1,7 @@
 from MultiHex.point import Point #fundamental point, allows vector algegbra
 from MultiHex.hex import Hex #your standard hexagon. Holds all the metadata
-from MultiHex.special_hexes import *
+from MultiHex.special_hexes import * #adds hex templates
+from MultiHex.features.region import Region, RegionMergeError 
 
 from PyQt5.QtCore import QPointF
 
@@ -80,11 +81,18 @@ class Hexmap:
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
     def register_new_region( self, target_region ):
+        # verify that the target region doesn't have any hexes already belonging to a registered region
+
+        for hex_id in target_region.ids:
+            if hex_id in self.id_map:
+                raise KeyError("Region contains hex {} belonging to other region: {}".format(hex_id, self.id_map[hex_id]))
+
         # first settle on a new rid - want the smallest, unused rid 
         new_rid = 1
         while new_rid in self.rid_catalogue:
             new_rid += 1
         
+        target_region.set_color( new_rid )
         # register the region in the hexmap's region catalogue 
         self.rid_catalogue[ new_rid ] = target_region
         # register the connections between the new region's hexes and the new rid
@@ -119,7 +127,7 @@ class Hexmap:
         # the hex does not belong to a catalog
         # add the hex to the region and update the id map
         self.rid_catalogue[ rID ].add_hex_to_self( hex_id )
-        self.id_map[ hex_id ] = rID 
+        self.id_map[ hex_id ] = rID
 
     def remove_from_region( self, hex_id ):
         """
