@@ -44,12 +44,14 @@ class editor_gui(QMainWindow):
         self.ui.setupUi(self)
         
         # writes hexes on the screen
-        self.writer_control = hex_brush(self)
-        self.region_control = region_brush(self)
 
         # manages the writer and selector controls. This catches clicky-events on the graphicsView
         self.scene = clicker_control( self.ui.graphicsView, self )
         # start with the hex as the currently used tool
+        self.writer_control = hex_brush(self)
+        self.region_control = region_brush(self)
+       
+        
         self.scene._active = self.writer_control
 
         # Allow the graphics view to follow the mouse when it isn't being clicked, and associate the clicker control with the ui 
@@ -146,21 +148,13 @@ class editor_gui(QMainWindow):
         self.ui.graphicsView.update()
         self.main_map = load_map( file_name )
         self.file_name = file_name 
-
-        newpen = QtGui.QPen()
-        newbrush=QtGui.QBrush()
-        newbrush.setStyle(1)
-        newpen.setWidth( self.writer_control.pen_size )
-        newpen.setStyle( self.writer_control.pen_style )
-
-        for ID in self.main_map.catalogue:
-            dahex = self.main_map.catalogue[ID]
-            newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
-            newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
-            self.writer_control.drawn_hexes[ID] = self.scene.addPolygon( QtGui.QPolygonF(self.main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
+        
+        print("redrawing")
+        for ID in self.main_map.catalogue: 
+            self.writer_control.redraw_hex( ID )
         
         for rid in self.main_map.rid_catalogue:
-            self.ui.region_control.redraw_region( rid )
+            self.region_control.redraw_region( rid )
 
 # this stuff is commented out since this script is not meant to be called directly! 
 

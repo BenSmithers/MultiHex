@@ -29,10 +29,10 @@ class ridge_gui(QMainWindow):
         self.main_map = Hexmap()
         
         # give this a hex brush and make it paint Mountains
+        self.scene = clicker_control( self.ui.graphicsView, self )
+
         self.writer_control = hex_brush(self)
         self.writer_control._brush_type = Ridge_Hex
-
-        self.scene = clicker_control( self.ui.graphicsView, self )
 
         self.scene._active = self.writer_control
 

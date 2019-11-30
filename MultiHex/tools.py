@@ -3,8 +3,21 @@ from MultiHex.special_hexes import *
 from MultiHex.features.region import Region, RegionMergeError, RegionPopError
 
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect, QGraphicsItem, QGraphicsPolygonItem
 
+class QGraphicsLayer(QGraphicsItem):
+    """
+    Presently unused. Part of a failed experiment 
+    """
+    def __init__(self, parent=None):
+        super(QGraphicsLayer, self).__init__()
+
+#        QGraphicsItem.__init__(self, parent)
+    def boundingRect(self):
+        return( QtCore.QRectF( 0,0,6000,3000) )
+        pass
+    def paint(self, one, two, three):
+        pass
 
 class basic_tool:
     """
@@ -162,6 +175,7 @@ class region_brush(basic_tool):
 
             self.QBrush.setStyle(0)
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
+            self._outline_obj.setZValue( 4 )
 
     def reg_add(self, event):
         # set up the pen and brush to draw a region
@@ -274,6 +288,7 @@ class region_brush(basic_tool):
             path = path.subtracted( enc_path )
         
         self._drawn_regions[reg_id] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush)
+        self._drawn_regions[reg_id].setZValue(2)
         self.redraw_region_text( reg_id )
 
     def redraw_region_text( self, rid ):
@@ -297,6 +312,7 @@ class region_brush(basic_tool):
         new_color = QtGui.QColor( 0.5*(255+reg_obj.color[0]), 0.5*(255+reg_obj.color[1]), 0.5*(255+reg_obj.color[0]))
         self._drawn_names[rid].setDefaultTextColor( new_color )
         self._drawn_names[rid].setGraphicsEffect( drop )
+        self._drawn_names[rid].setZValue(10)
     
     def drop(self):
         if self._outline_obj is not None:
@@ -328,7 +344,12 @@ class hex_brush(basic_tool):
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
 
-    # so clicked or held, it's getting activated! 
+        # Part of a failed experiment. Leaving in case I pick it up again
+        #self.layer = QGraphicsLayer()
+        #self.layer.show()
+        #self.layer.setVisible(True)
+        #self.parent.scene.addItem( self.layer )
+
     def activate(self, event):
         if self.writing:
             self.write(event)
@@ -374,7 +395,8 @@ class hex_brush(basic_tool):
 
 
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
-
+            self._outline_obj.setZValue(4)
+    
     def erase(self, event):
         """
         First, it tries removing the picture on the canvas, and then unregistering that point's ID from the hex catalog
@@ -408,8 +430,6 @@ class hex_brush(basic_tool):
         Same story for larger brush size. Try building and registering hexes for all the IDs neighboring the central ID 
 
         """
-        self.QPen.setWidth(self.pen_size)
-        self.QPen.setStyle(self.pen_style)
         place = Point( event.scenePos().x() , event.scenePos().y() )
         # get the nearest relevant ID
         loc_id = self.parent.main_map.get_id_from_point( place )
@@ -419,16 +439,12 @@ class hex_brush(basic_tool):
         # create a hex at that point, with a radius given by the current drawscale 
         new_hex= self._brush_type( new_hex_center, self.parent.main_map._drawscale )
         
-        # get the pen ready (does the outlines)
-        self.QPen.setColor(QtGui.QColor( new_hex.outline[0], new_hex.outline[1], new_hex.outline[2] ))
-        self.QBrush.setStyle(1)
-
+        
         # register that hex in the hexmap 
         try:
             self.parent.main_map.register_hex( new_hex, loc_id )
-            self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2] ))
-            self.drawn_hexes[loc_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
-        except NameError:
+            self.redraw_hex( loc_id )
+        except NameError: # error registering hex. Das ok 
             pass
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors( loc_id )
@@ -437,10 +453,47 @@ class hex_brush(basic_tool):
                 new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
                 try:
                     self.parent.main_map.register_hex( new_hex, neighbor )            
-                    self.QBrush.setColor( QtGui.QColor( new_hex.fill[0], new_hex.fill[1], new_hex.fill[2]))
-                    self.drawn_hexes[neighbor] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( new_hex._vertices )), pen=self.QPen, brush=self.QBrush)
+                    self.redraw_hex( neighbor )
                 except NameError:
                     pass
+    def redraw_hex(self, hex_id):
+        try:
+            # if this hex has been drawn, redraw it! 
+            if hex_id in self.drawn_hexes:
+                self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
+
+            # get the pen ready (does the outlines)
+            # may raise key error 
+            this_hex = self.parent.main_map.catalogue[ hex_id ]
+            self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
+            self.QBrush.setStyle(1)
+ 
+            self.QPen.setWidth(self.pen_size)
+            self.QPen.setStyle(self.pen_style)
+
+            self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
+            self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
+            self.drawn_hexes[hex_id].setZValue(1)
+
+            # Part of a failed experiment
+            
+            #path = QtGui.QPainterPath()
+            #this_poly = QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex._vertices ))
+#            path.addPolygon( this_poly )
+
+            #self.drawn_hexes[hex_id] = self.layer.addPath( path, self.QPen, self.QBrush)
+
+            #self.drawn_hexes[hex_id] = QGraphicsPolygonItem(this_poly , self.layer )
+            #self.drawn_hexes[hex_id].setPen( self.QPen )
+            #self.drawn_hexes[hex_id].setBrush(self.QBrush)
+            #self.layer.addItem( self.drawn_hexes[hex_id] )
+        except KeyError: #happens if told to redraw a hex that isn't there 
+            #print("key error")
+            pass
+
+
+
+
 
     def select(self,event):
         self.QBrush.setStyle(0)

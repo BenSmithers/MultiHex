@@ -25,10 +25,10 @@ class region_gui(QMainWindow):
         self.ui.setupUi(self)
 
         self.main_map = Hexmap()
+        self.scene = clicker_control( self.ui.graphicsView, self )
         self.writer_control = hex_brush(self) 
         self.region_control = region_brush(self)
 
-        self.scene = clicker_control( self.ui.graphicsView, self )
 
         self.scene._active = self.region_control 
 
