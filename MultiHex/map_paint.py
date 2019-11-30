@@ -11,7 +11,7 @@ from MultiHex.tools import *
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
 
-from MultiHex.guis.editor import Ui_MainWindow
+from MultiHex.guis.map_editor_gui import editor_gui_window
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
@@ -40,12 +40,12 @@ class editor_gui(QMainWindow):
 
     def __init__(self,parent=None):
         QWidget.__init__(self,parent)
-        self.ui = Ui_MainWindow()
+        self.ui = editor_gui_window()
         self.ui.setupUi(self)
         
         # writes hexes on the screen
         self.writer_control = hex_brush(self)
-        self.selector_control = selector(self)
+        self.region_control = region_brush(self)
 
         # manages the writer and selector controls. This catches clicky-events on the graphicsView
         self.scene = clicker_control( self.ui.graphicsView, self )
@@ -56,31 +56,37 @@ class editor_gui(QMainWindow):
         self.ui.graphicsView.setMouseTracking(True)
         self.ui.graphicsView.setScene( self.scene )
 
-        self.ui.brush.clicked.connect( self.scene.to_brush )
-        self.ui.hand.clicked.connect( self.scene.to_select )
+        self.ui.hexBrush.clicked.connect( self.scene.to_hex )
+        self.ui.radioButton.clicked.connect( self.scene.to_region)
+
+        #button doesn't exist anymore
+#        self.ui.hand.clicked.connect( self.scene.to_select )
 
         # connect all the buttons to the writer, selector, and some ui functions
         self.ui.pushButton_5.clicked.connect( self.go_away )
         self.ui.pushButton_7.clicked.connect( self.writer_control.switch_desert )
         self.ui.pushButton_8.clicked.connect( self.writer_control.switch_arctic )
         self.ui.pushButton_9.clicked.connect( self.writer_control.switch_mountain )
+        self.ui.Ridge.clicked.connect( self.writer_control.switch_ridge)
         self.ui.Forest.clicked.connect( self.writer_control.switch_forest )
         self.ui.Ocean.clicked.connect( self.writer_control.switch_ocean )
         self.ui.Grassland.clicked.connect( self.writer_control.switch_grass )
-        self.ui.brushTottle.clicked.connect( self.writer_control.toggle_brush_size )
-        self.ui.write_erase.clicked.connect( self.writer_control.toggle_write )
+        self.ui.brushToggle.clicked.connect( self.brushToggle_clicked)
+        #self.ui.write_erase.clicked.connect( self.writer_control.toggle_write )
         
         # TODO fix the sliders
         #QtCore.QObject.connect( self.ui.rainfall, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.rainfall)
         #QtCore.QObject.connect( self.ui.temperature, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.temperature)
         #QtCore.QObject.connect( self.ui.biodiversity, QtCore.SIGNAL('valueChanged(int)'), self.selector_control.biodiversity)
         
-        
+        self.ui.hexBrush.setChecked(True)
+        self.ui.brushSize.valueChanged.connect( self.brushSizeChanged )
+        self.ui.RegButton.clicked.connect( self.set_region_name ) 
         self.ui.pushButton_5.clicked.connect( self.go_away )
         self.ui.pushButton_4.clicked.connect( self.save_map )
         self.ui.pushButton_6.clicked.connect( self.save_as )
-        self.ui.brush.setChecked(True)
-        
+        self.ui.brushToggle.setChecked(True)
+         
         
         self.file_name = ''
         self.main_map = Hexmap()
@@ -91,11 +97,27 @@ class editor_gui(QMainWindow):
         # need to clear the canvas too!
         self.hide()
         
-        self.selector_control.selected_id = None
-        self.selector_control.selected_out = None
         self.writer_control.drawn_hexes = {}
         self.writer_control._outline_obj = None
         self.scene._held = None
+
+    def set_region_name(self):
+        if self.region_control.selected_rid is None:
+            return
+        else:
+            self.main_map.rid_catalogue[self.region_control.selected_rid].name = self.ui.RegEdit.text()
+            print("Setting Region Name to {}".format(self.ui.RegEdit.text()))
+
+        self.region_control.redraw_region_text( self.region_control.selected_rid )
+
+    def brushSizeChanged( self ):
+        # new val is self.ui.brushSize.value()
+        self.writer_control.set_brush_size( self.ui.brushSize.value() )
+        self.region_control.set_brush_size( self.ui.brushSize.value() )
+
+    def brushToggle_clicked(self, state):
+        self.writer_control.toggle_mode( state )
+        self.region_control.toggle_mode( state )
 
     def save_map(self):
         save_map( self.main_map, self.file_name)
@@ -131,7 +153,9 @@ class editor_gui(QMainWindow):
             newpen.setColor(QtGui.QColor( dahex.outline[0], dahex.outline[1], dahex.outline[2]))
             newbrush.setColor(QtGui.QColor( dahex.fill[0], dahex.fill[1], dahex.fill[2] ))
             self.writer_control.drawn_hexes[ID] = self.scene.addPolygon( QtGui.QPolygonF(self.main_map.points_to_draw(dahex._vertices )), pen = newpen, brush= newbrush )
-
+        
+        for rid in self.main_map.rid_catalogue:
+            self.ui.region_control.redraw_region( rid )
 
 # this stuff is commented out since this script is not meant to be called directly! 
 

@@ -30,7 +30,7 @@ class ridge_gui(QMainWindow):
         
         # give this a hex brush and make it paint Mountains
         self.writer_control = hex_brush(self)
-        self.writer_control._brush_type = Mountain_Hex
+        self.writer_control._brush_type = Ridge_Hex
 
         self.scene = clicker_control( self.ui.graphicsView, self )
 
@@ -40,7 +40,7 @@ class ridge_gui(QMainWindow):
         self.ui.graphicsView.setScene( self.scene )
 
         self.ui.pushButton_2.clicked.connect( self.writer_control.toggle_brush_size ) 
-        self.ui.pushButton.clicked.connect( self.writer_control.toggle_write) 
+        self.ui.pushButton.clicked.connect( self.writer_control.toggle_mode) 
         self.ui.pushButton_4.clicked.connect( self.save_continue ) 
         self.ui.pushButton_3.clicked.connect( self.go_away ) #quit
 
