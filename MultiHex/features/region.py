@@ -3,6 +3,7 @@ try:
 except ImportError:
     from math import cos, sin
 
+from MultiHex.point import Point
 import sys
 
 """
@@ -44,9 +45,38 @@ class Region:
         self.color = (0, 0, 0)
         
         self.parent = parent
-        
         # may throw KeyError! That's okay, should be handled downstream 
         self.perimeter = self.parent.catalogue[hex_id]._vertices
+         
+    def get_center_size(self):
+        min_x = None
+        max_x = None 
+        min_y = None
+        max_y = None
+
+        # average all of the IDs positions to get an average point 
+        center = Point(0.0, 0.0)
+        for hex_id in self.ids:
+            this_hex = self.parent.catalogue[hex_id]
+            center += this_hex._center
+            if min_x == None:
+                min_y = this_hex._center.y
+                max_y = this_hex._center.y
+                min_x = this_hex._center.x
+                max_x = this_hex._center.x
+            else:
+                if min_x>this_hex._center.x:
+                    min_x=this_hex._center.x
+                if max_x<this_hex._center.x:
+                    max_x=this_hex._center.x
+                if min_y>this_hex._center.y:
+                    min_y=this_hex._center.y
+                if max_y<this_hex._center.y:
+                    max_y=this_hex._center.y
+
+        extent = Point( max_x-min_x, max_y-min_y )
+        center = center*(1.0/len(self.ids))
+        return( center, extent )
 
     def set_color(self, number):
         # not hard-coding the number of colors in case I add more
@@ -184,9 +214,10 @@ class Region:
         which = None
         for each in range(len( self.ids )):
             if hex_id==self.ids[each]:
-                break
                 which=each
+                break
         if which is None:
+            print("Looking for {}, but only have {}".format( hex_id, self.ids))
             raise ValueError("id not in region")
        
         self.ids.pop( which )
@@ -195,24 +226,30 @@ class Region:
         #    1. hex shares no border with either perimeter or any enclave: popped and made into enclave
         #    2. hex _only_ shares border with perimeter: glom perimeter to hex
         
-        #    3. hex borders perimeter multiple times. Popping hex will create multiple hexes
+        #    3. hex borders perimeter multiple times. Popping hex will create multiple regions. We forbid this possibility... 
 
         this_hex = self.parent.catalogue[ hex_id ]
-        hex_perim = this_hex[::-1]
+        hex_perim = this_hex._vertices[::-1]
 
         # check perimeter
 
         outer_hex = False
         n_borders = 0
         on_border = False
-        for point in self.perimeter:
-            if point in hex_perim:
+
+        start_index = 0
+        while self.perimeter[ start_index ] in hex_perim:
+            start_index+=1
+
+        for point in range(len(self.perimeter)):
+            if self.perimeter[(point+start_index)%len(self.perimeter)] in hex_perim:
+                outer_hex = True
                 if not on_border:
-                    outer_hex = True
+                    on_border = True
                     n_borders+=1 
             else:
                 if on_border:
-                    outer_hex = False
+                    on_border = False
         if n_borders>1:
             raise RegionPopError("Can't pop a hex that would divide a region into several")
         
@@ -241,9 +278,10 @@ class Region:
             while self.perimeter[index % len(self.perimeter)] not in hex_perim:
                 new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
                 index += 1
+
             new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
 
-            hex_index = hex_perim.index( self.perimeter[index]%len(self.perimeter) ) + 1 
+            hex_index = (hex_perim.index( self.perimeter[index %len(self.perimeter)] ) + 1 )%len(hex_perim)
 
             while hex_perim[hex_index % len(hex_perim)] not in self.perimeter:
                 
@@ -252,12 +290,13 @@ class Region:
                 for possibility in enclave_start_points:
                     if possibility[0]==(hex_index % len(hex_perim)):
                         new_perim.append( hex_perim[possibility[0]])
-                        enclave_counter = possibility[1].index( hex_perim[possibility[0]] ) + 1
+                        enclave_counter = (possibility[1].index( hex_perim[possibility[0]] ) + 1)%len(possibility[1])
 
                         while possibility[1][ enclave_counter % len(possibility[1]) ] not in hex_perim:
                             new_perim.append( possibility[1][ enclave_counter % len(possibility[1])] )
                             enclave_counter += 1
                         
+
                         hex_index = hex_perim.index( possibility[1][ enclave_counter % len(possibility[1])] )
                         loop_complete = True
                         break
@@ -275,36 +314,42 @@ class Region:
                 self.enclaves.pop( self.enclaves.index( possibility[1] ) )
             
         else:
-            # internal placement. Perimeter will remain unchanged! 
-            # will be adding an enclave (may merge 2-3 enclaves into 1)
-            # already have all of those neighbor enclaves! 
-            # popping internal hex. This will probably be a lot like the other case 
-            hex_start = 0
-            while( hex_perim[hex_start % len(hex_perim)] not in [part[0] for part in enclave_start_points] ):
-                hex_start += 1
-            
-            new_enclave = []
-            counter = hex_start
-            while True:
-                loop_complete = False
-                for part in enclave_start_points:
+            if len(enclave_start_points) == 0:
+                self.enclaves.append( hex_perim )
+            else: 
 
-                    if ( counter % len(hex_perim)) == part[0]:
-                        new_enclave.append( hex_perim[ part[0] ] )
-                        enclave_counter = part[1].index( hex_perim[part[0]] ) + 1
-                        while part[1][ enclave_counter % len( part[1] )] not in hex_perim:
-                            new_enclave.append( part[1][enclave_counter % len(part[1])]) 
+                # internal placement. Perimeter will remain unchanged! 
+                # will be adding an enclave (may merge 2-3 enclaves into 1)
+                # already have all of those neighbor enclaves! 
+                # popping internal hex. This will probably be a lot like the other case 
+                hex_start = 0
+                while( (hex_start % len(hex_perim)) not in [part[0] for part in enclave_start_points] ):
+                    hex_start += 1
+                new_enclave = []
+                counter = hex_start % len(hex_perim)
+                while True:
+                    loop_complete = False
+                    for part in enclave_start_points:
 
-                        counter = hex_perim.index( part[1][ enclave_counter % len( part[1] )] )
-                
-                        new_enclave.append( hex_perim[ (hex_start + counter) % len(hex_perim) ] )
-                        loop_complete = True
-                if not loop_complete:
-                    counter += 1
-                    new_enclave.append( hex_perim[ counter % len(hex_perim)])
-                if (counter%len(hex_perim))==hex_start:
-                    break
-                
+                        if ( counter % len(hex_perim)) == part[0]:
+                            new_enclave.append( hex_perim[ part[0] ] )
+                            enclave_counter = ( part[1].index( hex_perim[part[0]] ) + 1 )%len(part[1])
+                            while part[1][ enclave_counter % len( part[1] )] not in hex_perim:
+                                new_enclave.append( part[1][enclave_counter % len(part[1])]) 
+                                enclave_counter += 1
+
+                            
+                            new_enclave.append( part[1][enclave_counter%len(part[1])] )
+                            counter = (hex_perim.index( part[1][ enclave_counter % len( part[1] )] ) + 1) %len(hex_perim)
+                            loop_complete = True
+                            break
+                    
+                    if not loop_complete:
+                        new_enclave.append( hex_perim[ counter % len(hex_perim)])
+                        counter += 1
+                    if (counter%len(hex_perim))==hex_start:
+                        break
+                    
                 # each of the old enclaves that we found need tobe popped
                 for part in enclave_start_points:
                     self.enclaves.pop( self.enclaves.index( part[1] ))
