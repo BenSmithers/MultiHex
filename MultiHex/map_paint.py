@@ -97,6 +97,11 @@ class editor_gui(QMainWindow):
         # need to clear the canvas too!
         self.hide()
         
+        self.region_control._drawn_names = {}
+        self.region_control._drawn_regions = {}
+        self.region_control._outline_obj = None
+        self.selected_rid = None
+
         self.writer_control.drawn_hexes = {}
         self.writer_control._outline_obj = None
         self.scene._held = None

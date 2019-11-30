@@ -3,7 +3,7 @@ from MultiHex.special_hexes import *
 from MultiHex.features.region import Region, RegionMergeError, RegionPopError
 
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGraphicsScene
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 
 
 class basic_tool:
@@ -70,6 +70,7 @@ class region_brush(basic_tool):
         self.QBrush.setStyle(6)
         self.QPen.setWidth(3)
 
+
         self._outline_obj = None
         self._drawn_regions = {} # map from rid to drawn region
         self._drawn_names = {}
@@ -78,9 +79,17 @@ class region_brush(basic_tool):
         self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 170))
         self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
     def set_brush_size( self, size ):
-        assert( type(size)==int )
+        if not type(size)==int: 
+            raise TypeError("Can't set brush size to type {}, expected {}".format(type(size), int))
         # not actually doing anything...
     
+        if size==1:
+            self._brush_size = 1
+        elif size==2:
+            self._brush_size= 1
+        else:
+            raise ValueError("Can't set brush size to {}".format(size))
+
     def select(self, event):
         here = Point( event.scenePos().x(), event.scenePos().y())        
         this_id = self.parent.main_map.get_id_from_point( here )
@@ -121,7 +130,7 @@ class region_brush(basic_tool):
         self.QPen.setWidth(5)
         self.QPen.setStyle(1)
 
-        self._brush_size = 1
+#        self._brush_size = 1
 
         if self.parent.main_map._outline == center_id:
             # the mouse hasn't moved, skip this
@@ -175,6 +184,11 @@ class region_brush(basic_tool):
                 self.selected_rid = self.parent.main_map.register_new_region( new_reg )
                 
                 # self.parent.main_map.id_map( loc_id )
+                
+                if self._brush_size == 2:
+                    # build a new region around this one
+                    for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
+                        self.parent.main_map.add_to_region( self.selected_rid, ID )
 
                 self.redraw_region( self.selected_rid )
             else:
@@ -182,23 +196,40 @@ class region_brush(basic_tool):
                 # set this hexes' region to the active one 
                 self.selected_rid = self.parent.main_map.id_map[ loc_id ]
         else:
-            try:
-                # try adding it
-                # if it can't, it raises a RegionMergeError exception
-                other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id )
-                
-                if (other_rid!=-1) and (other_rid is not None): 
-                    # add_to_region returns an rid if it removes a hex from another region.
-                    # it returns -1, it didn't remove anything from anywhere 
-                    self.redraw_region( other_rid )
-                self.redraw_region( self.selected_rid )
-            except RegionMergeError:
+            if self._brush_size==1:
                 try:
-                    # so let's try setting the region that's there as the active region
-                    self.selected_rid = self.parent.main_map.id_map[ loc_id ]
-                except KeyError:
-                    # if this hex doesn't belong to a region, do nothing
+                    # try adding it
+                    # if it can't, it raises a RegionMergeError exception
+                    other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id )
+                    
+                    if (other_rid!=-1) and (other_rid is not None): 
+                        # add_to_region returns an rid if it removes a hex from another region.
+                        # it returns -1, it didn't remove anything from anywhere 
+                        self.redraw_region( other_rid )
+                    self.redraw_region( self.selected_rid )
+                except RegionMergeError:
                     pass
+                except RegionPopError:
+                    pass
+            elif self._brush_size==2:
+                if loc_id not in self.parent.main_map.id_map:
+                    # create and register a region
+                    temp_region = Region( loc_id , self.parent.main_map )
+                    new_rid = self.parent.main_map.register_new_region( temp_region )
+
+                    for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
+                        try:
+                            self.parent.main_map.add_to_region( new_rid, ID )
+                            print("one failure")
+                        except (RegionMergeError, RegionPopError):
+                            pass
+                    # now merge the regions
+                    try:
+                        self.parent.main_map.merge_regions( self.selected_rid, new_rid )
+                    except (RegionMergeError, RegionPopError):
+                        for ID in temp_region.ids:
+                            print("Failed here")
+                            self.parent.main_map.remove_from_region( ID )
 
     def reg_remove(self, event):
         place   = Point( event.scenePos().x(), event.scenePos().y() )
@@ -254,6 +285,8 @@ class region_brush(basic_tool):
         if rid in self._drawn_names:
             self.parent.scene.removeItem( self._drawn_names[ rid ] )
         
+        drop = QGraphicsDropShadowEffect()
+        drop.setOffset(5)
         center, extent = reg_obj.get_center_size()
         font = QtGui.QFont("Fantasy")
         font_size = int(extent.magnitude / len(reg_obj.name))
@@ -261,8 +294,9 @@ class region_brush(basic_tool):
 
         self._drawn_names[rid] = self.parent.scene.addText( reg_obj.name, font )
         self._drawn_names[rid].setPos( center.x - 0.5*extent.x, center.y )
-
-
+        new_color = QtGui.QColor( 0.5*(255+reg_obj.color[0]), 0.5*(255+reg_obj.color[1]), 0.5*(255+reg_obj.color[0]))
+        self._drawn_names[rid].setDefaultTextColor( new_color )
+        self._drawn_names[rid].setGraphicsEffect( drop )
     
     def drop(self):
         if self._outline_obj is not None:

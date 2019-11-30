@@ -1,7 +1,7 @@
 from MultiHex.point import Point #fundamental point, allows vector algegbra
 from MultiHex.hex import Hex #your standard hexagon. Holds all the metadata
 from MultiHex.special_hexes import * #adds hex templates
-from MultiHex.features.region import Region, RegionMergeError 
+from MultiHex.features.region import Region, RegionMergeError, RegionPopError 
 
 from PyQt5.QtCore import QPointF
 
@@ -123,8 +123,11 @@ class Hexmap:
             if self.id_map[hex_id]==rID:
                 return # nothing to do
             else:
-                other_rid = self.id_map[hex_id]
-                self.remove_from_region( hex_id )
+                raise RegionPopError("Can't do that.")
+                
+                # removing this functionality. Lead to unexpected behavior where we popped a hex from another region regardless of whether or not it was possible to add anything to this region! 
+                #other_rid = self.id_map[hex_id]
+                #self.remove_from_region( hex_id )
 
         # the hex does not belong to a catalog
         # add the hex to the region and update the id map
@@ -166,14 +169,14 @@ class Hexmap:
             raise KeyError ("Region {} not recognized".format(rID_main))
         if (rID_loser not in self.rid_catalogue):
             raise KeyError("Region {} not recognized".format(rID_loser))
- 
-        # update the entries in the id_map to point to the new region
-        for hex_id in self.rid_catalogue[rID_loser].ids:
-            self.id_map[ hex_id ] = rID_main
-       
+        
         # merge second region into first one
         self.rid_catalogue[ rID_main ].merge_with_region( self.rid_catalogue[rID_loser] )
         
+        # update the entries in the id_map to point to the new region
+        for hex_id in self.rid_catalogue[rID_loser].ids:
+            self.id_map[ hex_id ] = rID_main
+
         # delete the old region
         del self.rid_catalogue[ rID_loser ]
 

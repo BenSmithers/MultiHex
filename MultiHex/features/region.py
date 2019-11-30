@@ -220,7 +220,7 @@ class Region:
             print("Looking for {}, but only have {}".format( hex_id, self.ids))
             raise ValueError("id not in region")
        
-        self.ids.pop( which )
+
         
         # countable number of cases
         #    1. hex shares no border with either perimeter or any enclave: popped and made into enclave
@@ -357,6 +357,7 @@ class Region:
                 self.enclaves.append( new_enclave )
 
         
+        self.ids.pop( which )
 
 def glom( original, new, start_index):
     """
