@@ -11,7 +11,7 @@ default_p = Point(0.0,0.0)
 
 class hcolor:
     def __init__(self):
-        self.ocean = (91,201,192)
+        self.ocean = (100,173,209)
         self.grass = (149,207,68)
         self.fores = (36, 94, 25)
         self.arcti = (171,224,224)
@@ -46,7 +46,7 @@ def Forest_Hex(center,radius):
 def Mountain_Hex(center,radius):
     temp = Hex( center, radius )
     temp.fill = colors.mount
-    temp.genkey = '11000000'
+    temp.genkey = '01000000'
     return(temp)
 
 def Arctic_Hex(center,radius):
@@ -67,5 +67,10 @@ def Desert_Hex(center,radius):
     temp._is_land          = True
     return(temp)
 
+def Ridge_Hex(center, radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.ridge
+    temp.genkey = '11000000'
+    return(temp)
 
 

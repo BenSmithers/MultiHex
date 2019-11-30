@@ -117,17 +117,21 @@ class Hexmap:
         if hex_id not in self.catalogue:
             raise KeyError("Hex id no. {} not recognized.".format( hex_id ))
 
+        other_rid = -1
         # If the hex is already in a region, remove it from that region 
         if hex_id in self.id_map:
             if self.id_map[hex_id]==rID:
                 return # nothing to do
             else:
+                other_rid = self.id_map[hex_id]
                 self.remove_from_region( hex_id )
 
         # the hex does not belong to a catalog
         # add the hex to the region and update the id map
         self.rid_catalogue[ rID ].add_hex_to_self( hex_id )
         self.id_map[ hex_id ] = rID
+
+        return(other_rid)
 
     def remove_from_region( self, hex_id ):
         """
@@ -140,10 +144,10 @@ class Hexmap:
             raise KeyError("Hex no. {} not registered".format(hex_id))
         
         # update the region extents 
-        self.id_map[hex_id].pop_hexid_from_self( hex_id )
+        self.rid_catalogue[ self.id_map[hex_id] ].pop_hexid_from_self( hex_id )
         
         # check if region still has size, if not, delete the region
-        if len(self.id_map[hex_id].ids)==0:
+        if len(self.rid_catalogue[ self.id_map[hex_id] ].ids)==0:
             del self.rid_catalogue[ self.id_map[hex_id] ]
 
         # delete the hexes' association to the now non-existent region
@@ -191,7 +195,12 @@ class Hexmap:
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
         if new_id in self.catalogue:
-            raise NameError("A hex with ID {} is already registered")
+            temp_altitude = self.catalogue[new_id]._altitude_base
+            temp_temp     = self.catalogue[new_id]._temperature_base
+            self.catalogue[new_id] = target_hex
+            self.catalogue[new_id]._altitude_base = temp_altitude
+            self.catalogue[new_id]._temperature_base = temp_temp
+            self.catalogue[new_id].rescale_color()
         else:
             self.catalogue[new_id] = target_hex
     
