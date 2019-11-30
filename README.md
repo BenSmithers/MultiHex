@@ -71,21 +71,23 @@ Turn the clock forward accordingly when travelling.
 An editor for non-geographical features in the world
 
 * Place and edit elements of civilization like cities, towns, and roads. 
-Define regions belonging to civilizations 
+
+* Region definitions will allow the display of kingdom borders and names. 
 
 * Add points of interest to the hexes.
 
 * Insert civilizaitons to breath life into the new world. 
 
+* Incorporate civilization generation into world generation? 
+
 ## World Generation
 
 Improvements and additions to the world generation
 
-* Gui for modifying world generation parameters. Currently the world gen params are stored in the `config.json` file in the generator folder; this is not ideal. 
+* Use region backend to define geographical regions like deserts, forests, grasslands, and mountain regions. 
+Region names will be superimposed over map. 
 
-* region definitions. 
-Regions will be collections of like hexes, which will share some features and an identifying name. 
-Drawing the regions will require breaking down a region and its enclaves into triangles, and drawing those triangles. _(in progress)_
+* Gui for modifying world generation parameters. Currently the world gen params are stored in the `config.json` file in the generator folder; this is not ideal. 
 
 * rivers, lakes.
 Rivers will flow between hexes to areas of lower altitude. Rivers eventually reach the ocean, a lake, or dry up. _(in progress)_
@@ -97,3 +99,15 @@ Rivers will flow between hexes to areas of lower altitude. Rivers eventually rea
 * hex feature-dependent color.
 At the moment hex color is just ridge and rainfall dependent. 
 This is subject to change. 
+
+## Miscellaneous
+
+* region definitions. 
+Regions are partially implemented in a generic form, and currently they can only be added to. 
+Enclaves in regions are fully supported! You cannot, however, remove a hex from a region such that it splits into two+ regions. _(partially implemented!)_
+
+* Use Region backend to allow for arbitrarily large (or shaped) brushes when drawing land or regions
+
+* Efficiently sized save files.
+Save only the minimum necessary information necessary to recreate a hexmap.
+Will use an intermediate class instance from which to pickle and two functions for creating one from another. _(low priority)_
