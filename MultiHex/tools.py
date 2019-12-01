@@ -89,6 +89,20 @@ class region_brush(basic_tool):
         self._drawn_names = {}
 
     def _set_color(self, color):
+        """
+        Sets the brush and pen to a specified color. The brush is only partially opaque 
+
+        @param color    - the specified color. Needs to be an length-3 indexable with integer entries >0 and < 255
+        """
+        if len(color)<3:
+            raise ValueError("")
+        for entry in color:
+            if type(entry)!=int:
+                raise TypeError("For {} in {}, expected type {} but got {}".format(entry, color, int, type(entry)))
+
+            if entry<0 or entry>255:
+                raise ValueError("Entry {} in {} should be valued between 0 and 255".format(entry, color))
+
         self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 170))
         self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
     def set_brush_size( self, size ):
@@ -99,11 +113,14 @@ class region_brush(basic_tool):
         if size==1:
             self._brush_size = 1
         elif size==2:
-            self._brush_size= 1
+            self._brush_size= 2
         else:
             raise ValueError("Can't set brush size to {}".format(size))
 
     def select(self, event):
+        """
+        Selects the region under the cursor. If no region is there, deselect whatever region is active 
+        """
         here = Point( event.scenePos().x(), event.scenePos().y())        
         this_id = self.parent.main_map.get_id_from_point( here )
         
@@ -120,16 +137,25 @@ class region_brush(basic_tool):
         self.activate( event )
 
     def activate(self, event):
+        """
+        Right click 
+        """
         if self._writing:
             self.reg_add(event)
         else:
             self.reg_remove(event)
     def toggle_mode(self, force=None):
+        """
+        Switches brush sizes, the region remover only works with brush size 1, so... force the brush size back to 1. 
+        """
         if (force is not None) and (type(force)==bool):
             self._writing = force
+            if force==False:
+                self._brush_size = 1
         else:
             if self._writing:
                 self._writing = False
+                self._brush_size = 1
             else:
                 self._writing = True
     def move(self, event):
@@ -178,6 +204,9 @@ class region_brush(basic_tool):
             self._outline_obj.setZValue( 4 )
 
     def reg_add(self, event):
+        """
+        Add to a region. If the brush size is 1, it just tries to add that hex to the active region. If there's no active region, it creates a region there. If the brush size is 2 it makes a temporary region around the cursor and merges the surrounding hexes with the temp region. Then it merges the temp region and active region together. 
+        """
         # set up the pen and brush to draw a region
         
         place = Point( event.scenePos().x() , event.scenePos().y() )
@@ -226,6 +255,8 @@ class region_brush(basic_tool):
                 except RegionPopError:
                     pass
             elif self._brush_size==2:
+                # This seems to cause some instability...
+                # ...
                 if loc_id not in self.parent.main_map.id_map:
                     # create and register a region
                     temp_region = Region( loc_id , self.parent.main_map )
@@ -234,18 +265,20 @@ class region_brush(basic_tool):
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
                         try:
                             self.parent.main_map.add_to_region( new_rid, ID )
-                            print("one failure")
                         except (RegionMergeError, RegionPopError):
                             pass
-                    # now merge the regions
-                    try:
-                        self.parent.main_map.merge_regions( self.selected_rid, new_rid )
-                    except (RegionMergeError, RegionPopError):
-                        for ID in temp_region.ids:
-                            print("Failed here")
-                            self.parent.main_map.remove_from_region( ID )
+
+                    # now merge the regions 
+                    self.parent.main_map.merge_regions( self.selected_rid, new_rid )
+                    self.redraw_region( self.selected_rid )
+                    #for ID in temp_region.ids:
+                    #    print("Failed here")
+                    #    self.parent.main_map.remove_from_region( ID )
 
     def reg_remove(self, event):
+        """
+        Tries to remove the hex under the cursor from its region.
+        """
         place   = Point( event.scenePos().x(), event.scenePos().y() )
         loc_id  = self.parent.main_map.get_id_from_point( place )
         if loc_id not in self.parent.main_map.catalogue:
@@ -266,6 +299,11 @@ class region_brush(basic_tool):
                 pass
 
     def redraw_region(self, reg_id ):
+        """
+        Redraws the region with the provided region ID.
+
+        @ param reg_id  - region id if region to redraw.
+        """
 
         self.QBrush.setStyle(6)
         self.QPen.setWidth(3)
@@ -292,10 +330,24 @@ class region_brush(basic_tool):
         self.redraw_region_text( reg_id )
 
     def redraw_region_text( self, rid ):
+        """
+        Redraws the name of the region with the provided region id
+
+        @param rid  - region id of region whose name should be redrawn
+        """
         reg_obj = self.parent.main_map.rid_catalogue[ rid ]
 
         if reg_obj.name=="":
             return
+
+        dname = reg_obj.name.split(" ")
+        mult_factor = 1
+        if len(dname)>=6:
+            split = int(len(dname)/2)
+            mult_factor = 2
+            dname = " ".join(dname[0:split])+"\n"+ " ".join(dname[split:])
+        else:
+            dname = " ".join(dname)
 
         if rid in self._drawn_names:
             self.parent.scene.removeItem( self._drawn_names[ rid ] )
@@ -304,10 +356,10 @@ class region_brush(basic_tool):
         drop.setOffset(5)
         center, extent = reg_obj.get_center_size()
         font = QtGui.QFont("Fantasy")
-        font_size = int(extent.magnitude / len(reg_obj.name))
+        font_size = mult_factor*max( 8, int(extent.magnitude / len(reg_obj.name)))
         font.setPointSize( font_size )
 
-        self._drawn_names[rid] = self.parent.scene.addText( reg_obj.name, font )
+        self._drawn_names[rid] = self.parent.scene.addText( dname, font )
         self._drawn_names[rid].setPos( center.x - 0.5*extent.x, center.y )
         new_color = QtGui.QColor( 0.5*(255+reg_obj.color[0]), 0.5*(255+reg_obj.color[1]), 0.5*(255+reg_obj.color[0]))
         self._drawn_names[rid].setDefaultTextColor( new_color )
@@ -315,6 +367,9 @@ class region_brush(basic_tool):
         self._drawn_names[rid].setZValue(10)
     
     def drop(self):
+        """
+        Removes the selection outline for the tool. Called while switching to another tool. 
+        """
         if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
 
@@ -475,7 +530,7 @@ class hex_brush(basic_tool):
             self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
             self.drawn_hexes[hex_id].setZValue(1)
 
-            # Part of a failed experiment
+            # Part of a failed experiment. Leaving it here in case I pick it up again. 
             
             #path = QtGui.QPainterPath()
             #this_poly = QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex._vertices ))
@@ -513,6 +568,7 @@ class hex_brush(basic_tool):
             if this_id in self.parent.main_map.catalogue:
                 # draw a new hex, and select its id 
                 self._selected_out = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self.parent.main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
+                self._selected_out.setZValue(4)
                 self._selected_id = this_id
 
                 # set the sliders 
@@ -620,7 +676,7 @@ class clicker_control(QGraphicsScene):
         """
         Called whenever the mouse is pressed within its bounds (The drawspace)
         """
-        if event.button()==QtCore.Qt.RightButton or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
+        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
             event.accept() # accept the event
             self._held = True # say that the mouse is being held 
             self._active.press( event )
@@ -629,7 +685,7 @@ class clicker_control(QGraphicsScene):
         """
         Called when a mouse button is released 
         """
-        if event.button()==QtCore.Qt.RightButton or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
+        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
             # usually a brush event 
             event.accept()
             self._held = False
