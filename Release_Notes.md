@@ -1,3 +1,24 @@
+## December 1 2019
+
+### Additions 
+
+* Added Simple layering:
+ Hexes < Regions < Brushes < Region Names 
+
+* Region Labels look nicer 
+
+* Moon phase functionality to clock object
+
+* World generator now creates and names regions
+
+### Fixes
+
+* Unused buttons are disabled
+
+* Fixed bug where you would try adding some hex to a region, remove the hex from another region, but then not be able to add to the region. Lead to conflics in some maps. 
+
+* Fixed bug where hexid would be popped but the hex wouldn't be popped 
+
 ## November 29 2019
 
 ### Additions

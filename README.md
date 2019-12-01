@@ -102,9 +102,7 @@ This is subject to change.
 
 ## Miscellaneous
 
-* region definitions. 
-Regions are partially implemented in a generic form, and currently they can only be added to. 
-Enclaves in regions are fully supported! You cannot, however, remove a hex from a region such that it splits into two+ regions. _(partially implemented!)_
+* ~~region definitions~~ (implemented, but with some bugs)
 
 * Use Region backend to allow for arbitrarily large (or shaped) brushes when drawing land or regions
 
