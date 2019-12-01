@@ -35,6 +35,8 @@ class main_gui(QMainWindow):
         self.ui.pushButton_3.clicked.connect( self.new )
         self.ui.pushButton_4.clicked.connect( self.editor )
         self.ui.civEdit.clicked.connect(self.civ_edit)
+        self.ui.civEdit.setEnabled(False)
+        self.ui.pushButton.setEnabled(False)
 
         self.new_name   = os.path.join(os.path.dirname(__file__), "saves", "generated.hexmap")
         self.setting    = -1
