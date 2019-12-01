@@ -23,6 +23,10 @@
             "rain_rate": 0.007,
             "reservoir_init": 150.0,
             "resr_weight": 1.25
+        },
+        "regions": {
+            "n_regions":15,
+            "reg_size" :20
         }
     },
     "large": {

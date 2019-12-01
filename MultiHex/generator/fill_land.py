@@ -152,6 +152,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     else:
                         new_hex = Ocean_Hex( center, main_map._drawscale)
                         new_hex._is_land = False
+                        new_hex.name = "ocean"
 
                     new_hex._altitude_base = new_alt 
                     main_map.register_hex( new_hex, neighbor )

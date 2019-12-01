@@ -1,6 +1,7 @@
 from math import exp
 from MultiHex.hexmap import Hexmap, load_map, save_map
 
+from random import random
 import os
 
 #                  Prepare Utilities
@@ -62,6 +63,39 @@ def point_is_in(point, dimensions):
     return( point.x < dimensions[0] and point.x > 0 and point.y < dimensions[1] and point.y>0)
 
 
+# open the files, build the function we need 
+resources_dir = os.path.join( os.path.dirname(__file__),'..','resources')
+adj_obj = open(os.path.join( resources_dir , "adjectives"),'r')
+_adjectives = adj_obj.readlines()
+adj_obj.close()
+def _get_adj():
+    which = _adjectives[int(random()*len(_adjectives))]
+    return( which[0].upper() + which[1:-1] )
+
+noun_obj = open(os.path.join( resources_dir, "nouns"),'r')
+_nouns = noun_obj.readlines()
+noun_obj.close()
+def _get_noun():
+    which = _nouns[int(random()*len(_nouns))]
+    return( which[0].upper() + which[1:-1])
+
+def get_name( what ):
+
+    word = ""
+    if random()>0.75:
+        naan = _get_noun()
+        word += _get_adj()+naan[0].lower() + naan[1:] + " "
+    word += "The "+_get_adj() +" "+ what[0].upper()+what[1:]
+    
+    if random()>0.75:
+        word+= " Of "+_get_noun()
+        if random()>0.85:
+            word+=" and "+ _get_noun()
+            
+            if random()>0.97:
+                word+= " and also" + _get_noun() + " too"
+
+    return( word )
 
 def new_color(is_land, altitude):
     """
