@@ -33,6 +33,9 @@ class Clock:
         self.year   = 0
 
     def month_str(self):
+        """
+        Returns the current month as a string
+        """
         if type(self.month())!=int:
             raise TypeError("That's not right... month is type {}".format(type(self.month)))
 
@@ -73,19 +76,33 @@ class Clock:
 
 
     def day(self):
+        """
+        Returns the day of the month as an int.
+        """
         n_days   =  int(floor((self._minutes - self.month()*minutes_in_month) / minutes_in_day ))
         return(n_days)
 
     def hour(self):
+        """
+        Returns the hour of the day (24 hour format) as an int. 
+        """
         n_hours = int(floor( (self._minutes - self.month()*minutes_in_month - self.day()*minutes_in_day) / minutes_in_hour ))
         return( n_hours )
 
     def minute(self):
+        """
+        Returns the current minute of the hour as an int. 
+        """
         n_minutes =  self._minutes - self.month()*minutes_in_month - self.day()*minutes_in_day - self.hour()*minutes_in_hour 
         return(n_minutes)
     
 
     def set_month(self, month): 
+        """
+        Turns the clock forward until the specified month. Month must be specified as an integer.
+        """
+        if type(month)!=int:
+            raise TypeError("Month must be of type {}, reveived {}.".format(int, type(month)))
         difference = month -self.month()
         if difference<0:
             difference += months_in_year
@@ -93,6 +110,11 @@ class Clock:
         self.time_step(months=difference )
 
     def set_day(self, day ):
+        """
+        Turns the clock forward to the provided day. Day must be an int.
+        """
+        if type(day)!=int:
+            raise TypeError("Object 'day' must be of type {}, received {}".format(int, type(day)))
         difference = day-self.day()
         if difference<0:
             difference += days_in_month
@@ -101,6 +123,11 @@ class Clock:
 
 
     def set_year(self, year ):
+        """
+        Sets the year to specified year. Year must be provided as an int. 
+        """
+        if type(year)!=int:
+            raise TypeError("Object 'year' must be of type {}, received {}".format(int, type(year)))
         self._year = year
 
 
@@ -118,7 +145,31 @@ class Clock:
             self.year += 1
             self._minutes -= minutes_in_year
 
+    def get_moon_phase(self):
+        """
+        returns the current phase of the moon 
         
+        Moon phase simplified to be exactly one month long.
+        """
+
+        this_day = self.day()
+        
+        if this_day < 3:
+            return("Waxing Gibbous")
+        elif this_day == 3:
+            return("Full")
+        elif this_day < 11:
+            return("Wanning Gibbous")
+        elif this_day < 18:
+            return("Wanning Crescent")
+        elif this_day ==18:
+            return("New")
+        elif this_day < 26:
+            return("Waxing Crescent")
+        else:
+            return("Waxing Gibbous")
+        
+
 
     def __str__(self):
         return("It is {} {}, {}, at {:02d}:{:02d}".format(self.month_str(), self.day(), self.year, self.hour(), self.minute()) )
