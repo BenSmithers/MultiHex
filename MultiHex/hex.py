@@ -12,6 +12,9 @@ class Hex:
     @ rescale_color         - recalculates the color based off of the current color and altitude
     """
     def __init__(self, center=default_p, radius=1.0 ):
+        if type(center)!=point.Point:
+            raise TypeError("Aarg 'center' must be of type {}, received {}".format( point.Point, type(center)))
+        
         self._center = center
         self._radius = radius
         
@@ -25,9 +28,8 @@ class Hex:
         self._altitude_base    = 1.0
         self._temperature_base = 1.0
         self._is_land          = True
-        self.coastal           = False
-        self.hex_edge          = False
-        
+        self.biome = ""
+
         # used in procedural generation
         self.genkey            = '00000000'
         # 0 - ridgeline

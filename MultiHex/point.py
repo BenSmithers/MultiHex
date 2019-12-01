@@ -19,6 +19,11 @@ class Point:
     @magnitude  - length of this vector
     """
     def __init__(self, ex =0.0, why=0.0):
+        if not is_number(ex):
+            raise TypeError("Expected type {} for arg 'ex', received {}".format(float, type(ex)))
+        if not is_number(why):
+            raise TypeError("Expected type {} for arg 'why', received {}".format(float, type(why)))
+
         # do the thing
         self.x = ex
         self.y = why
@@ -34,16 +39,16 @@ class Point:
         """
         Used to add a point to another one through vector addition 
         """
-        if (obj.__class__!=self.__class__):
-            raise TypeError("Cannot add type {} to Point object".format(obj.__class__)) 
+        if (type(obj)!=Point):
+            raise TypeError("Cannot add type {} to Point object".format(type(obj)) ) 
         new = Point( self.x + obj.x, self.y + obj.y)
         return( new )
     def __sub__(self, obj):
         """
         Same as addition, but for subtraction
         """
-        if (obj.__class__!=self.__class__):
-            raise TypeError("Cannot subtract type {} from Point object".format(obj.__class__)) 
+        if (type(obj)!=Point):
+            raise TypeError("Cannot subtract type {} from Point object".format(type(obj))) 
         new = Point( self.x - obj.x, self.y - obj.y)
         return( new )
     def __mul__(self, obj):
@@ -52,12 +57,15 @@ class Point:
         """
         if is_number(obj):
             return( Point( self.x*obj, self.y*obj ))
-        elif obj.__class__==self.__class__:
+        elif type(obj)==Point:
             return( self.x*obj.x + self.y*obj.y )
         else:
-            raise TypeError("Cannot multiply type {} with Point object".format(obj.__class__))
+            raise TypeError("Cannot multiply type {} with Point object".format(type(obj)))
     def __eq__(self, obj):
-        return( abs(self.x-obj.x)<0.01  and abs(self.y-obj.y)<0.01 )
+        if type(obj)==Point:
+            return( abs(self.x-obj.x)<0.01  and abs(self.y-obj.y)<0.01 )
+        else:
+            return(False)
     def __truediv__(self, obj):
         if not is_number(obj):
             raise TypeError("Cannot divide Point by object of type '{}'".format(type(obj)))
