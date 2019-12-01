@@ -129,7 +129,7 @@ class Hexmap:
                 #other_rid = self.id_map[hex_id]
                 #self.remove_from_region( hex_id )
 
-        # the hex does not belong to a catalog
+        # the hex does not belong to a region, has no map in id_map
         # add the hex to the region and update the id map
         self.rid_catalogue[ rID ].add_hex_to_self( hex_id )
         self.id_map[ hex_id ] = rID
@@ -169,7 +169,7 @@ class Hexmap:
             raise KeyError ("Region {} not recognized".format(rID_main))
         if (rID_loser not in self.rid_catalogue):
             raise KeyError("Region {} not recognized".format(rID_loser))
-        
+         
         # merge second region into first one
         self.rid_catalogue[ rID_main ].merge_with_region( self.rid_catalogue[rID_loser] )
         
@@ -302,6 +302,9 @@ class Hexmap:
         """
         This returns three IDs. It is assumed that `place` is a vertex. will return inconsistent results otherwise 
         """
+        
+        if type(place)!=Point:
+            raise TypeError("Expected type {} for object 'place', received {}".format(Point, type(place)))
 
         # there are one of two kinds of vertices:
         #
@@ -311,20 +314,30 @@ class Hexmap:
         # We don't know which 
 
         if v_type is None:
-            # deduce the vertex type 
-            pass
+            # deduce the vertex type
+            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
 
-        assert(type(v_type)==int)
-        if v_type==1:
-            return([ self.get_id_from_point(place+Point(self._drawscale,0.)), 
-                        self.get_id_from_point(place+Point(-0.5*self._drawscale,    rthree*0.5*self._drawscale )),
-                        self.get_id_from_point(place+Point(-0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
-        elif v_type==2:
-            return([ -self.get_id_from_point(place+Point(self._drawscale,0.)), 
-                        self.get_id_from_point(place+Point( 0.5*self._drawscale,    rthree*0.5*self._drawscale )),
-                        self.get_id_from_point(place+Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
-        else:
-            raise ValueError("Invalid Vertex Type")
+            if l_up==l_down:
+                return([ l_up, r_up, r_down]) # type 2
+            elif r_up==r_down:
+                return([ l_up, l_down, r_up]) # type 1
+            else:
+                raise ValueError("I don't think this place, {}, is a vertex".format(place))
+        else: 
+            assert(type(v_type)==int)
+            if v_type==1:
+                return([ self.get_id_from_point(place+Point(self._drawscale,0.)), 
+                            self.get_id_from_point(place+Point(-0.5*self._drawscale,    rthree*0.5*self._drawscale )),
+                            self.get_id_from_point(place+Point(-0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
+            elif v_type==2:
+                return([ -self.get_id_from_point(place+Point(self._drawscale,0.)), 
+                            self.get_id_from_point(place+Point( 0.5*self._drawscale,    rthree*0.5*self._drawscale )),
+                            self.get_id_from_point(place+Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
+            else:
+                raise ValueError("Invalid Vertex type value: {}".format(v_type))
 
     def get_id_from_point(self, point):
         """
