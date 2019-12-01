@@ -142,6 +142,10 @@ class Region:
                             max_x = point.x
                             which = loop
             if which is None:
+                print("start indices: {}".format( start_indices ))
+                print("Loops: {}".format(loops))
+                print("self.perimeter: {}".format(self.perimeter))
+                print("other one: {}".format(other_region.perimeter))
                 raise TypeError("Some bullshit has happened. Tell Ben because this shouldn't happen.")
             self.perimeter = which
             for loop in loops:
@@ -183,7 +187,7 @@ class Region:
                 self.enclaves += [ glom( enclave, other_region.perimeter, index) for index in start_indices ] 
             if not found_enclave:
                 # the target region doesn't border an enclave and it doesn't border the perimeter.
-                # we can't merge these 
+                # we can't merge these
                 raise RegionMergeError("Regions must share some border/enclave")
 
         # these are just added on in
@@ -191,6 +195,8 @@ class Region:
         self.ids        += other_region.ids
     
     def cut_region_from_self( self, other_region):
+        # the order these hexes are popped is suuuper important.
+        # As is, this will lead to unexpected behavior!! 
         for ID in other_region.ids:
             if ID in self.ids:
                 self.pop_hexid_from_self( ID )
