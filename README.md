@@ -86,7 +86,7 @@ Improvements and additions to the world generation
 
 * Use region backend to define geographical regions like deserts, forests, grasslands, and mountain regions. 
 Region names will be superimposed over map. 
-Region names are generated using the list of words posted by (hugsy https://gist.github.com/hugsy) at (here https://gist.github.com/hugsy/8910dc78d208e40de42deb29e62df913)
+Region names are generated using the list of words posted by [hugsy](https://gist.github.com/hugsy) at [here](https://gist.github.com/hugsy/8910dc78d208e40de42deb29e62df913)
 
 * Gui for modifying world generation parameters. Currently the world gen params are stored in the `config.json` file in the generator folder; this is not ideal. 
 
