@@ -119,7 +119,7 @@ class Region:
             # count the number of borders, find the "starting points" for the new enclaves and perimeter
             on_border = False   
             start_indices = []
-            for point in range(len(self.perimeter)):
+            for point in range(len(self.perimeter)+1):
                 if self.perimeter[ (point+start_index)%len(self.perimeter) ] in other_region.perimeter:
                     if not on_border:
                         on_border = True
