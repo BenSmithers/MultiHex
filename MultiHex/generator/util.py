@@ -115,6 +115,7 @@ def create_name(what, order=2):
 
     table = fill_name_table(what, order)  # The markov chain
     name = generate_name(table, order)
+    name = "The " + what[0].upper() + what[1:].lower() + " of " + name[0].upper() + name[1:].lower()
     return name
 
 #  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
