@@ -1,7 +1,7 @@
 from math import exp
 from MultiHex.hexmap import Hexmap, load_map, save_map
 
-from random import random
+import random
 import os
 
 #                  Prepare Utilities
@@ -63,7 +63,8 @@ def point_is_in(point, dimensions):
     return( point.x < dimensions[0] and point.x > 0 and point.y < dimensions[1] and point.y>0)
 
 
-# open the files, build the function we need 
+# open the files, build the function we need
+#  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
 resources_dir = os.path.join( os.path.dirname(__file__),'..','resources')
 adj_obj = open(os.path.join( resources_dir , "adjectives"),'r')
 _adjectives = adj_obj.readlines()
@@ -72,6 +73,7 @@ def _get_adj():
     which = _adjectives[int(random()*len(_adjectives))]
     return( which[0].upper() + which[1:-1] )
 
+#  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
 noun_obj = open(os.path.join( resources_dir, "nouns"),'r')
 _nouns = noun_obj.readlines()
 noun_obj.close()
@@ -79,6 +81,7 @@ def _get_noun():
     which = _nouns[int(random()*len(_nouns))]
     return( which[0].upper() + which[1:-1])
 
+#  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
 def get_name( what ):
 
     word = ""
@@ -96,6 +99,74 @@ def get_name( what ):
                 word+= " and also" + _get_noun() + " too"
 
     return( word )
+
+#  The following function was written by Ross McGuyer. Credit goes to the author (currently unknown) of
+#  http://pcg.wikidot.com/pcg-algorithm:markov-chain, as much of the code used is derived from the example.
+
+#  create_name
+#  Parameter(s): what - The region type. Appended to somewhere to the returned string.
+#                order - Controls how complex each look up syllable. Default value is 2.
+#  Return: A string to be used as a moniker for a region. Contains the region type so that users know what the region
+#           represents.
+#  Description: This function uses a simple markov chain to generate a name.
+
+
+def create_name(what, order=2):
+
+    table = fill_name_table(what, order)  # The markov chain
+    name = generate_name(table, order)
+    name = "The " + what[0].upper() + what[1:].lower() + " of " + name[0].upper() + name[1:].lower()
+    return name
+
+#  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
+#  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, much of the code used is derived from the example.
+#  fill_name_table
+#  Parameter(s): what - The region type. Eventually used to determine the style of the generated name.
+#                order - Controls how complex each look up syllable.
+#  Return: A table containing the markov chain and weights
+#  Description: This function reads from a file containing several example words/names and uses that to generate the
+#                   rules for generating names.
+
+
+def fill_name_table(what, order):
+
+    table = {}
+    for word in _adjectives:
+        for i in range(len(word) - order):
+            try:
+                table[word[i:i+order]]
+            except KeyError:
+                table[word[i:i + order]] = []
+            table[word[i:i + order]] += word[i+order]
+
+    return table
+
+#  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
+#  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, since much of the code used is derived from the example.
+#  fill_name_table
+#  Parameter(s): table - The markov chain needed to form the name.
+#                order - Controls how complex each look up syllable.
+#                start - An index that chooses what syllable to start the new name with. Default is None, which means
+#                           a random syllable in table is used.
+#                max_length - controls that sizes of the word. Ideally terminating characters are reached, but in rare
+#                               case they are not and you don't want super long names. Default value is 20.
+#  Return: A string containing the a procedurally generated name.
+#  Description: This function splices together elements from table to create a randomized (but sensible) word or name.
+
+
+def generate_name(table, order, start=None, max_length=20):
+
+    name = ""
+    if start == None:
+        name += random.choice(list(table))
+    else:
+        name += start
+    try:
+        while len(name) < max_length:
+            name += random.choice(table[name[-order:]])
+    except KeyError:
+        pass
+    return name
 
 def new_color(is_land, altitude):
     """

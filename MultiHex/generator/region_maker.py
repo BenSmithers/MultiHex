@@ -133,7 +133,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         ids_to_propagate = deque(this_region.ids)
 
         reg_type = main_map.catalogue[ ids_to_propagate[0] ].biome
-        this_region.name = get_name( reg_type )
+        this_region.name = create_name( reg_type )
 
         # reg_size 
         while len(ids_to_propagate)!=0:
