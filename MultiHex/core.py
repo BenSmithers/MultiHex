@@ -264,29 +264,12 @@ class Hex:
         self._center = center
         self._radius = radius
         
-#        self.id     = 1
         self.outline= (240,240,240)
         self.fill   = (100,100,100) 
         self._vertices = [ center for i in range(6) ]
 
-        self._biodiversity     = 1.0
-        self._rainfall_base    = 0.0
-        self._altitude_base    = 1.0
-        self._temperature_base = 1.0
-        self._is_land          = True
-        self.biome = ""
-
         # used in procedural generation
         self.genkey            = '00000000'
-        # 0 - ridgeline
-        # 1 - mountain 
-        # 2 - alive / dead 
-        # 3 - dry / wet 
-        # 4 - 
-        # 5 - hot / cold
-        # 6 - island
-        # 7 - ocean
-
 
         self._vertices[0] = self._center + Point( -0.5, 0.5*rthree)*self._radius
         self._vertices[1] = self._center + Point(  0.5, 0.5*rthree)*self._radius
@@ -299,12 +282,7 @@ class Hex:
         return("")
     def reset_color(self):
         pass
-
-    def rescale_color(self):
-        self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
-                        min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
-                        min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
-             
+            
    
     def __repr__(self):
         return("{}@{}".format(self.__clas__, self.id))
@@ -489,7 +467,7 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
-        if type(target_hex)!=Hex:
+        if not isinstance(target_hex, Hex):
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
         if new_id in self.catalogue:

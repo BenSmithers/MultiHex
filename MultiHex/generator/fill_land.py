@@ -1,4 +1,4 @@
-from MultiHex.core import Point, Hex, Hexmap, save_map, load_map
+from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
 

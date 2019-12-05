@@ -1,5 +1,6 @@
-from MultiHex.core import Point, Hex, Hexmap, save_map, load_map
+from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
+from MultiHex.map_types.overland import OHex as Hex
 from MultiHex.generator.util import *
 
 from numpy import arccos 

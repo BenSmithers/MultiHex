@@ -1,6 +1,12 @@
-from MultiHex.core import Hex, basic_tool, Point, Region
+from MultiHex.core import Hex, basic_tool, Point, Region, RegionMergeError, RegionPopError
+
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect, QGraphicsItem, QGraphicsPolygonItem
+
+"""
+Implements the overland map type, its brushes, and its hexes 
+"""
+
 
 """
 Defines some presets for drawing hexes. 
@@ -9,7 +15,14 @@ For the most part this is just used to set the colors...
 """
 
 class region_brush(basic_tool):
+    """
+    basic_tool implementation used to draw and register regions on a canvas/hexmap 
+    """
+
     def __init__(self, parent):
+        """
+        @ param parent - the gui object that will hold this 
+        """
         self.start = Point(0.0, 0.0)
         self.selected_rid = None
 
@@ -590,6 +603,28 @@ class hex_brush(basic_tool):
 
 default_p = Point(0.0,0.0)
 
+class OHex(Hex):
+    """
+    Overland Hex implementation
+
+    Adds criteria to define how that hex is! 
+    """
+    def __init__(self, center=default_p, radius=1.0):
+        Hex.__init__(self, center, radius)
+        
+        self._biodiversity     = 1.0
+        self._rainfall_base    = 0.0
+        self._altitude_base    = 1.0
+        self._temperature_base = 1.0
+        self._is_land          = True
+        self.biome = ""
+
+    def rescale_color(self):
+        self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+
+
 class hcolor:
     def __init__(self):
         self.ocean = (100,173,209)
@@ -604,7 +639,7 @@ class hcolor:
 colors = hcolor()
 
 def Ocean_Hex(center, radius):
-    temp = Hex(center, radius)
+    temp = OHex(center, radius)
     temp.fill = colors.ocean
     temp._temperature_base = 0.5
     temp._rainfall_base    = 1.0
@@ -614,24 +649,24 @@ def Ocean_Hex(center, radius):
     return(temp) 
 
 def Grassland_Hex(center,radius):
-    temp = Hex( center, radius )
+    temp = OHex( center, radius )
     temp.fill = colors.grass
     temp._is_land = True
     return(temp)
 
 def Forest_Hex(center,radius):
-    temp = Hex( center, radius )
+    temp = OHex( center, radius )
     temp.fill = colors.fores
     return(temp)
 
 def Mountain_Hex(center,radius):
-    temp = Hex( center, radius )
+    temp = OHex( center, radius )
     temp.fill = colors.mount
     temp.genkey = '01000000'
     return(temp)
 
 def Arctic_Hex(center,radius):
-    temp = Hex( center, radius )
+    temp = OHex( center, radius )
     temp.fill = colors.arcti
     temp._temperature_base = 0.0
     temp._rainfall_base    = 0.0
@@ -640,7 +675,7 @@ def Arctic_Hex(center,radius):
     return(temp)
 
 def Desert_Hex(center,radius):
-    temp = Hex( center, radius )
+    temp = OHex( center, radius )
     temp.fill = colors.deser
     temp._temperature_base = 1.0
     temp._rainfall_base    = 0.0
@@ -649,7 +684,7 @@ def Desert_Hex(center,radius):
     return(temp)
 
 def Ridge_Hex(center, radius):
-    temp = Hex( center, radius )
+    temp = OHex( center, radius )
     temp.fill = colors.ridge
     temp.genkey = '11000000'
     return(temp)
