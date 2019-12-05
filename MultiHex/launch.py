@@ -1,10 +1,12 @@
 #!/usr/bin/python3.6
+
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDialog, QApplication, QWidget
 
 from MultiHex.guis.main_menu import Ui_MainWindow as main_menu
 from MultiHex.map_paint import editor_gui
 from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
+
 from MultiHex.ridge_editor import ridge_gui
 from MultiHex.region_editor import region_gui
 from MultiHex.generator import full_chain
@@ -12,6 +14,7 @@ from MultiHex.generator import full_chain
 import os
 import sys
 import time
+
 
 # open the gui
 class main_gui(QMainWindow):

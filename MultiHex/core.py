@@ -1,0 +1,1155 @@
+from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect, QGraphicsItem, QGraphicsPolygonItem
+from PyQt5 import QtGui, QtCore
+
+try:
+    from numpy import sqrt, atan, pi, floor, cos, sin
+except ImportError:
+    from math import sqrt, atan, pi, floor, cos, sin
+
+def is_number(object):
+    try:
+        a= 5+object
+        return(True)
+    except TypeError:
+        return(False)
+
+class basic_tool:
+    """
+    Prototype a basic tool 
+    """
+    def __init__(self, parent=None):
+        pass
+    def press(self,event):
+        """
+        Called when the right mouse button is depressed 
+
+        @param event 
+        """
+        pass
+    def activate(self, event):
+        """
+        This is called when the right mouse button is released from a localized click. 
+
+        @param event - location of release
+        """
+        pass
+    def hold(self,event ):
+        """
+        Called continuously while the right mouse button is moved and depressed 
+
+        @param event - current mouse location
+        @param setp  - vector pointing from last called location to @place
+        """
+        pass
+    def select(self, event ):
+        """
+        Left click released event, used to select something
+
+        @param event - Qt event object. has where the mouse is
+        """
+        pass
+    def move(self, event):
+        """
+        Called continuously while the mouse is in the widget
+
+        @param place - where the mouse is 
+        """
+        pass
+    def drop(self):
+        """
+        Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles)
+        """
+        pass
+    def toggle_mode(self, force=None):
+        pass
+
+class clicker_control(QGraphicsScene):
+    """
+    Manages the mouse interface for to the canvas.
+    """
+    def __init__(self, parent=None, master=None):
+        QGraphicsScene.__init__(self, parent)
+
+        self._active = None
+        self._held = False
+        
+        self.master = master
+
+        self._alt_held = False
+
+    def keyPressEvent(self, event):
+        event.accept()
+        if event.key() == QtCore.Qt.Key_Alt:
+            self._alt_held = True
+    def keyReleaseEvent(self, event):
+        event.accept()
+        if event.key() == QtCore.Qt.Key_Alt:
+            self._alt_held = False
+
+    def mousePressEvent(self, event):
+        """
+        Called whenever the mouse is pressed within its bounds (The drawspace)
+        """
+        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
+            event.accept() # accept the event
+            self._held = True # say that the mouse is being held 
+            self._active.press( event )
+
+    def mouseReleaseEvent( self, event):
+        """
+        Called when a mouse button is released 
+        """
+        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
+            # usually a brush event 
+            event.accept()
+            self._held = False
+            self._active.activate(event)
+
+        elif event.button()==QtCore.Qt.LeftButton:
+            # usually a selection event
+            event.accept()
+            self._active.select( event )
+
+   #mouseMoveEvent 
+    def mouseMoveEvent(self,event):
+        """
+        called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
+        """
+        event.accept()
+        if self._held:
+            self._active.hold( event )
+ 
+        self._active.move( event )
+
+    # in c++ these could've been templates and that would be really cool 
+    def to_hex(self):
+        """
+        We need to switch over to calling the writer control, and have the selector clean itself up. These two cleaners are used to git rid of any drawn selection outlines 
+        """
+        self._active.drop()
+        self._active = self.master.writer_control
+
+    def to_region(self):
+        """
+        same...
+        """
+        self._active.drop()
+        self._active = self.master.region_control
+ 
+class Point:
+    """
+    A vector in 2D Cartesian space.
+
+    @x          - x component of vector
+    @y          - y component of vector
+    @magnitude  - length of this vector
+    """
+    def __init__(self, ex =0.0, why=0.0):
+        if not is_number(ex):
+            raise TypeError("Expected type {} for arg 'ex', received {}".format(float, type(ex)))
+        if not is_number(why):
+            raise TypeError("Expected type {} for arg 'why', received {}".format(float, type(why)))
+
+        # do the thing
+        self.x = ex
+        self.y = why
+        
+        # use the bool so that we only have to calculate the magnitude once 
+        self._mcalculated   = False
+        self._magnitude     = 0.0
+        
+        self._acalculated   = False
+        self._angle         = 0.0
+
+    def __add__(self, obj):
+        """
+        Used to add a point to another one through vector addition 
+        """
+        if (type(obj)!=Point):
+            raise TypeError("Cannot add type {} to Point object".format(type(obj)) ) 
+        new = Point( self.x + obj.x, self.y + obj.y)
+        return( new )
+    def __sub__(self, obj):
+        """
+        Same as addition, but for subtraction
+        """
+        if (type(obj)!=Point):
+            raise TypeError("Cannot subtract type {} from Point object".format(type(obj))) 
+        new = Point( self.x - obj.x, self.y - obj.y)
+        return( new )
+    def __mul__(self, obj):
+        """
+        Calculate the inner product of two vector-points, or scale one vector-point by a scalar. 
+        """
+        if is_number(obj):
+            return( Point( self.x*obj, self.y*obj ))
+        elif type(obj)==Point:
+            return( self.x*obj.x + self.y*obj.y )
+        else:
+            raise TypeError("Cannot multiply type {} with Point object".format(type(obj)))
+    def __eq__(self, obj):
+        if type(obj)==Point:
+            return( abs(self.x-obj.x)<0.01  and abs(self.y-obj.y)<0.01 )
+        else:
+            return(False)
+    def __truediv__(self, obj):
+        if not is_number(obj):
+            raise TypeError("Cannot divide Point by object of type '{}'".format(type(obj)))
+        else:
+            return( Point( self.x/obj, self.y/obj ) )
+    
+    def __pow__(self, obj):
+        if not is_number(obj):
+            raise TypeError("Cannot raise vector to a non-number power")
+        else:
+            # returns a scalar! 
+            return( self.x**obj + self.y**obj )
+
+    @property
+    def magnitude(cls):
+        """
+        Return the magnitude of the vector. If it hasn't been calculated, calculate it.
+        """
+        if cls._mcalculated:
+            return( cls._magnitude )
+        else:
+            cls._magnitude = sqrt( cls.x**2 + cls.y**2 )
+            cls._mcalculated = True
+            return(cls._magnitude)
+    
+    @property
+    def angle(cls):
+        """
+        returns the angle of the vector as measured from the x-axis. Calculates only once
+        """
+        if cls._acalculated:
+            return( cls._angle )
+        else:
+            cls._acalculated = True
+            prelim_angle = atan( cls.y / cls.x )
+
+            if cls.y<0 and cls.x<0:
+                prelim_angle += pi
+            elif cls.y<0 and cls.x >0:
+                prelim_angle += 2*pi
+            elif cls.y>0 and cls.x<0:
+                prelim_angle += pi
+            else:
+                # angle is in Quadrant I, this is fine
+                pass
+            cls._angle = prelim_angle 
+            
+
+    # casting this object as a string 
+    def __str__(self):
+        return( "({},{})".format( self.x, self.y ) )
+    
+    def __repr__(self):
+        return("Point({},{})".format(self.x,self.y))
+
+default_p = Point(0.0,0.0)
+rthree = sqrt(3)
+
+class Hex:
+    """
+    Datastructure to represent a single hex on a hex map
+
+    @ build_name            - creates a name for hex biome - not implemented
+    @ rescale_color         - recalculates the color based off of the current color and altitude
+    """
+    def __init__(self, center=default_p, radius=1.0 ):
+        if type(center)!=Point:
+            raise TypeError("Aarg 'center' must be of type {}, received {}".format( Point, type(center)))
+        
+        self._center = center
+        self._radius = radius
+        
+#        self.id     = 1
+        self.outline= (240,240,240)
+        self.fill   = (100,100,100) 
+        self._vertices = [ center for i in range(6) ]
+
+        self._biodiversity     = 1.0
+        self._rainfall_base    = 0.0
+        self._altitude_base    = 1.0
+        self._temperature_base = 1.0
+        self._is_land          = True
+        self.biome = ""
+
+        # used in procedural generation
+        self.genkey            = '00000000'
+        # 0 - ridgeline
+        # 1 - mountain 
+        # 2 - alive / dead 
+        # 3 - dry / wet 
+        # 4 - 
+        # 5 - hot / cold
+        # 6 - island
+        # 7 - ocean
+
+
+        self._vertices[0] = self._center + Point( -0.5, 0.5*rthree)*self._radius
+        self._vertices[1] = self._center + Point(  0.5, 0.5*rthree)*self._radius
+        self._vertices[2] = self._center + Point(  1.0, 0.0)*self._radius
+        self._vertices[3] = self._center + Point(  0.5,-0.5*rthree)*self._radius
+        self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
+        self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
+
+    def build_name(self):
+        return("")
+    def reset_color(self):
+        pass
+
+    def rescale_color(self):
+        self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+             
+   
+    def __repr__(self):
+        return("{}@{}".format(self.__clas__, self.id))
+
+    
+
+import pickle
+
+"""
+Ben Smithers
+b.smithers.actual@gmail.com 
+
+@ HexMap        - the fundamental class for a map of hexes
+@ construct_id  - builds the hexmap ID for a x_coord, y_coord, and grid specifier
+@ deconstruct_id- returns the x_coord, y_coord, and grid specifier for a given ID 
+"""
+
+def save_map(h_map, filename):
+    h_map.drawn_hexes = {}
+    h_map._active_id = None
+    h_map._outline = None
+    h_map.outline_obj = None
+
+    file_object = open(filename, 'wb')
+    pickle.dump( h_map, file_object, -1)
+    file_object.close()
+
+def load_map(filename):
+    if type(filename)==tuple:
+        print(filename)
+    file_object = open(filename, 'rb')
+    hex_pickle = pickle.load(file_object)
+    file_object.close()
+    return( hex_pickle )
+
+
+class Hexmap:
+    """
+    mObject to maintain the whole hex catalogue, draw the hexes, registers the hexes
+
+    @ remove_hex            - unregister hex from catalogue
+    @ register_hex          - register a hex in the catalogue
+    @ set_active_hex        - sets hex to "active"
+    @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
+    @ get_neighbor_outline      - retursn list of points to outline cursor 
+    @ points_to_draw        - takes list of map-Points, prepares flattened list of draw coordinates 
+    @ get_id_from_point     - constructs neares ID to point
+    @ get_point_from_id     - constructs point from ID
+    @ register_new_region   - takes a region, registers it in the rid_catalogue with a unique region id (rid)
+    @ add_to_region         - adds a single hex to a region
+    @ remove_from_region    - removes hex from region
+    @ merge_regions         - takes two rids, merges the regions
+    """
+    def __init__(self):
+        self.catalogue = {}
+        self.rid_catalogue = {} #region_id -> region object
+        self.id_map = {} # hex_id -> reg_id 
+
+        # overal scaling factor 
+        self._drawscale = 15.0
+
+        self._active_id = None
+        self._party_hex = None
+        self._outline   = None
+        self._outline_obj = None
+
+        # These are used to convert from map-space to draw-space 
+        self._zoom      = 1.0
+        self.draw_relative_to = Point(0.0,0.0)
+        self.origin_shift     = Point(0.0,0.0)
+    def register_new_region( self, target_region ):
+        # verify that the target region doesn't have any hexes already belonging to a registered region
+
+        for hex_id in target_region.ids:
+            if hex_id in self.id_map:
+                raise KeyError("Region contains hex {} belonging to other region: {}".format(hex_id, self.id_map[hex_id]))
+
+        # first settle on a new rid - want the smallest, unused rid 
+        new_rid = 1
+        while new_rid in self.rid_catalogue:
+            new_rid += 1
+        
+        target_region.set_color( new_rid )
+        # register the region in the hexmap's region catalogue 
+        self.rid_catalogue[ new_rid ] = target_region
+        # register the connections between the new region's hexes and the new rid
+        # this allows for quick correlations from point->hex->region
+        for hex_id in target_region.ids:
+            self.id_map[ hex_id ] = new_rid 
+        
+        # return the new_rid
+        return( new_rid )
+
+    def add_to_region( self, rID, hex_id ):
+        """
+        Adds a hex to a region. If the hex belongs to a different region, we remove if from that region first
+
+        @param rID      - rID of region to which we are adding
+        @param hex_id   - ID of hex to add to region
+        """
+        # throws KeyError if rID not in catalogue
+        # we aren't handling that error. Downstream problem...
+        if rID not in self.rid_catalogue:
+            raise KeyError("Region no. {} not recognized.".format( rID) )
+        if hex_id not in self.catalogue:
+            raise KeyError("Hex id no. {} not recognized.".format( hex_id ))
+
+        other_rid = -1
+        # If the hex is already in a region, remove it from that region 
+        if hex_id in self.id_map:
+            if self.id_map[hex_id]==rID:
+                return # nothing to do
+            else:
+                raise RegionPopError("Can't do that.")
+                
+                # removing this functionality. Lead to unexpected behavior where we popped a hex from another region regardless of whether or not it was possible to add anything to this region! 
+                #other_rid = self.id_map[hex_id]
+                #self.remove_from_region( hex_id )
+
+        # the hex does not belong to a region, has no map in id_map
+        # add the hex to the region and update the id map
+        self.rid_catalogue[ rID ].add_hex_to_self( hex_id )
+        self.id_map[ hex_id ] = rID
+
+        return(other_rid)
+
+    def remove_from_region( self, hex_id ):
+        """
+        Removes a hex from a region
+
+        @param hex_id   - ID of hex from which to remove region affiliation 
+        """
+        # removes the hex_id from whichever region it's in
+        if hex_id not in self.id_map:
+            raise KeyError("Hex no. {} not registered".format(hex_id))
+        
+        # update the region extents 
+        self.rid_catalogue[ self.id_map[hex_id] ].pop_hexid_from_self( hex_id )
+        
+        # check if region still has size, if not, delete the region
+        if len(self.rid_catalogue[ self.id_map[hex_id] ].ids)==0:
+            del self.rid_catalogue[ self.id_map[hex_id] ]
+
+        # delete the hexes' association to the now non-existent region
+        del self.id_map[hex_id]
+        
+
+    def merge_regions( self, rID_main, rID_loser ):
+        """
+        Merges two regions
+
+        @param rID_main  - rID of region which will accept the hexes from rID_loser
+        @param rID_loser - rID of region which will be absorbed into rID_main
+        """
+        
+        if (rID_main not in self.rid_catalogue):
+            raise KeyError ("Region {} not recognized".format(rID_main))
+        if (rID_loser not in self.rid_catalogue):
+            raise KeyError("Region {} not recognized".format(rID_loser))
+         
+        # merge second region into first one
+        self.rid_catalogue[ rID_main ].merge_with_region( self.rid_catalogue[rID_loser] )
+        
+        # update the entries in the id_map to point to the new region
+        for hex_id in self.rid_catalogue[rID_loser].ids:
+            self.id_map[ hex_id ] = rID_main
+
+        # delete the old region
+        del self.rid_catalogue[ rID_loser ]
+
+
+    def remove_hex( self, target_id):
+        """
+        Try popping a hex from the catalogue. Deletes the key, deletes the hex. 
+
+        @param target_id - the ID of the removed hex
+        """ 
+        del self.catalogue[target_id] #delete the hex 
+        if target_id == self._active_id:
+            self._active_id = None
+        elif self._party_hex == self._active_id:
+            pass
+
+    def register_hex(self, target_hex, new_id ):
+        if type(target_hex)!=Hex:
+            raise TypeError("Cannot register non-hexes, dumb dumb!")
+
+        if new_id in self.catalogue:
+            temp_altitude = self.catalogue[new_id]._altitude_base
+            temp_temp     = self.catalogue[new_id]._temperature_base
+            self.catalogue[new_id] = target_hex
+            self.catalogue[new_id]._altitude_base = temp_altitude
+            self.catalogue[new_id]._temperature_base = temp_temp
+            self.catalogue[new_id].rescale_color()
+        else:
+            self.catalogue[new_id] = target_hex
+    
+
+    def set_active_hex(self, id):
+        if self._active_id is not None:
+            self.catalogue[self._active_id].outline = '#ddd'
+        
+        self._active_id = id
+        self.catalogue[self._active_id].outline = '#f00'
+    
+    def get_hex_neighbors(self, ID):
+        """
+        Calculates the IDs of a given Hexes' neighbors
+        NOTE: Neighbors not guaranteed to exist! 
+
+        @param ID - ID of center
+
+        @returns a LIST of IDs 
+        """
+
+        # convert the id to a bit string
+        x_id, y_id, grid = deconstruct_id(ID)
+
+
+        neighbors = []
+        neighbors.append(construct_id(x_id, y_id+1, grid) )
+        neighbors.append(construct_id(x_id, y_id-1, grid) )
+
+        if grid:
+            neighbors.append(construct_id(x_id,   y_id,   not grid) )
+            neighbors.append(construct_id(x_id,   y_id-1, not grid) )
+            neighbors.append(construct_id(x_id-1, y_id,   not grid) )
+            neighbors.append(construct_id(x_id-1, y_id-1, not grid) )
+        else:
+            neighbors.append(construct_id(x_id,   y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id,   y_id, not grid) )
+            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id+1, y_id, not grid) )
+
+        return(neighbors)    
+
+    def get_neighbor_outline(self, ID, size=1):
+        """
+        returns a flattened set of vertices tracing the circumference of the hex at ID's would-be neightbors 
+
+        @param ID - ID of center
+
+        @returns a LIST of Points 
+        """
+        center = self.get_point_from_id( ID )
+        
+        perimeter_points = []
+        
+        if size==1:
+            perimeter_points +=[ center + Point( -0.5, 0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point(  0.5, 0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point(  1.0, 0.0)*self._drawscale]
+            perimeter_points +=[ center + Point(  0.5,-0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point( -0.5,-0.5*rthree)*self._drawscale]
+            perimeter_points +=[ center + Point( -1.0, 0.0)*self._drawscale]
+            return(perimeter_points)
+        else:
+            # these are shifts to the three unique vertices on the Northern Hexes' outer perimeter
+            vector_shift = [ Point(self._drawscale, self._drawscale*rthree),Point(self._drawscale*0.5, 3*rthree*0.5*self._drawscale) , Point(-self._drawscale*0.5, 3*rthree*0.5*self._drawscale)] 
+            perimeter_points += vector_shift 
+            # now we will rotate these over 5 multiples of -60 degrees  (clockwise rotation)
+            
+            iteration=1
+            while iteration<6:
+                # rotate each of the three points by -60 degrees
+                # from normal rotation matrix
+                for i in range(3):                
+                    vector_shift[i] = Point( vector_shift[i].x*0.5 - rthree*vector_shift[i].y*0.5 ,  vector_shift[i].x*rthree*0.5 + 0.5*vector_shift[i].y )
+
+                # and append them to the list of points 
+                perimeter_points +=  vector_shift
+                # this will be done 5 times in addition to the initial one
+                iteration += 1
+
+            perimeter_points = [ i+center for i in perimeter_points ]
+            #print("{}\n".format(perimeter_points))
+            return( perimeter_points ) 
+
+    def points_to_draw( self, list_of_points ):
+        """
+        Takes list of map-space points, converts it to list of QPoints in draw space
+        """
+        list_of_coords = []
+        # transform and flatten
+        for point in list_of_points:
+            list_of_coords += [QtCore.QPointF( point.x, point.y )]
+        return( list_of_coords )
+        
+    def get_ids_around_vertex( self, place, v_type = None):
+        """
+        This returns three IDs. It is assumed that `place` is a vertex. will return inconsistent results otherwise 
+        """
+        
+        if type(place)!=Point:
+            raise TypeError("Expected type {} for object 'place', received {}".format(Point, type(place)))
+
+        # there are one of two kinds of vertices:
+        #
+        #  1  __/   \__  2 
+        #       \   /
+        #
+        # We don't know which 
+
+        if v_type is None:
+            # deduce the vertex type
+            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+
+            if l_up==l_down:
+                return([ l_up, r_up, r_down]) # type 2
+            elif r_up==r_down:
+                return([ l_up, l_down, r_up]) # type 1
+            else:
+                raise ValueError("I don't think this place, {}, is a vertex".format(place))
+        else: 
+            assert(type(v_type)==int)
+            if v_type==1:
+                return([ self.get_id_from_point(place+Point(self._drawscale,0.)), 
+                            self.get_id_from_point(place+Point(-0.5*self._drawscale,    rthree*0.5*self._drawscale )),
+                            self.get_id_from_point(place+Point(-0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
+            elif v_type==2:
+                return([ -self.get_id_from_point(place+Point(self._drawscale,0.)), 
+                            self.get_id_from_point(place+Point( 0.5*self._drawscale,    rthree*0.5*self._drawscale )),
+                            self.get_id_from_point(place+Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
+            else:
+                raise ValueError("Invalid Vertex type value: {}".format(v_type))
+
+    def get_id_from_point(self, point):
+        """
+        Function to return either nearest hex center, or ID
+        """
+        if type(point)!=Point:
+            raise TypeError("{} is not a Point, it is {}".format(point, type(point)))
+ 
+        # keep a copy of the untranslated point! 
+        og_point = Point( point.x, point.y )
+                
+        base_idy = int(floor((point.y/( rthree*self._drawscale)) + 0.5) )
+        base_idx = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
+         
+        # this could be the point 
+        candidate_point =Point(base_idx*3*self._drawscale, base_idy*rthree*self._drawscale )
+
+         # the secondary grid is shifted over a bit, so let's do the same again... 
+        point.x -= 1.5*self._drawscale
+        point.y -= rthree*self._drawscale*0.5
+
+        # recalculate these
+        base_idy_2 = int(floor((point.y/( rthree*self._drawscale)) + 0.5))
+        base_idx_2 = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
+        
+        # this is in the off-grid
+        candidate_point_2 =Point(base_idx*3*self._drawscale, base_idy*rthree*self._drawscale )
+        candidate_point_2 += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
+        
+        if (og_point - candidate_point)**2 < (og_point - candidate_point_2)**2:
+            return( construct_id(base_idx, base_idy, True ))
+        else:
+            return( construct_id(base_idx_2, base_idy_2, False ))
+    
+    def get_point_from_id(self, id):
+        """
+        Returns the UNTRANSFORMED center of the hex corresponding to the given ID
+        """
+
+        x_id, y_id, on_primary_grid = deconstruct_id(id)
+        
+        # build the poin
+        built_point = Point( x_id*3*self._drawscale, y_id*rthree*self._drawscale )
+        if not on_primary_grid:
+            # transform it if it's on the shifted grid
+            built_point += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
+        
+        #built_point -= self.draw_relative_to
+
+        return(built_point)
+
+
+def construct_id( base_idx, base_idy, main_grid):
+    """
+    Takes grid coordinates and grid identifier, and returns the global ID
+
+    bit      1 - grid specifier 
+    bit      2 - unused
+    bit      3 - x coord sign
+    bits  4-33 - x coordinate 
+    bit     34 - y coord sign
+    bits 35-64 - y coordinate
+    
+    These are all ligned up, and it is treated as a 64 bit unsigned integer. 
+    """
+    if type(main_grid)!=bool:
+        raise TypeError("Expected type {} for object {}, got {}".format(bool, main_grid, type(main_grid) ))
+       
+    x_bitstr = '{0:031b}'.format(base_idx)
+    y_bitstr = '{0:031b}'.format(base_idy)
+
+    if x_bitstr[0]=='-':
+        x_bitstr = '1' + x_bitstr[1:]
+    if y_bitstr[0]=='-':
+        y_bitstr = '1' + y_bitstr[1:]
+
+    if main_grid:
+        lead = '10'
+    else:
+        lead = '00'
+
+    return(int( lead + x_bitstr + y_bitstr ,2 ))
+
+def deconstruct_id( id ):
+    bitstring = '{0:064b}'.format( id )
+    
+    """
+    takes global ID, returns tuple ( x_coordinate, y_coordinate, grid)
+
+    Opposite process as described in 'construct id'
+    """
+
+    # the first bit specifies which grid the hex is on. The second bit is unused 
+    if bitstring[0]=='1':
+        on_primary_grid = True
+    else:
+        on_primary_grid = False
+
+    # extract the information to give the number
+    # skipping the sign bits and the grid bits 
+    x_id = int( bitstring[3:33], 2) # bit [2] specifies sign
+    y_id = int( bitstring[34:], 2) # bit [33] specifies sign
+    if bitstring[2]=='1':
+        x_id*=-1
+    if bitstring[33]=='1':
+        y_id*=-1
+
+    return((x_id,y_id, on_primary_grid))
+
+"""
+@class  Region  - representation of a collection of hexes
+@method glom    - combines two lists of points into a single list of points
+"""
+
+# by the four-color theorem, we only need four colors
+# six just makes it easier and prettier 
+region_colors= (    (187,122,214),
+                    (29,207,189),
+                    (74,16,54),
+                    (255,81,0),
+                    (30,255,0),
+                    (74,255,255) )
+
+class RegionMergeError( Exception ):
+    pass
+class RegionPopError( Exception ):
+    pass
+
+class Region:
+    """
+    A Region is a colleciton of neighboring of Hexes on a Hexmap. Regions are continuous.
+
+    @ add_hex_to_self       - take the hex at hex_id and add its extent to this region
+    @ merge_with_region     - take the given region, merge with it
+    @ cut_region_from_self  - remove the extent of any hexes in other region form self
+    @ pop_hexid_from_self   - remove the extent of one hex from the self
+    """
+
+    def __init__(self, hex_id, parent):
+        self.enclaves = [  ]
+        self.ids = [ hex_id ]
+        # regions don't know their own region_id. That's a hexmap thing
+        # self.reg_id = 0
+        self.name = ""
+
+        self.color = (0, 0, 0)
+        
+        self.parent = parent
+        # may throw KeyError! That's okay, should be handled downstream 
+        self.perimeter = self.parent.catalogue[hex_id]._vertices
+         
+    def get_center_size(self):
+        min_x = None
+        max_x = None 
+        min_y = None
+        max_y = None
+
+        # average all of the IDs positions to get an average point 
+        center = Point(0.0, 0.0)
+        for hex_id in self.ids:
+            this_hex = self.parent.catalogue[hex_id]
+            center += this_hex._center
+            if min_x == None:
+                min_y = this_hex._center.y
+                max_y = this_hex._center.y
+                min_x = this_hex._center.x
+                max_x = this_hex._center.x
+            else:
+                if min_x>this_hex._center.x:
+                    min_x=this_hex._center.x
+                if max_x<this_hex._center.x:
+                    max_x=this_hex._center.x
+                if min_y>this_hex._center.y:
+                    min_y=this_hex._center.y
+                if max_y<this_hex._center.y:
+                    max_y=this_hex._center.y
+
+        extent = Point( max_x-min_x, max_y-min_y )
+        center = center*(1.0/len(self.ids))
+        return( center, extent )
+
+    def set_color(self, number):
+        # not hard-coding the number of colors in case I add more
+        self.color = region_colors[ number % len(region_colors) ]
+
+    def add_hex_to_self( self, hex_id ):
+        # build a region around this hex and merge with it
+        if hex_id in self.ids:
+            return #nothing to do...
+        
+        temp_region = Region( hex_id , self.parent )
+        self.merge_with_region( temp_region )
+
+    def merge_with_region( self, other_region ):
+        """
+        Takes another region and merges it into this one.
+
+        """
+        #TODO: prepare a write up of this algorithm 
+
+        # determine if Internal or External region merge
+        internal = False  # is 
+
+        # we need to start on the beginning of a border, so we get the first point that's on the border
+        start_index = 0
+        while (self.perimeter[start_index] not in other_region.perimeter) and (self.perimeter[(start_index+1)%len(self.perimeter)] in other_region.perimeter):
+            start_index+=1  
+
+        internal = True
+        for point in self.perimeter:
+            if point in other_region.perimeter:
+                internal = False
+
+
+        # if we found a border on the perimeter, this is an external type merge
+        #if start_index!=len(self.perimeter):
+        #    internal = False
+                
+        if not internal: #external merge!  
+            # count the number of borders, find the "starting points" for the new enclaves and perimeter
+            on_border = False   
+            start_indices = []
+            for point in range(len(self.perimeter)+1):
+                if self.perimeter[ (point+start_index)%len(self.perimeter) ] in other_region.perimeter:
+                    if not on_border:
+                        on_border = True
+                else:
+                    if on_border:
+                        start_indices.append( (point+start_index)%len(self.perimeter)) 
+                        on_border = False
+            loops = [glom( self.perimeter, other_region.perimeter, ind ) for ind in start_indices]
+            max_x = None
+            which = None
+            # the perimeter loop will, of course, have a greater extent in every direction. So we just find the loop which goes the furthest in x and know that's the perimeter
+            #   all the other loops are enclaves 
+            for loop in loops:
+                for point in loop:
+                    if max_x is None:
+                        max_x = point.x
+                        which = loop
+                    else:
+                        if point.x>max_x:
+                            max_x = point.x
+                            which = loop
+            if which is None:
+                print("start indices: {}".format( start_indices ))
+                print("Loops: {}".format(loops))
+                print("self.perimeter: {}".format(self.perimeter))
+                print("other one: {}".format(other_region.perimeter))
+                raise TypeError("Some bullshit has happened. Tell Ben because this shouldn't happen.")
+            self.perimeter = which
+            for loop in loops:
+                if loop!=which:
+                    self.enclaves += [ loop ]
+
+        else:
+            # need to find the enclave this other region is bordering 
+            found_enclave = False
+            for enclave in self.enclaves:
+                start_index = 0
+                while enclave[start_index] not in other_region.perimeter:
+                    start_index+= 1
+                    if start_index==len(enclave):
+                        # does not border this enclave 
+                        break
+                if start_index==len(enclave):
+                    # let's go to the next one
+                    continue
+                
+                # if the new region borders two distinct enclaves, there needs to be overlap between the regions, and this method is broken
+                #assert( not found_enclave )
+                found_enclave = True
+                
+                # same as before, we walk around 
+                start_indices = []
+                on_border = False
+                for point in range(len( enclave )):
+                    if enclave[ (point + start_index)%len(enclave) ] in other_region.perimeter:
+                        if not on_border:
+                            on_border = True
+                    else:
+                        if on_border:
+                            start_indices.append( ( point + start_index) % len(enclave ))
+                            on_border = False
+
+                # that old enclave is split into multiple new enclaves (or even just one)
+                self.enclaves.pop( self.enclaves.index( enclave ) )
+                self.enclaves += [ glom( enclave, other_region.perimeter, index) for index in start_indices ] 
+            if not found_enclave:
+                # the target region doesn't border an enclave and it doesn't border the perimeter.
+                # we can't merge these
+                raise RegionMergeError("Regions must share some border/enclave")
+
+        # these are just added on in
+        self.enclaves   += other_region.enclaves 
+        self.ids        += other_region.ids
+    
+    def cut_region_from_self( self, other_region):
+        # the order these hexes are popped is suuuper important.
+        # As is, this will lead to unexpected behavior!! 
+        for ID in other_region.ids:
+            if ID in self.ids:
+                self.pop_hexid_from_self( ID )
+
+        
+    def pop_hexid_from_self( self, hex_id ):
+        """
+        Pops a hex from this region
+
+        Why was this the hardest thing to write in all of MultiHex... 
+        """
+
+        #TODO: Case where removing a hex splits the region into 2-3 smaller regions 
+        #           + such cases are distringuished by their perimeters having more than 1 border with the pop hex
+
+        if len(self.ids)==1:
+            if self.ids[0]==hex_id:
+                self.ids.pop(0)
+                self.perimeter = []
+
+        which = None
+        for each in range(len( self.ids )):
+            if hex_id==self.ids[each]:
+                which=each
+                break
+        if which is None:
+            print("Looking for {}, but only have {}".format( hex_id, self.ids))
+            raise ValueError("id not in region")
+       
+
+        
+        # countable number of cases
+        #    1. hex shares no border with either perimeter or any enclave: popped and made into enclave
+        #    2. hex _only_ shares border with perimeter: glom perimeter to hex
+        
+        #    3. hex borders perimeter multiple times. Popping hex will create multiple regions. We forbid this possibility... 
+
+        this_hex = self.parent.catalogue[ hex_id ]
+        hex_perim = this_hex._vertices[::-1]
+
+        # check perimeter
+
+        outer_hex = False
+        n_borders = 0
+        on_border = False
+
+        start_index = 0
+        while self.perimeter[ start_index ] in hex_perim:
+            start_index+=1
+
+        for point in range(len(self.perimeter)):
+            if self.perimeter[(point+start_index)%len(self.perimeter)] in hex_perim:
+                outer_hex = True
+                if not on_border:
+                    on_border = True
+                    n_borders+=1 
+            else:
+                if on_border:
+                    on_border = False
+        if n_borders>1:
+            raise RegionPopError("Can't pop a hex that would divide a region into several")
+        
+        enclave_start_points = []
+        # check the enclaves
+        for enclave in self.enclaves:
+            index = 0
+            while index <len(enclave) :
+                if (enclave[index] in hex_perim) and (enclave[(index + 1) % len(enclave)] not in hex_perim):
+                    # note the hex indices where we'll switch to an enclave, and also note which enclave to switch to! 
+                    enclave_start_points.append( [ hex_perim.index( enclave[index] ), enclave ] )
+                    break
+                index += 1
+
+
+        # It is now known whether the hex is on the outer rim or within the region
+        if outer_hex:
+            new_perim = []
+
+            # walk around the outer perimeter until we get to a point 
+            start_index = 0
+            while self.perimeter[start_index] not in hex_perim:
+                start_index += 1
+
+            index = start_index
+            while self.perimeter[index % len(self.perimeter)] not in hex_perim:
+                new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
+                index += 1
+
+            new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
+
+            hex_index = (hex_perim.index( self.perimeter[index %len(self.perimeter)] ) + 1 )%len(hex_perim)
+
+            while hex_perim[hex_index % len(hex_perim)] not in self.perimeter:
+                
+                # check if this is the beginning of a thingy
+                loop_complete = False
+                for possibility in enclave_start_points:
+                    if possibility[0]==(hex_index % len(hex_perim)):
+                        new_perim.append( hex_perim[possibility[0]])
+                        enclave_counter = (possibility[1].index( hex_perim[possibility[0]] ) + 1)%len(possibility[1])
+
+                        while possibility[1][ enclave_counter % len(possibility[1]) ] not in hex_perim:
+                            new_perim.append( possibility[1][ enclave_counter % len(possibility[1])] )
+                            enclave_counter += 1
+                        
+
+                        hex_index = hex_perim.index( possibility[1][ enclave_counter % len(possibility[1])] )
+                        loop_complete = True
+                        break
+                if not loop_complete:
+                    new_perim.append( hex_perim[ hex_index % len(hex_perim)] )
+                    hex_index += 1
+            
+            index = self.perimeter.index( hex_perim[hex_index % len(hex_perim)] )
+            while (index % len(self.perimeter))!=start_index:
+                new_perim.append( self.perimeter[index % len(self.perimeter)])
+                index+=1
+            
+            self.perimeter = new_perim
+            for possibility in enclave_start_points:
+                self.enclaves.pop( self.enclaves.index( possibility[1] ) )
+            
+        else:
+            if len(enclave_start_points) == 0:
+                self.enclaves.append( hex_perim )
+            else: 
+
+                # internal placement. Perimeter will remain unchanged! 
+                # will be adding an enclave (may merge 2-3 enclaves into 1)
+                # already have all of those neighbor enclaves! 
+                # popping internal hex. This will probably be a lot like the other case 
+                hex_start = 0
+                while( (hex_start % len(hex_perim)) not in [part[0] for part in enclave_start_points] ):
+                    hex_start += 1
+                new_enclave = []
+                counter = hex_start % len(hex_perim)
+                while True:
+                    loop_complete = False
+                    for part in enclave_start_points:
+
+                        if ( counter % len(hex_perim)) == part[0]:
+                            new_enclave.append( hex_perim[ part[0] ] )
+                            enclave_counter = ( part[1].index( hex_perim[part[0]] ) + 1 )%len(part[1])
+                            while part[1][ enclave_counter % len( part[1] )] not in hex_perim:
+                                new_enclave.append( part[1][enclave_counter % len(part[1])]) 
+                                enclave_counter += 1
+
+                            
+                            new_enclave.append( part[1][enclave_counter%len(part[1])] )
+                            counter = (hex_perim.index( part[1][ enclave_counter % len( part[1] )] ) + 1) %len(hex_perim)
+                            loop_complete = True
+                            break
+                    
+                    if not loop_complete:
+                        new_enclave.append( hex_perim[ counter % len(hex_perim)])
+                        counter += 1
+                    if (counter%len(hex_perim))==hex_start:
+                        break
+                    
+                # each of the old enclaves that we found need tobe popped
+                for part in enclave_start_points:
+                    self.enclaves.pop( self.enclaves.index( part[1] ))
+
+                self.enclaves.append( new_enclave )
+
+        
+        self.ids.pop( which )
+
+def glom( original, new, start_index):
+    """
+    Partially gloms two perimeters together.
+
+    Walks clockwise around one perimeter, switches to the other, walks more, switches back, and eventually forms a closed loop. 
+    """
+
+    new_perimeter = []
+
+    index = start_index 
+    while original[ index % len(original) ] not in new:
+        new_perimeter += [original[ index % len(original) ]]
+        index += 1
+    
+    new_perimeter+= [ original[index % len(original)] ]
+    # returns index for start of border on "new" loop 
+    index = (new.index( original[index % len(original)] ) + 1) % len(new)
+
+    
+    while (new[ index % len(new) ] not in original): # and (new[(index+1)%len(new)] not in original):
+        new_perimeter += [new[index % len( new) ]]
+        index += 1
+    
+    new_perimeter+= [ new[index%len(new)] ]
+    try:
+        index = (original.index( new[index % len(new)] ) + 1)%len(original)
+    except ValueError as e:
+        print( original)
+        print( new)
+        print(e)
+        sys.exit()
+
+    while (index % len(original) != start_index ):
+        new_perimeter += [ original[index % len(original)] ]
+        index +=1
+    
+
+    if new_perimeter == []:
+        raise Exception("Something terribly unexpected happened: {}, {}, {}".format(original, new, start_index))
+
+    return( new_perimeter )
+
+class Entity:
+    """
+    Defines moving map entity that can (in theory) be placed on a map
+    """
+    def __init__(self, name):
+        self.name = name
+
+        self.speed  = 1. #miles/minute
+        self.contains = {}
+

@@ -1,10 +1,5 @@
-from MultiHex.point import Point
-from MultiHex.hex import Hex
-from MultiHex.hexmap import Hexmap
-from MultiHex.hexmap import save_map
-from MultiHex.special_hexes import Mountain_Hex
-
-from MultiHex.tools import *
+from MultiHex.core import Hexmap, save_map, clicker_control
+from MultiHex.map_types.overland import Mountain_Hex, Ridge_Hex, hex_brush
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget

@@ -1,73 +1,12 @@
-from MultiHex.point import Point
-from MultiHex.special_hexes import *
-from MultiHex.features.region import Region, RegionMergeError, RegionPopError
-
+from MultiHex.core import Hex, basic_tool, Point, Region
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect, QGraphicsItem, QGraphicsPolygonItem
 
-class QGraphicsLayer(QGraphicsItem):
-    """
-    Presently unused. Part of a failed experiment 
-    """
-    def __init__(self, parent=None):
-        super(QGraphicsLayer, self).__init__()
+"""
+Defines some presets for drawing hexes. 
 
-#        QGraphicsItem.__init__(self, parent)
-    def boundingRect(self):
-        return( QtCore.QRectF( 0,0,6000,3000) )
-        pass
-    def paint(self, one, two, three):
-        pass
-
-class basic_tool:
-    """
-    Prototype a basic tool 
-    """
-    def __init__(self, parent=None):
-        pass
-    def press(self,event):
-        """
-        Called when the right mouse button is depressed 
-
-        @param event 
-        """
-        pass
-    def activate(self, event):
-        """
-        This is called when the right mouse button is released from a localized click. 
-
-        @param event - location of release
-        """
-        pass
-    def hold(self,event ):
-        """
-        Called continuously while the right mouse button is moved and depressed 
-
-        @param event - current mouse location
-        @param setp  - vector pointing from last called location to @place
-        """
-        pass
-    def select(self, event ):
-        """
-        Left click released event, used to select something
-
-        @param event - Qt event object. has where the mouse is
-        """
-        pass
-    def move(self, event):
-        """
-        Called continuously while the mouse is in the widget
-
-        @param place - where the mouse is 
-        """
-        pass
-    def drop(self):
-        """
-        Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles)
-        """
-        pass
-    def toggle_mode(self, force=None):
-        pass
+For the most part this is just used to set the colors... 
+"""
 
 class region_brush(basic_tool):
     def __init__(self, parent):
@@ -649,76 +588,70 @@ class hex_brush(basic_tool):
         self._selected_id = None
 
 
-class clicker_control(QGraphicsScene):
-    """
-    Manages the mouse interface for to the canvas.
-    """
-    def __init__(self, parent=None, master=None):
-        QGraphicsScene.__init__(self, parent)
+default_p = Point(0.0,0.0)
 
-        self._active = None
-        self._held = False
-        
-        self.master = master
+class hcolor:
+    def __init__(self):
+        self.ocean = (100,173,209)
+        self.grass = (149,207,68)
+        self.fores = (36, 94, 25)
+        self.arcti = (171,224,224)
+        self.mount = (158,140,96)
+        self.ridge = (99,88,60)
+        self.deser = (230,178,110)
+        self.rainf = (22,77,57)
+        self.savan = (170, 186, 87)
+colors = hcolor()
 
-        self._alt_held = False
+def Ocean_Hex(center, radius):
+    temp = Hex(center, radius)
+    temp.fill = colors.ocean
+    temp._temperature_base = 0.5
+    temp._rainfall_base    = 1.0
+    temp._biodiversity     = 1.0
+    temp._altitude_base    = 0.0
+    temp._is_land          = False
+    return(temp) 
 
-    def keyPressEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = True
-    def keyReleaseEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = False
+def Grassland_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.grass
+    temp._is_land = True
+    return(temp)
 
-    def mousePressEvent(self, event):
-        """
-        Called whenever the mouse is pressed within its bounds (The drawspace)
-        """
-        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
-            event.accept() # accept the event
-            self._held = True # say that the mouse is being held 
-            self._active.press( event )
+def Forest_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.fores
+    return(temp)
 
-    def mouseReleaseEvent( self, event):
-        """
-        Called when a mouse button is released 
-        """
-        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
-            # usually a brush event 
-            event.accept()
-            self._held = False
-            self._active.activate(event)
+def Mountain_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.mount
+    temp.genkey = '01000000'
+    return(temp)
 
-        elif event.button()==QtCore.Qt.LeftButton:
-            # usually a selection event
-            event.accept()
-            self._active.select( event )
+def Arctic_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.arcti
+    temp._temperature_base = 0.0
+    temp._rainfall_base    = 0.0
+    temp._altitude_base    = 0.0
+    temp._is_land          = True
+    return(temp)
 
-   #mouseMoveEvent 
-    def mouseMoveEvent(self,event):
-        """
-        called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
-        """
-        event.accept()
-        if self._held:
-            self._active.hold( event )
- 
-        self._active.move( event )
+def Desert_Hex(center,radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.deser
+    temp._temperature_base = 1.0
+    temp._rainfall_base    = 0.0
+    temp._altitude_base    = 0.0
+    temp._is_land          = True
+    return(temp)
 
-    # in c++ these could've been templates and that would be really cool 
-    def to_hex(self):
-        """
-        We need to switch over to calling the writer control, and have the selector clean itself up. These two cleaners are used to git rid of any drawn selection outlines 
-        """
-        self._active.drop()
-        self._active = self.master.writer_control
+def Ridge_Hex(center, radius):
+    temp = Hex( center, radius )
+    temp.fill = colors.ridge
+    temp.genkey = '11000000'
+    return(temp)
 
-    def to_region(self):
-        """
-        same...
-        """
-        self._active.drop()
-        self._active = self.master.region_control
- 
+

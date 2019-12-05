@@ -1,13 +1,9 @@
 ## #!/usr/bin/python3.6m
 
-from MultiHex.point import Point
-from MultiHex.hex import Hex
-from MultiHex.hexmap import Hexmap
-from MultiHex.hexmap import save_map, load_map
-from MultiHex.special_hexes import *
+from MultiHex.core import Hexmap, save_map, load_map, clicker_control
+from MultiHex.map_types.overland import hex_brush, region_brush
 
 # need these to define all the interfaces between the canvas and the user
-from MultiHex.tools import *
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
 

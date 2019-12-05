@@ -1,5 +1,5 @@
 from math import exp
-from MultiHex.hexmap import Hexmap, load_map, save_map
+from MultiHex.core import Hexmap, load_map, save_map
 
 import random
 import os

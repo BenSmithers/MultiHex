@@ -1,9 +1,6 @@
-from MultiHex.point import Point
-from MultiHex.hex import Hex
-from MultiHex.hexmap import Hexmap, save_map, load_map
-from MultiHex.special_hexes import *
+from MultiHex.core import Point, Hex, Hexmap, save_map, load_map, Region
+from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
-from MultiHex.features.region import Region
 
 from numpy import arccos 
 from numpy import histogram
