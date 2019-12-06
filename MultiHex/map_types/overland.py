@@ -1,18 +1,91 @@
-from MultiHex.core import Hex, basic_tool, Point, Region, RegionMergeError, RegionPopError
+from MultiHex.core import Hex, basic_tool, Point, Region, Path
+from MultiHex.core import RegionMergeError, RegionPopError
 
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect, QGraphicsItem, QGraphicsPolygonItem
 
 """
 Implements the overland map type, its brushes, and its hexes 
+
+Objects:
+    River           - Path implementation
+    Biome           - region for, well, biomes
+    region_brush    - basic tool, makes regions
+    hex_brush       - basic tool, makes hexes
+    OHex            - Hex implementation for land hexes
 """
 
+class River(Path):
+    """
+    Implements `Path`
+    """
+    def __init__(self, start):
+        Path.__init__(self, start)
+        self.color = hcolor.ocean 
+        
+        self.width = 1
 
-"""
-Defines some presets for drawing hexes. 
+        # by default, should have none
+        self.tributaries = None
 
-For the most part this is just used to set the colors... 
-"""
+    def join_with( self, other ):
+        """
+        Joins with the other river. Makes this object the 'lower' part of the river, with the tributaries higher up
+
+        """
+        if not isinstance( other, River ):
+            raise TypeError("Cannot join with ")
+
+        # make sure these rivers are join-able. One river needs to have its end point on the other! 
+        r_type = None
+        if other._vertices[-1] in self._vertices:
+            r_type = 1
+        elif self._vertices[-1] in other._vertices:
+            r_type = 2
+        else:
+            raise ValueError("One river must end on another one")
+
+        if r_type==1:
+            # other one ends in this one
+            tributary_1 = other
+            # going to define a tributary 
+            tributary_2 = River( self._vertices[0]  )
+
+            # Merge part of the self into the new tributary 
+            intersect = self._ververtices.index( other._vertices[-1] )
+            tributary_2._vertices = self._vertices[: intersect+1]
+            tributary_2.tributaries = self.tributaries 
+
+        else:
+            intersect = other.index( self._vertices[-1] )
+
+            # use the 'other' object, part of it, to make the tributary 
+            tributary_1 = other._vertices[: intersect+1]
+            tributary_1.tributaries = other.tributaries
+
+            # now use the former self to make another tributary 
+            tributary_2 = River( self.vertices[0] )
+            tributary_2._vertices = self._vertices
+            tributary_2.tributaries = self.tributaries 
+
+
+        # modify the self
+        self._vertices = other._vertices[intersect:]
+        self.tributaries = [ tributary_1, tributary_2 ]
+
+        self.tributaries[0].width = other.width
+        self.tributaries[0].width = self.width
+        self.width = other.width + self.width 
+
+class Biome(Region):
+    """
+    Implementation of the region class for regions of similar geography. 
+
+    Biomes! Like forests, deserts, etc...  
+    """
+    def __init__(self, hex_id, parent):
+        Region.__init__(self, hex_id, parent)
+
 
 class region_brush(basic_tool):
     """
@@ -55,7 +128,7 @@ class region_brush(basic_tool):
             if entry<0 or entry>255:
                 raise ValueError("Entry {} in {} should be valued between 0 and 255".format(entry, color))
 
-        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 170))
+        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 60))
         self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
     def set_brush_size( self, size ):
         if not type(size)==int: 
@@ -257,7 +330,8 @@ class region_brush(basic_tool):
         @ param reg_id  - region id if region to redraw.
         """
 
-        self.QBrush.setStyle(6)
+        #self.QBrush.setStyle(6)
+        self.QBrush.setStyle(1)
         self.QPen.setWidth(3)
         
 
@@ -305,15 +379,16 @@ class region_brush(basic_tool):
             self.parent.scene.removeItem( self._drawn_names[ rid ] )
         
         drop = QGraphicsDropShadowEffect()
-        drop.setOffset(5)
+        drop.setOffset(1)
         center, extent = reg_obj.get_center_size()
         font = QtGui.QFont("Fantasy")
-        font_size = mult_factor*max( 8, int(extent.magnitude / len(reg_obj.name)))
+        font_size = mult_factor*max( 12, int(extent.magnitude / len(reg_obj.name)))
         font.setPointSize( font_size )
 
         self._drawn_names[rid] = self.parent.scene.addText( dname, font )
         self._drawn_names[rid].setPos( center.x - 0.5*extent.x, center.y )
-        new_color = QtGui.QColor( 0.5*(255+reg_obj.color[0]), 0.5*(255+reg_obj.color[1]), 0.5*(255+reg_obj.color[0]))
+        #new_color = QtGui.QColor( 0.5*(255+reg_obj.color[0]), 0.5*(255+reg_obj.color[1]), 0.5*(255+reg_obj.color[0]))
+        new_color= QtGui.QColor( 250, 250, 250)
         self._drawn_names[rid].setDefaultTextColor( new_color )
         self._drawn_names[rid].setGraphicsEffect( drop )
         self._drawn_names[rid].setZValue(10)
@@ -626,6 +701,9 @@ class OHex(Hex):
 
 
 class hcolor:
+    """
+    Just a utility used to hold a bunch of colors 
+    """
     def __init__(self):
         self.ocean = (100,173,209)
         self.grass = (149,207,68)
@@ -638,6 +716,8 @@ class hcolor:
         self.savan = (170, 186, 87)
 colors = hcolor()
 
+
+# Tons of hex templates... 
 def Ocean_Hex(center, radius):
     temp = OHex(center, radius)
     temp.fill = colors.ocean
