@@ -39,6 +39,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         zones = config['zones']
 
     main_map = Hexmap()
+    main_map.dimensions = ( dimensions[0], dimensions[1] )
 
     #                Generate Mountain Peaks 
     # ======================================================
@@ -118,7 +119,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
     print("    Ridgline Avg Length: {}".format(avg_range))
 
-    angles = [ 90., -90., 30., -30., 150., -150.]
+#    angles = [ 90., -90., 30., -30., 150., -150.]
+    angles = [150., 90., 30., -30., -90., -150]
     neighbor_weights = [ distribution( angle ) for angle in angles]
 
     # calculate CDF of neighbor weights 
