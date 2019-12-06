@@ -97,8 +97,6 @@ Rivers will flow between hexes to areas of lower altitude. Rivers eventually rea
 
 * biodiversity. Will be influenced by rainfall, temperature 
 
-* ~~temperature gradients~~ (implemented)
-
 * hex feature-dependent color.
 At the moment hex color is just ridge and rainfall dependent. 
 This is subject to change. 
