@@ -1,4 +1,4 @@
-from MultiHex.core import Point, Hexmap, save_map, load_map, Region
+from MultiHex.core import Point, Hexmap, save_map, load_map, Region, RegionMergeError
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
 
@@ -108,25 +108,29 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         
         main_map.catalogue[ID].rescale_color()
 
+    from collections import deque
     # seed region generation. Just put them out randomly
     while len(main_map.rid_catalogue.keys()) < n_regions:
         # pick a point
         spot = Point( dimensions[0]*rnd.random(), dimensions[1]*rnd.random() )
 
         this_id = main_map.get_id_from_point( spot )
-        this_hex = main_map.catalogue[ this_id ]
+        if this_id in main_map.id_map:
+            continue
+
+        try:
+            this_hex = main_map.catalogue[ this_id ]
+        except KeyError:
+            continue 
 
         if not this_hex._is_land:
             # Not making regions in ocean... that's boring
             continue
 
-        new_region = Region( this_id , main_map )
-        main_map.register_new_region( new_region )
+        this_region  = Region( this_id , main_map )
+        rid = main_map.register_new_region( this_region )
 
-    # grow each region
-    from collections import deque
-    for rid in main_map.rid_catalogue:
-        this_region = main_map.rid_catalogue[rid]
+
         ids_to_propagate = deque(this_region.ids)
 
         reg_type = main_map.catalogue[ ids_to_propagate[0] ].biome
@@ -147,9 +151,12 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     continue
                 if neighbor not in main_map.catalogue:
                     continue
-                if main_map.catalogue[neighbor].biome==reg_type:
-                    main_map.add_to_region( rid, neighbor )
-                    ids_to_propagate.append( neighbor )
+                try:
+                    if main_map.catalogue[neighbor].biome==reg_type:
+                        main_map.add_to_region( rid, neighbor )
+                        ids_to_propagate.append( neighbor )
+                except RegionMergeError:
+                    pass
             ids_to_propagate.popleft()
 
 
