@@ -6,6 +6,29 @@ try:
 except ImportError:
     from math import sqrt, atan, pi, floor, cos, sin
 
+import pickle
+
+"""
+Ben Smithers
+b.smithers.actual@gmail.com 
+
+Core objects for MultiHex
+
+Objects:
+    basic tool      - interface for clicker control
+    clicker control - interface between GUIs and tools 
+    Point           - 2D vector with associated operators
+    HexMap          - base upon which all the maps are built
+        construct_id 
+        deconstruct_id 
+    Region          - A perimeter, lists of IDs associated with it, and means to modify this
+        glom
+    Entity          - static entity on a Hex
+    Mobile          - a mobile object that travels between hexes
+    Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
+"""
+
+
 def is_number(object):
     try:
         a= 5+object
@@ -289,16 +312,7 @@ class Hex:
 
     
 
-import pickle
 
-"""
-Ben Smithers
-b.smithers.actual@gmail.com 
-
-@ HexMap        - the fundamental class for a map of hexes
-@ construct_id  - builds the hexmap ID for a x_coord, y_coord, and grid specifier
-@ deconstruct_id- returns the x_coord, y_coord, and grid specifier for a given ID 
-"""
 
 def save_map(h_map, filename):
     h_map.drawn_hexes = {}
@@ -343,6 +357,7 @@ class Hexmap:
 
         # overal scaling factor 
         self._drawscale = 15.0
+        self.dimensions = ( 0.0, 0.0 )
 
         self._active_id = None
         self._party_hex = None
@@ -503,18 +518,22 @@ class Hexmap:
 
 
         neighbors = []
-        neighbors.append(construct_id(x_id, y_id+1, grid) )
-        neighbors.append(construct_id(x_id, y_id-1, grid) )
+
+
 
         if grid:
+            neighbors.append(construct_id(x_id-1, y_id,   not grid) )
+            neighbors.append(construct_id(x_id, y_id+1, grid) )
             neighbors.append(construct_id(x_id,   y_id,   not grid) )
             neighbors.append(construct_id(x_id,   y_id-1, not grid) )
-            neighbors.append(construct_id(x_id-1, y_id,   not grid) )
+            neighbors.append(construct_id(x_id, y_id-1, grid) )
             neighbors.append(construct_id(x_id-1, y_id-1, not grid) )
         else:
+            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id, y_id+1, grid) )
             neighbors.append(construct_id(x_id,   y_id+1,   not grid) )
             neighbors.append(construct_id(x_id,   y_id, not grid) )
-            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id, y_id-1, grid) )
             neighbors.append(construct_id(x_id+1, y_id, not grid) )
 
         return(neighbors)    
@@ -570,7 +589,44 @@ class Hexmap:
         for point in list_of_points:
             list_of_coords += [QtCore.QPointF( point.x, point.y )]
         return( list_of_coords )
+    
+    def get_vertices_beside( self, vertex, v_type=None):
+        """
+        Return the vertices that neighbor this one on the HexMap
+
+        @ param vertex  - the vertex whose neighbors we want to find
+        @ param v_type  - optional integer, (1 or 2). Specifies the vertex type so we can save some time in calculation. If not provided it discovers the vertex type itself. See `get_ids_around_vertex` for the vertext type descriptions 
+        """
+        if not isinstance( vertex, Point):
+            raise TypeError("Expected type {} for 'vertex', received {}".format(Point, type(vertex)))
         
+        if v_type is None:
+            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+
+            if l_up==l_down:
+                v_type = 2
+            elif r_up==r_down:
+                v_type = 1
+            else:
+                raise ValueError("Not sure if {} is a vertex...".format(vertex) )
+        else:
+            assert( type(v_type) == int)
+
+            if v_type==1:
+                neighbors = [ vertex + Point( -1*self._drawscale ), 
+                                vertex + Point( 0.5*self._drawscale, rthree*0.5*self._drawscale), 
+                                vertex + Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale)]
+            elif v_type==2:
+                neighbors = [ vertex + Point( self._drawscale ), 
+                                vertex + Point( -0.5*self._drawscale, rthree*0.5*self._drawscale), 
+                                vertex + Point( -0.5*self._drawscale, -1*rthree*0.5*self._drawscale)]
+            else:
+                raise ValueError("Unrecognized vertex type {}".format(v_type))
+
+
     def get_ids_around_vertex( self, place, v_type = None):
         """
         This returns three IDs. It is assumed that `place` is a vertex. will return inconsistent results otherwise 
@@ -618,7 +674,8 @@ class Hexmap:
         """
         if type(point)!=Point:
             raise TypeError("{} is not a Point, it is {}".format(point, type(point)))
- 
+
+
         # keep a copy of the untranslated point! 
         og_point = Point( point.x, point.y )
                 
@@ -1123,11 +1180,84 @@ def glom( original, new, start_index):
 
 class Entity:
     """
-    Defines moving map entity that can (in theory) be placed on a map
+    Defines static entity that can be placed on a Hex
     """
     def __init__(self, name):
+        if not type(name)==str:
+            raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
         self.name = name
 
         self.speed  = 1. #miles/minute
         self.contains = {}
 
+class Mobile:
+    """
+    Defines a mobile map entity
+    """
+    def __init__(self, name):
+        if not type(name)==str:
+            raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
+        self.name = name
+
+class Path:
+    """
+    Generic path following the borders of the hexes
+    Basically a glorified list where we force it to be made of Points
+
+    @attr color      - 
+    @attr _vertices  - list of this path's vertices 
+    @attr _step_calc - whether or not the 'step size' has been calculated
+    @attr _step      - length of the step sizes between placed points 
+    """
+
+    def __init__(self, start):
+        if not isinstance(start_point , Point):
+            raise TypeError("Expected type {} for arg 'start', got {}".format(Point, type(start)))
+        self._vertices      = [ start ]
+
+        self.color          = (0.0, 0.0, 0.0)
+        self._step_calc     = False
+        self._step          = None 
+    def end(self):
+        return( self._vertices[-1] )
+
+    def add_to_end( self, end ):
+        """
+        Append Point to end of path
+
+        @param end  - object of type Point
+        """
+        if not isinstance( end, Point):
+            raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(end )))
+
+        if not _step_calc:
+            # get the magnitude between the last point and the one we're adding, that's the step size 
+            self._step = ( end - self._vertices[-1] ).magnitude 
+            self._step_calc = True 
+        else:
+            # if the difference between this step and the precalculated step is >1%, raise an exception! 
+            if (( end - self._vertices[-1] ).magnitude - self._step)/self._step  > 0.01:
+                raise ValueError("Paths must have consistently spaced entries")
+
+        self._vertices = self._vertices + [ end ]
+
+    def add_to_start( self, start):
+        """
+        Append Point to start of path
+        
+        @param start    - object of type Point 
+        """
+        if not isinstance( end, Point):
+            raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(end )))
+
+        if not _step_calc:
+            # get the magnitude between the last point and the one we're adding, that's the step size 
+            self._step = ( end - self._vertices[0] ).magnitude 
+            self._step_calc = True 
+        else:
+            # if the difference between this step and the precalculated step is big, raise an exception! 
+            if (( end - self._vertices[0] ).magnitude - self._step)/self._step  > 0.01:
+                raise ValueError("Paths must have consistently spaced entries")
+
+
+        self._vertices = [ start ] + self._vertices
