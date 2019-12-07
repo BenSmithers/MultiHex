@@ -109,14 +109,21 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         main_map.catalogue[ID].rescale_color()
 
     from collections import deque
+    r_layer = 'biome'
+    main_map.rid_catalogue[r_layer] = {}
+    main_map.id_map[r_layer] = {}
+
     # seed region generation. Just put them out randomly
-    while len(main_map.rid_catalogue.keys()) < n_regions:
+    while len(main_map.rid_catalogue[r_layer].keys()) < n_regions:
         # pick a point
         spot = Point( dimensions[0]*rnd.random(), dimensions[1]*rnd.random() )
 
         this_id = main_map.get_id_from_point( spot )
-        if this_id in main_map.id_map:
-            continue
+        try:
+            if this_id in main_map.id_map[r_layer]:
+                continue
+        except KeyError:
+            pass
 
         try:
             this_hex = main_map.catalogue[ this_id ]
@@ -128,7 +135,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             continue
 
         this_region  = Region( this_id , main_map )
-        rid = main_map.register_new_region( this_region )
+        rid = main_map.register_new_region( this_region, r_layer )
 
 
         ids_to_propagate = deque(this_region.ids)
@@ -147,13 +154,13 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             neighbors = main_map.get_hex_neighbors( ids_to_propagate[0] )
             for neighbor in neighbors:
                 # add the neighbor to this region if it matches the biome and isn't in a region
-                if neighbor in main_map.id_map:
+                if neighbor in main_map.id_map[r_layer]:
                     continue
                 if neighbor not in main_map.catalogue:
                     continue
                 try:
                     if main_map.catalogue[neighbor].biome==reg_type:
-                        main_map.add_to_region( rid, neighbor )
+                        main_map.add_to_region( rid, neighbor, r_layer )
                         ids_to_propagate.append( neighbor )
                 except RegionMergeError:
                     pass
@@ -163,7 +170,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     
     # loop over the arctic hexes and spread them a little bit
 
-
+    print(main_map.rid_catalogue.keys())
+    print(main_map.id_map.keys())
     save_map( main_map, sim )
     
 

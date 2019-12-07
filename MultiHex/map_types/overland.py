@@ -22,11 +22,13 @@ class River(Path):
     def __init__(self, start):
         Path.__init__(self, start)
         self.color = hcolor.ocean 
-        
+                
         self.width = 1
 
         # by default, should have none
         self.tributaries = None
+
+        self._max_len = 20
 
     def join_with( self, other ):
         """
@@ -99,6 +101,7 @@ class region_brush(basic_tool):
         self.start = Point(0.0, 0.0)
         self.selected_rid = None
 
+        # parent should be a pointer to the gui object that has this brush 
         self.parent = parent
         self._writing = True
         self._brush_size = 1
@@ -109,6 +112,7 @@ class region_brush(basic_tool):
         self.QPen.setWidth(3)
 
 
+        self.r_layer = 'biome'
         self._outline_obj = None
         self._drawn_regions = {} # map from rid to drawn region
         self._drawn_names = {}
@@ -149,14 +153,14 @@ class region_brush(basic_tool):
         here = Point( event.scenePos().x(), event.scenePos().y())        
         this_id = self.parent.main_map.get_id_from_point( here )
         
-        if this_id not in self.parent.main_map.id_map:
+        if this_id not in self.parent.main_map.id_map[self.r_layer]:
             self.selected_rid = None
             self.parent.ui.RegEdit.setText("")
         else:
-            if self.parent.main_map.id_map[this_id]!=self.selected_rid:
+            if self.parent.main_map.id_map[self.r_layer][this_id]!=self.selected_rid:
 
-                self.selected_rid = self.parent.main_map.id_map[this_id]
-                self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.selected_rid].name)
+                self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
+                self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
 
     def hold(self, event):
         self.activate( event )
@@ -210,7 +214,7 @@ class region_brush(basic_tool):
             if self._writing:
                 self.QBrush.setStyle(6)
                 if self.selected_rid is not None:
-                    self._set_color( self.parent.main_map.rid_catalogue[ self.selected_rid ].color)
+                    self._set_color( self.parent.main_map.rid_catalogue[self.r_layer][ self.selected_rid ].color)
                 else:
                     self.QPen.setColor(QtGui.QColor(114,218,232))
             else:
@@ -244,31 +248,31 @@ class region_brush(basic_tool):
 
         if self.selected_rid is None:
             # if the hex here is not mapped to a registered region, 
-            if (loc_id not in self.parent.main_map.id_map):
+            if (loc_id not in self.parent.main_map.id_map[self.r_layer]):
                 # make a new region here, set it to the active region, and draw it
                 new_reg = Region( loc_id, self.parent.main_map )
                                 
                 # get the newely created rid, set it to active 
-                self.selected_rid = self.parent.main_map.register_new_region( new_reg )
+                self.selected_rid = self.parent.main_map.register_new_region( new_reg, self.r_layer )
                 
                 # self.parent.main_map.id_map( loc_id )
                 
                 if self._brush_size == 2:
                     # build a new region around this one
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        self.parent.main_map.add_to_region( self.selected_rid, ID )
+                        self.parent.main_map.add_to_region( self.selected_rid, ID, self.r_layer )
 
                 self.redraw_region( self.selected_rid )
             else:
                 # no active region, but the hex here belongs to a region. 
                 # set this hexes' region to the active one 
-                self.selected_rid = self.parent.main_map.id_map[ loc_id ]
+                self.selected_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
         else:
             if self._brush_size==1:
                 try:
                     # try adding it
                     # if it can't, it raises a RegionMergeError exception
-                    other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id )
+                    other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id, self.r_layer )
                     
                     if (other_rid!=-1) and (other_rid is not None): 
                         # add_to_region returns an rid if it removes a hex from another region.
@@ -282,19 +286,19 @@ class region_brush(basic_tool):
             elif self._brush_size==2:
                 # This seems to cause some instability...
                 # ...
-                if loc_id not in self.parent.main_map.id_map:
+                if loc_id not in self.parent.main_map.id_map[self.r_layer]:
                     # create and register a region
                     temp_region = Region( loc_id , self.parent.main_map )
-                    new_rid = self.parent.main_map.register_new_region( temp_region )
+                    new_rid = self.parent.main_map.register_new_region( temp_region, self.r_layer )
 
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
                         try:
-                            self.parent.main_map.add_to_region( new_rid, ID )
+                            self.parent.main_map.add_to_region( new_rid, ID , self.r_layer )
                         except (RegionMergeError, RegionPopError):
                             pass
 
                     # now merge the regions 
-                    self.parent.main_map.merge_regions( self.selected_rid, new_rid )
+                    self.parent.main_map.merge_regions( self.selected_rid, new_rid , self.r_layer)
                     self.redraw_region( self.selected_rid )
                     #for ID in temp_region.ids:
                     #    print("Failed here")
@@ -309,15 +313,15 @@ class region_brush(basic_tool):
         if loc_id not in self.parent.main_map.catalogue:
             return
 
-        if loc_id not in self.parent.main_map.id_map:
+        if loc_id not in self.parent.main_map.id_map[self.r_layer]:
             # nothing to pop
             return
         else:
             # get this hexes's region id 
-            this_rid = self.parent.main_map.id_map[ loc_id ]
+            this_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
             # remvoe this hex from that region
             try:
-                self.parent.main_map.remove_from_region( loc_id )
+                self.parent.main_map.remove_from_region( loc_id, self.r_layer )
                 # redraw that region
                 self.redraw_region( this_rid )
             except RegionPopError:
@@ -338,7 +342,7 @@ class region_brush(basic_tool):
         if reg_id in self._drawn_regions:
             self.parent.scene.removeItem( self._drawn_regions[ reg_id ] )
         
-        reg_obj = self.parent.main_map.rid_catalogue[ reg_id ]
+        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
         self._set_color( reg_obj.color )
 
         path = QtGui.QPainterPath()
@@ -361,7 +365,7 @@ class region_brush(basic_tool):
 
         @param rid  - region id of region whose name should be redrawn
         """
-        reg_obj = self.parent.main_map.rid_catalogue[ rid ]
+        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
 
         if reg_obj.name=="":
             return

@@ -149,7 +149,7 @@ class editor_gui(QMainWindow):
         for ID in self.main_map.catalogue: 
             self.writer_control.redraw_hex( ID )
         
-        for rid in self.main_map.rid_catalogue:
+        for rid in self.main_map.rid_catalogue['biome']:
             self.region_control.redraw_region( rid )
 
 # this stuff is commented out since this script is not meant to be called directly! 
