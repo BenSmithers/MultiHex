@@ -301,6 +301,26 @@ class Hex:
         self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
         self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
 
+    @property
+    def center(self):
+        return( Point( self._center.x, self._center.y) )
+
+    @property
+    def radius(self):
+        copy = self._radius
+        return( copy )
+
+    @property 
+    def vertices(self):
+        copy = [ self.center for i in range(6) ] 
+        copy[0] = self.center + Point( -0.5, 0.5*rthree)*self.radius
+        copy[1] = self.center + Point(  0.5, 0.5*rthree)*self.radius
+        copy[2] = self.center + Point(  1.0, 0.0)*self.radius
+        copy[3] = self.center + Point(  0.5,-0.5*rthree)*self.radius
+        copy[4] = self.center + Point( -0.5,-0.5*rthree)*self.radius
+        copy[5] = self.center + Point( -1.0, 0.0)*self.radius
+        return( copy )
+
     def build_name(self):
         return("")
     def reset_color(self):
@@ -364,7 +384,7 @@ class Hexmap:
         self.catalogue = {}
         self.rid_catalogue = {} #region_id -> region object
         self.id_map = {} # hex_id -> reg_id 
-        self.rivers = {}
+        self.paths = {}
 
         # overal scaling factor 
         self._drawscale = 15.0
@@ -513,6 +533,7 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
+        assert( target_hex._radius == self._drawscale )
         if not isinstance(target_hex, Hex):
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
@@ -632,6 +653,7 @@ class Hexmap:
             raise TypeError("Expected type {} for 'vertex', received {}".format(Point, type(vertex)))
         
         if v_type is None:
+            print("this shouldn't be called either")
             l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
             l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
             r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
@@ -643,20 +665,23 @@ class Hexmap:
                 v_type = 1
             else:
                 raise ValueError("Not sure if {} is a vertex...".format(vertex) )
+        
+
+        assert( type(v_type) == int)
+
+        if v_type==1:
+            neighbors = [   vertex + (Point(-1.0,  0.0       )*self._drawscale), 
+                            vertex + (Point( 0.5,  0.5*rthree)*self._drawscale), 
+                            vertex + (Point( 0.5, -0.5*rthree)*self._drawscale) ]
+        elif v_type==2:
+            neighbors = [   vertex + (Point( 1.0,  0.0       )*self._drawscale), 
+                            vertex + (Point(-0.5,  0.5*rthree)*self._drawscale), 
+                            vertex + (Point(-0.5, -0.5*rthree)*self._drawscale) ]
+
         else:
-            assert( type(v_type) == int)
+            raise ValueError("Unrecognized vertex type {}".format(v_type))
 
-            if v_type==1:
-                neighbors = [ vertex + Point( -1*self._drawscale ), 
-                                vertex + Point( 0.5*self._drawscale, rthree*0.5*self._drawscale), 
-                                vertex + Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale)]
-            elif v_type==2:
-                neighbors = [ vertex + Point( self._drawscale ), 
-                                vertex + Point( -0.5*self._drawscale, rthree*0.5*self._drawscale), 
-                                vertex + Point( -0.5*self._drawscale, -1*rthree*0.5*self._drawscale)]
-            else:
-                raise ValueError("Unrecognized vertex type {}".format(v_type))
-
+        return( neighbors )
 
     def get_ids_around_vertex( self, place, v_type = None):
         """
@@ -674,6 +699,7 @@ class Hexmap:
         # We don't know which 
 
         if v_type is None:
+            print("this shouldn't be called")
             # deduce the vertex type
             l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
             l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
@@ -681,23 +707,26 @@ class Hexmap:
             r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
 
             if l_up==l_down:
-                return([ l_up, r_up, r_down]) # type 2
+                v_type = 2
+                #return([ l_up, r_up, r_down]) # type 2
             elif r_up==r_down:
-                return([ l_up, l_down, r_up]) # type 1
+                v_type=1
+                #return([ l_up, l_down, r_up]) # type 1
             else:
                 raise ValueError("I don't think this place, {}, is a vertex".format(place))
-        else: 
-            assert(type(v_type)==int)
-            if v_type==1:
-                return([ self.get_id_from_point(place+Point(self._drawscale,0.)), 
-                            self.get_id_from_point(place+Point(-0.5*self._drawscale,    rthree*0.5*self._drawscale )),
-                            self.get_id_from_point(place+Point(-0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
-            elif v_type==2:
-                return([ -self.get_id_from_point(place+Point(self._drawscale,0.)), 
-                            self.get_id_from_point(place+Point( 0.5*self._drawscale,    rthree*0.5*self._drawscale )),
-                            self.get_id_from_point(place+Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
-            else:
-                raise ValueError("Invalid Vertex type value: {}".format(v_type))
+        
+        assert(type(v_type)==int)
+        if v_type==1:
+            return([    self.get_id_from_point( place + Point(1.0 ,  0.0       )*self._drawscale ), 
+                        self.get_id_from_point( place + Point(-0.5,  0.5*rthree)*self._drawscale ),
+                        self.get_id_from_point( place + Point(-0.5, -0.5*rthree)*self._drawscale ) ])
+        elif v_type==2:
+            return([    self.get_id_from_point( place + Point(-1.0 , 0.0       )*self._drawscale ), 
+                        self.get_id_from_point( place + Point( 0.5,  0.5*rthree)*self._drawscale ),
+                        self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self._drawscale ) ])
+
+        else:
+            raise ValueError("Invalid Vertex type value: {}".format(v_type))
 
     def get_id_from_point(self, point):
         """
@@ -860,21 +889,21 @@ class Region:
         center = Point(0.0, 0.0)
         for hex_id in self.ids:
             this_hex = self.parent.catalogue[hex_id]
-            center += this_hex._center
+            center += this_hex.center
             if min_x == None:
-                min_y = this_hex._center.y
-                max_y = this_hex._center.y
-                min_x = this_hex._center.x
-                max_x = this_hex._center.x
+                min_y = this_hex.center.y
+                max_y = this_hex.center.y
+                min_x = this_hex.center.x
+                max_x = this_hex.center.x
             else:
-                if min_x>this_hex._center.x:
-                    min_x=this_hex._center.x
-                if max_x<this_hex._center.x:
-                    max_x=this_hex._center.x
-                if min_y>this_hex._center.y:
-                    min_y=this_hex._center.y
-                if max_y<this_hex._center.y:
-                    max_y=this_hex._center.y
+                if min_x>this_hex.center.x:
+                    min_x=this_hex.center.x
+                if max_x<this_hex.center.x:
+                    max_x=this_hex.center.x
+                if min_y>this_hex.center.y:
+                    min_y=this_hex.center.y
+                if max_y<this_hex.center.y:
+                    max_y=this_hex.center.y
 
         extent = Point( max_x-min_x, max_y-min_y )
         center = center*(1.0/len(self.ids))
@@ -1242,15 +1271,15 @@ class Path:
     """
 
     def __init__(self, start):
-        if not isinstance(start_point , Point):
+        if not isinstance(start , Point):
             raise TypeError("Expected type {} for arg 'start', got {}".format(Point, type(start)))
-        self._vertices      = [ start ]
+        self._vertices      = [ Point( start.x, start.y ) ]
 
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
     def end(self):
-        return( self._vertices[-1] )
+        return( Point( self._vertices[-1].x, self._vertices[-1].y ) )
 
     def add_to_end( self, end ):
         """
@@ -1261,16 +1290,19 @@ class Path:
         if not isinstance( end, Point):
             raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(end )))
 
-        if not _step_calc:
+        if not self._step_calc:
             # get the magnitude between the last point and the one we're adding, that's the step size 
-            self._step = ( end - self._vertices[-1] ).magnitude 
+            self._step = ( end - self.end() ).magnitude 
             self._step_calc = True 
         else:
             # if the difference between this step and the precalculated step is >1%, raise an exception! 
-            if (( end - self._vertices[-1] ).magnitude - self._step)/self._step  > 0.01:
+            if (( end - self.end() ).magnitude - self._step)/self._step  > 0.01:
+                print("Step of {}".format( (end-self.end()).magnitude ))
+                print("Expected {}".format(self._step))
+                print("From {} to {}".format(self.end(), end))
                 raise ValueError("Paths must have consistently spaced entries")
 
-        self._vertices = self._vertices + [ end ]
+        self._vertices.append( end )
 
     def add_to_start( self, start):
         """
