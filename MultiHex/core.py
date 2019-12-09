@@ -1280,6 +1280,16 @@ class Path:
         self._step          = None 
     def end(self):
         return( Point( self._vertices[-1].x, self._vertices[-1].y ) )
+    
+    @property
+    def vertices(self):
+        """
+        The points defining this path. Returns a copy! 
+        """
+        built = []
+        for vert in self._vertices:
+            built.append( Point( vert.x, vert.y ) )
+        return( built)
 
     def add_to_end( self, end ):
         """
