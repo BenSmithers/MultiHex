@@ -21,7 +21,7 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = hcolor.ocean 
+        self.color = colors.ocean 
                 
         self.width = 1
 
@@ -230,7 +230,7 @@ class region_brush(basic_tool):
 
             self.QBrush.setStyle(0)
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
-            self._outline_obj.setZValue( 4 )
+            self._outline_obj.setZValue( 10 )
 
     def reg_add(self, event):
         """
@@ -356,7 +356,7 @@ class region_brush(basic_tool):
             path = path.subtracted( enc_path )
         
         self._drawn_regions[reg_id] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush)
-        self._drawn_regions[reg_id].setZValue(2)
+        self._drawn_regions[reg_id].setZValue(5)
         self.redraw_region_text( reg_id )
 
     def redraw_region_text( self, rid ):
@@ -395,7 +395,7 @@ class region_brush(basic_tool):
         new_color= QtGui.QColor( 250, 250, 250)
         self._drawn_names[rid].setDefaultTextColor( new_color )
         self._drawn_names[rid].setGraphicsEffect( drop )
-        self._drawn_names[rid].setZValue(10)
+        self._drawn_names[rid].setZValue(15)
     
     def drop(self):
         """
@@ -429,6 +429,8 @@ class hex_brush(basic_tool):
 
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
+
+        self._river_drawn = []
 
         # Part of a failed experiment. Leaving in case I pick it up again
         #self.layer = QGraphicsLayer()
@@ -481,7 +483,7 @@ class hex_brush(basic_tool):
 
 
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
-            self._outline_obj.setZValue(4)
+            self._outline_obj.setZValue(10)
     
     def erase(self, event):
         """
@@ -577,8 +579,22 @@ class hex_brush(basic_tool):
             #print("key error")
             pass
 
+    def redraw_rivers( self ):
+        """
+        all the rivers
+        """
+        # self._river_drawn
 
-
+        for river in self.parent.main_map.paths['rivers']:
+            self.QBrush.setStyle(0)
+            self.QPen.setStyle(1)
+            self.QPen.setWidth(4)
+            self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
+            path = QtGui.QPainterPath()
+            outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.vertices  ) )
+            path.addPolygon(outline)
+            self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
+            self._river_drawn[-1].setZValue(2)
 
 
     def select(self,event):

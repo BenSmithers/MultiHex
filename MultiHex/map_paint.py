@@ -151,6 +151,9 @@ class editor_gui(QMainWindow):
         
         for rid in self.main_map.rid_catalogue['biome']:
             self.region_control.redraw_region( rid )
+        
+        self.writer_control.redraw_rivers()
+        
 
 # this stuff is commented out since this script is not meant to be called directly! 
 
