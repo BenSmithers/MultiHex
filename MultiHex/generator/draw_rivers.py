@@ -55,6 +55,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
             
             new_river = River(Point( this_hex.vertices[start_point].x, this_hex.vertices[start_point].y) )
+            new_river._max_len = max_len 
             if (start_point)%2==0:
                 v_type = 2
             else:
@@ -117,8 +118,64 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     v_type = 2
                 else:
                     v_type = 1
+
+                # set river border types
+                cw_id, ccw_id = main_map.get_ids_beside_edge( new_river.end(), verts[which_index])
+                try:
+                    main_map.catalogue[cw_id].river_border[0] = True
+                except KeyError:
+                    pass
+                try:
+                    main_map.catalogue[ccw_id].river_border[1] = True
+                except KeyError:
+                    pass
+
+                # check if this new point is already on the river, if it is, we realized we have completed a loop. Snip the river and make some lakes  
+                if verts[which_index] in new_river.vertices:
+                    
+                    all_verts = new_river.vertices 
+                    which = all_verts.index( verts[which_index] )
+                    
+                    for it in range(len(all_verts[which:])):
+                        ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
+                        for ID in ids:
+                            main_map.catalogue[ID].fill = colors.ocean
+                            main_map.catalogue[ID]._altitude_base = 0.0
+                            main_map.catalogue[ID]._is_land = False
+    
+                    new_river.trim_at( which )
+                    break
+                
+
                 new_river.add_to_end( verts[which_index] )
 
+                # check if we're now at a border and on another river
+
+                # right side, left side 
+                cw, ccw = main_map.get_ids_beside_edge( new_river.end(1), new_river.end() )
+                
+                if (cw not in main_map.catalogue) or (ccw not in main_map.catalogue):
+                    continue 
+
+                # both the hexes to my left and right are on the same side of a river 
+                
+                if (main_map.catalogue[ccw].river_border[0] and  main_map.catalogue[cw].river_border[0]) or (main_map.catalogue[ccw].river_border[1] and main_map.catalogue[cw].river_border[1]):
+                    # this means that the river has now reached another river 
+
+                    # search through the other rivers, find the one with my end on it
+                    # fortunately, this river hasn't been registered yet
+                    error_code = 1 
+                    for river in range(len(main_map.paths['rivers'])):
+                        # recursively tries to join rivers with their tributaries 
+                        error_code = main_map.paths['rivers'][river].join_with( new_river )
+                        if error_code == 0:
+                            break
+                        # if it's 1, continue 
+                    if error_code == 0:
+                        print( "merged! ")
+                        return(None)
+                    else:
+                        print("Looked like rivers should merge, they didn't ")
 
             else:
                 raise ValueError("Unexpected vertex type found? {} of type {}".format(v_type, type(v_type)))
@@ -127,7 +184,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     main_map.paths['rivers'] = []
     for i in range( n_rivers ):
         this_riv = make_river()
-        main_map.paths['rivers'].append( this_riv )
+        if this_riv is not None:
+            main_map.paths['rivers'].append( this_riv )
 
     save_map( main_map, sim )
     

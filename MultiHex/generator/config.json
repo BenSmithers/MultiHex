@@ -30,7 +30,7 @@
         },
         "rivers": {
             "n_rivers":40,
-            "max_len":30
+            "max_len":35
         }
     },
     "large": {
