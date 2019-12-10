@@ -713,6 +713,9 @@ class OHex(Hex):
         self._temperature_base = 1.0
         self._is_land          = True
         self.biome = ""
+    
+        # CW downstream , CCW downstream, runs through
+        self.river_border = [ False ,False , False]
 
     def rescale_color(self):
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
