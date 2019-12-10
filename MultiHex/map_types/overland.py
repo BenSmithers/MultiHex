@@ -40,9 +40,9 @@ class River(Path):
 
         # make sure these rivers are join-able. One river needs to have its end point on the other! 
         r_type = None
-        if other._vertices[-1] in self._vertices:
+        if other.end() in self._vertices:
             r_type = 1
-        elif self._vertices[-1] in other._vertices:
+        elif self.end() in other._vertices:
             r_type = 2
         else:
             # try joining with its tributaries 
@@ -63,28 +63,29 @@ class River(Path):
             # other one ends in this one
             tributary_1 = other
             # going to define a tributary 
-            tributary_2 = River( self._vertices[0]  )
+            tributary_2 = River( self.vertices[0]  )
 
             # Merge part of the self into the new tributary 
-            intersect = self._vertices.index( other._vertices[-1] )
-            tributary_2._vertices = self._vertices[: intersect+1]
+            intersect = self.vertices.index( other.vertices[-1] )
+            tributary_2._vertices = self.vertices[: (intersect+1)]
             tributary_2.tributaries = self.tributaries 
+            self._vertices = self.vertices[intersect:]
 
         else:
-            intersect = other.index( self._vertices[-1] )
+            intersect = other.index( self.vertices[-1] )
 
             # use the 'other' object, part of it, to make the tributary 
-            tributary_1 = other._vertices[: intersect+1]
+            tributary_1 = other.vertices[:(intersect+1)]
             tributary_1.tributaries = other.tributaries
 
             # now use the former self to make another tributary 
             tributary_2 = River( self.vertices[0] )
-            tributary_2._vertices = self._vertices
+            tributary_2._vertices = self.vertices
             tributary_2.tributaries = self.tributaries 
+            self._vertices = other.vertices[intersect:]
 
 
         # modify the self
-        self._vertices = other._vertices[intersect:]
         self.tributaries = [ tributary_1, tributary_2 ]
 
         self.tributaries[0].width = other.width
@@ -600,7 +601,7 @@ class hex_brush(basic_tool):
         """
         # self._river_drawn
 
-        for river in self.parent.main_map.paths['rivers']:
+        def draw_river(river):
             self.QBrush.setStyle(0)
             self.QPen.setStyle(1)
             self.QPen.setWidth(4)
@@ -610,6 +611,13 @@ class hex_brush(basic_tool):
             path.addPolygon(outline)
             self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
             self._river_drawn[-1].setZValue(2)
+
+        for river in self.parent.main_map.paths['rivers']:
+            draw_river( river )
+            
+            if river.tributaries is not None:
+                draw_river( river.tributaries[0] )
+                draw_river( river.tributaries[1] )
 
 
     def select(self,event):
