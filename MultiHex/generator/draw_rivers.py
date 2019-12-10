@@ -174,8 +174,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     if error_code == 0:
                         print( "merged! ")
                         return(None)
-                    else:
-                        print("Looked like rivers should merge, they didn't ")
+                    # if error_code = 1, there was no merge 
 
             else:
                 raise ValueError("Unexpected vertex type found? {} of type {}".format(v_type, type(v_type)))
