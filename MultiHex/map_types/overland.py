@@ -45,7 +45,19 @@ class River(Path):
         elif self._vertices[-1] in other._vertices:
             r_type = 2
         else:
-            raise ValueError("One river must end on another one")
+            # try joining with its tributaries 
+            if other.tributaries is not None:
+                error_code = self.tributaries[0].join_with( other )
+                if error_code == 0:
+                    return(0)
+                error_code = self.tributaries[1].join_with( other )
+                if error_code == 0:
+                    return(0) 
+                
+                # failed to join other river with itself or its tributaries 
+                return( 1 )
+            else:
+                return( 1)
 
         if r_type==1:
             # other one ends in this one
@@ -54,7 +66,7 @@ class River(Path):
             tributary_2 = River( self._vertices[0]  )
 
             # Merge part of the self into the new tributary 
-            intersect = self._ververtices.index( other._vertices[-1] )
+            intersect = self._vertices.index( other._vertices[-1] )
             tributary_2._vertices = self._vertices[: intersect+1]
             tributary_2.tributaries = self.tributaries 
 
@@ -78,6 +90,9 @@ class River(Path):
         self.tributaries[0].width = other.width
         self.tributaries[0].width = self.width
         self.width = other.width + self.width 
+
+        # success code 
+        return(0)
 
 class Biome(Region):
     """
