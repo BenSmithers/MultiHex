@@ -49,7 +49,7 @@ class main_gui(QMainWindow):
         This will be the stepping off point for interfacing with the map in an interactive way. Hence the 'ing' suffix 
         """
         if filename=='':
-            filename = QFileDialog.getOpenFileName(None, 'Open HexMap', './saves', 'HexMaps (*.hexmap)')[0]
+            filename = QFileDialog.getOpenFileName(None, 'Open HexMap', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
 
         if filename=='':
             return()
@@ -60,7 +60,7 @@ class main_gui(QMainWindow):
         """
         Will be a stepping off point for editing and viewing the civilizations in the world. 
         """
-        filename = QFileDialog.getOpenFileName( None, 'Edit Regions', './saves', 'HexMaps (*.hexmap)')[0]
+        filename = QFileDialog.getOpenFileName( None, 'Edit Regions', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
         if filename!='':
             self.hide()
             print("Loading {}".format(filename))
@@ -74,7 +74,7 @@ class main_gui(QMainWindow):
         """
         Opens the world editor 
         """
-        filename = QFileDialog.getOpenFileName(None, 'Edit HexMap', './saves', 'HexMaps (*.hexmap)')[0]
+        filename = QFileDialog.getOpenFileName(None, 'Edit HexMap', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
 
         if filename!='':
             self.hide()        
@@ -97,7 +97,7 @@ class main_gui(QMainWindow):
             if self.setting==0:
                 print("new blank map of name {}".format(self.new_name))
             elif self.setting==1:
-                print("Opening ridgeemaker, name {}".format(self.new_name))
+                print("Opening ridge emaker, name {}".format(self.new_name))
                 print(type(self.new_name))
                 self.ridge_ui.save_name = self.new_name
                 self.hide()
