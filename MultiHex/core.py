@@ -728,6 +728,36 @@ class Hexmap:
         else:
             raise ValueError("Invalid Vertex type value: {}".format(v_type))
 
+    def get_ids_beside_edge(self, start, end):
+        """
+        Returns a pair of hexIDs to the left and right of the edge defined by 'start' and 'end'
+
+        @param start    - type Point, defines start of edge
+        @param end      - type Point, defines end of edge 
+
+        start and end should be drawscale apart
+        """
+
+        if type(start)!=Point:
+            raise TypeError("Arg 'start' is not type point, it is {}".format(start))
+        if type(end)!=Point:
+            raise TypeError("Arg 'end' is not type point, it is {}".format( end ))
+        diff = start-end
+        if (diff.magnitude - self._drawscale)/self._drawscale > 0.01:
+            raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self._drawscale))
+        # displacement vector from 'end' object. 
+        #       points towards CW hex
+        new_angle = diff.angle - 120.
+        displacement = Point( cos( new_angle) , sin(new_angle) )*self._drawscale 
+        CW_hex  = end + displacement 
+
+        new_angle_ccw = diff.angle + 120.
+        displacement_cc1 = Point( cos(new_angle_ccw), sin(new_angle_ccw))*self._drawscale
+        CCW_hex = end - displacement_ccw
+
+        return( get_id_from_point( CW_hex) , get_id_from_point( CCW_hex ) )
+
+
     def get_id_from_point(self, point):
         """
         Function to return either nearest hex center, or ID
@@ -1278,9 +1308,9 @@ class Path:
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
-    def end(self):
-        return( Point( self._vertices[-1].x, self._vertices[-1].y ) )
-    
+    def end(self, offset=0):
+        return( Point( self._vertices[-1-offset].x, self._vertices[-1-offset].y ) )
+
     @property
     def vertices(self):
         """
@@ -1290,6 +1320,26 @@ class Path:
         for vert in self._vertices:
             built.append( Point( vert.x, vert.y ) )
         return( built)
+    
+    def trim_at( self, where):
+        p_type = False 
+        if not isinstance( where, int ):
+            p_type = True
+        elif not isinstance( where , Point ):
+            raise TypeError("Arg 'where' must be type {}, received {}".format( Point, type(where)))
+        
+        if p_type:
+            which_index = where
+        else:
+            try:
+                which_index = self._vertices.index( where )
+            except ValueError:
+                raise ValueError("Point {} is not in list of vertices for obj {}".format(where, type(self)))
+
+        
+        # this leaves the self-intersect point there. Good!
+        self._vertices = self._vertices[which_index:]
+
 
     def add_to_end( self, end ):
         """
