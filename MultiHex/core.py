@@ -261,7 +261,7 @@ class Point:
                 # angle is in Quadrant I, this is fine
                 pass
             cls._angle = prelim_angle 
-            
+            return( cls._angle ) 
 
     # casting this object as a string 
     def __str__(self):
@@ -752,10 +752,10 @@ class Hexmap:
         CW_hex  = end + displacement 
 
         new_angle_ccw = diff.angle + 120.
-        displacement_cc1 = Point( cos(new_angle_ccw), sin(new_angle_ccw))*self._drawscale
-        CCW_hex = end - displacement_ccw
+        displacement_ccw = Point( cos(new_angle_ccw), sin(new_angle_ccw))*self._drawscale
+        CCW_hex = end + displacement_ccw
 
-        return( get_id_from_point( CW_hex) , get_id_from_point( CCW_hex ) )
+        return( self.get_id_from_point( CW_hex) , self.get_id_from_point( CCW_hex ) )
 
 
     def get_id_from_point(self, point):
@@ -1323,7 +1323,7 @@ class Path:
     
     def trim_at( self, where):
         p_type = False 
-        if not isinstance( where, int ):
+        if isinstance( where, int ):
             p_type = True
         elif not isinstance( where , Point ):
             raise TypeError("Arg 'where' must be type {}, received {}".format( Point, type(where)))
