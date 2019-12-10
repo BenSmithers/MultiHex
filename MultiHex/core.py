@@ -1309,7 +1309,10 @@ class Path:
         self._step_calc     = False
         self._step          = None 
     def end(self, offset=0):
-        return( Point( self._vertices[-1-offset].x, self._vertices[-1-offset].y ) )
+        if len(self._vertices)==0:
+            return(None)
+        else:
+            return( Point( self._vertices[-1-offset].x, self._vertices[-1-offset].y ) )
 
     @property
     def vertices(self):
