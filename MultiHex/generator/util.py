@@ -114,9 +114,10 @@ def get_name( what ):
 def create_name(what, order=2):
 
     mid_table, start_list = fill_name_tables(what, order)  # The markov chain
+    syns = fetch_synonyms(what)
     name = generate_name(mid_table, order, start_list)
-    name = "The " + what[0].upper() + what[1:].lower() + " of " + name[0].upper() + name[1:].lower()
-    return name
+    final_name = determine_name_style(syns, name)
+    return final_name
 
 #  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
 #  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, much of the code used is derived from the example.
@@ -170,9 +171,46 @@ def generate_name(mid_table, order, start=None, max_length=20):
             name += random.choice(mid_table[name[-order:]])
     except KeyError:
         pass
+
     return name
 
+#  fetch_synonyms
+#  Parameter(s): what - The region type. Use to determine which synonym list to return.
+#  Return: syns - A list of strings containing synonyms of 'what'.
+#  Description: Takes in a string and returns a list containing the string and several synonyms.
+
+
+def fetch_synonyms(what):
+
+    switcher = {
+        "grassland": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
+        "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
+        "mountain": ["Mountains", "Peaks", "Crags"],
+        "forest": ["Forest", "Woods", "Woodlands", "Backwoods", "Wilds"]
+    }
+
+    return switcher.get(what, ["Invalid What"])
+
+#  determine_name_style
+#  Parameter(s): syns - list of generated synonyms of the region type
+#  Return: A string to be used as a moniker for a region. Can either be in the format "The [region] of [name]" or
+#           or "The [Name] [Region]"
+#  Description: This randomly decides between two methods of arranging the region and the name.
+
+
+def determine_name_style(syns, name):
+
+    final_name = "The "
+    result = random.randint(0, 100)
+    if(result > 30):
+        final_name += (name + " " + random.choice(syns))
+    else:
+        final_name += (random.choice(syns) + " of " + name)
+    return final_name
+
+
 def new_color(is_land, altitude):
+
     """
     TODO generalize this for a any hex
     """
