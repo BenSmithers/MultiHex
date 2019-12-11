@@ -113,10 +113,11 @@ def get_name( what ):
 
 def create_name(what, order=2):
 
-    table = fill_name_table(what, order)  # The markov chain
-    name = generate_name(table, order)
-    name = "The " + what[0].upper() + what[1:].lower() + " of " + name[0].upper() + name[1:].lower()
-    return name
+    mid_table, start_list = fill_name_tables(what, order)  # The markov chain
+    syns = fetch_synonyms(what)
+    name = generate_name(mid_table, order, start_list)
+    final_name = determine_name_style(syns, name)
+    return final_name
 
 #  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
 #  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, much of the code used is derived from the example.
@@ -127,19 +128,23 @@ def create_name(what, order=2):
 #  Description: This function reads from a file containing several example words/names and uses that to generate the
 #                   rules for generating names.
 
+mor_obj = open(os.path.join( resources_dir , "Morrowind"),'r')
+_morrowind = mor_obj.readlines()
+mor_obj.close()
+def fill_name_tables(what, order):
 
-def fill_name_table(what, order):
-
-    table = {}
-    for word in _adjectives:
+    mid_table = {}
+    start_list = []
+    for word in _morrowind:
+        start_list.append(word[:2])
         for i in range(len(word) - order):
             try:
-                table[word[i:i+order]]
+                mid_table[word[i:i+order]]
             except KeyError:
-                table[word[i:i + order]] = []
-            table[word[i:i + order]] += word[i+order]
+                mid_table[word[i:i + order]] = []
+            mid_table[word[i:i + order]] += word[i+order]
 
-    return table
+    return mid_table, start_list
 
 #  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
 #  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, since much of the code used is derived from the example.
@@ -154,21 +159,58 @@ def fill_name_table(what, order):
 #  Description: This function splices together elements from table to create a randomized (but sensible) word or name.
 
 
-def generate_name(table, order, start=None, max_length=20):
+def generate_name(mid_table, order, start=None, max_length=20):
 
     name = ""
     if start == None:
-        name += random.choice(list(table))
+        name += random.choice(list(mid_table))
     else:
-        name += start
+        name += random.choice(start)
     try:
         while len(name) < max_length:
-            name += random.choice(table[name[-order:]])
+            name += random.choice(mid_table[name[-order:]])
     except KeyError:
         pass
+
     return name
 
+#  fetch_synonyms
+#  Parameter(s): what - The region type. Use to determine which synonym list to return.
+#  Return: syns - A list of strings containing synonyms of 'what'.
+#  Description: Takes in a string and returns a list containing the string and several synonyms.
+
+
+def fetch_synonyms(what):
+
+    switcher = {
+        "grassland": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
+        "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
+        "mountain": ["Mountains", "Peaks", "Crags"],
+        "forest": ["Forest", "Woods", "Woodlands", "Backwoods", "Wilds"]
+    }
+
+    return switcher.get(what, ["Invalid What"])
+
+#  determine_name_style
+#  Parameter(s): syns - list of generated synonyms of the region type
+#  Return: A string to be used as a moniker for a region. Can either be in the format "The [region] of [name]" or
+#           or "The [Name] [Region]"
+#  Description: This randomly decides between two methods of arranging the region and the name.
+
+
+def determine_name_style(syns, name):
+
+    final_name = "The "
+    result = random.randint(0, 100)
+    if(result > 30):
+        final_name += (name + " " + random.choice(syns))
+    else:
+        final_name += (random.choice(syns) + " of " + name)
+    return final_name
+
+
 def new_color(is_land, altitude):
+
     """
     TODO generalize this for a any hex
     """
