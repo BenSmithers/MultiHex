@@ -602,6 +602,11 @@ class hex_brush(basic_tool):
         # self._river_drawn
 
         def draw_river(river):
+
+            if river.tributaries is not None:
+                draw_river( river.tributaries[0] )
+                draw_river( river.tributaries[1] )
+
             self.QBrush.setStyle(0)
             self.QPen.setStyle(1)
             self.QPen.setWidth(4)
@@ -615,10 +620,7 @@ class hex_brush(basic_tool):
         for river in self.parent.main_map.paths['rivers']:
             draw_river( river )
             
-            if river.tributaries is not None:
-                draw_river( river.tributaries[0] )
-                draw_river( river.tributaries[1] )
-
+            
 
     def select(self,event):
         self.QBrush.setStyle(0)

@@ -178,7 +178,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
             else:
                 raise ValueError("Unexpected vertex type found? {} of type {}".format(v_type, type(v_type)))
-        return( new_river )
+        if len(new_river.vertices)!=0:
+            return( new_river )
+        else:
+            return( None )
 
     main_map.paths['rivers'] = []
     for i in range( n_rivers ):
