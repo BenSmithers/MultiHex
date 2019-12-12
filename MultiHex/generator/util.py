@@ -104,6 +104,9 @@ def create_name(what, order=2, filename="Morrowind"):
 
 
 def fill_name_tables(what, order, filename):
+    
+    if not os.path.exists( os.path.join( resources_dir , 'binary_tables' )):
+        os.mkdir( os.path.join( resources_dir, 'binary_tables'))
 
     mid_table = {}
     start_list = []
@@ -294,6 +297,7 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
 #  Description: This takes in both the start_table and the mid_table and pickles them as binary files.
 
 def open_tables(filename):
+    
 
     try:
         start_file = open(os.path.join(resources_dir, 'binary_tables',filename + '_start'), 'rb')
@@ -318,6 +322,9 @@ def open_tables(filename):
 
 
 def save_tables(start_table, mid_table, filename):
+    
+    if not os.path.exists( os.path.join( resources_dir , 'binary_tables' )):
+        os.mkdir( os.path.join( resources_dir, 'binary_tables'))
 
     try:
         start_file = open(os.path.join(resources_dir, 'binary_tables', filename + '_start'), 'wb')
