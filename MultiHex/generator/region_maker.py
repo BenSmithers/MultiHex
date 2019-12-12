@@ -140,7 +140,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
         ids_to_propagate = deque(this_region.ids)
 
-        reg_type = main_map.catalogue[ ids_to_propagate[0] ].biome
+        if main_map.catalogue[ids_to_propagate[0]].river_border[0] or main_map.catalogue[ids_to_propagate[0]].river_border[1]:
+            reg_type = 'river'
+        else:
+            reg_type = main_map.catalogue[ ids_to_propagate[0] ].biome
         this_region.name = create_name( reg_type )
 
         # reg_size 
@@ -159,7 +162,11 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 if neighbor not in main_map.catalogue:
                     continue
                 try:
-                    if main_map.catalogue[neighbor].biome==reg_type:
+                    if reg_type=='river':
+                        if main_map.catalogue[neighbor].river_border[0] or main_map.catalogue[neighbor].river_border[1]:
+                            main_map.add_to_region( rid, neighbor, r_layer )
+                            ids_to_propagate.append( neighbor )
+                    elif main_map.catalogue[neighbor].biome==reg_type:
                         main_map.add_to_region( rid, neighbor, r_layer )
                         ids_to_propagate.append( neighbor )
                 except RegionMergeError:
