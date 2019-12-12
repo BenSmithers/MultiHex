@@ -261,7 +261,7 @@ class Point:
                 # angle is in Quadrant I, this is fine
                 pass
             cls._angle = prelim_angle 
-            
+            return( cls._angle ) 
 
     # casting this object as a string 
     def __str__(self):
@@ -301,6 +301,26 @@ class Hex:
         self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
         self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
 
+    @property
+    def center(self):
+        return( Point( self._center.x, self._center.y) )
+
+    @property
+    def radius(self):
+        copy = self._radius
+        return( copy )
+
+    @property 
+    def vertices(self):
+        copy = [ self.center for i in range(6) ] 
+        copy[0] = self.center + Point( -0.5, 0.5*rthree)*self.radius
+        copy[1] = self.center + Point(  0.5, 0.5*rthree)*self.radius
+        copy[2] = self.center + Point(  1.0, 0.0)*self.radius
+        copy[3] = self.center + Point(  0.5,-0.5*rthree)*self.radius
+        copy[4] = self.center + Point( -0.5,-0.5*rthree)*self.radius
+        copy[5] = self.center + Point( -1.0, 0.0)*self.radius
+        return( copy )
+
     def build_name(self):
         return("")
     def reset_color(self):
@@ -335,8 +355,9 @@ def load_map(filename):
 
 class Hexmap:
     """
-    mObject to maintain the whole hex catalogue, draw the hexes, registers the hexes
+    Object to maintain the whole hex catalogue, draw the hexes, registers the hexes
 
+    Methods:
     @ remove_hex            - unregister hex from catalogue
     @ register_hex          - register a hex in the catalogue
     @ set_active_hex        - sets hex to "active"
@@ -349,15 +370,24 @@ class Hexmap:
     @ add_to_region         - adds a single hex to a region
     @ remove_from_region    - removes hex from region
     @ merge_regions         - takes two rids, merges the regions
+
+    Attributes:
+    @ catalogue             - Dictionary of hexes. The hexIDs are keys to the hexes themselves 
+    @ rid_catalogue         - 2-level dictionary: rid_catalogue[ layer ][ rID ]. Points to region object 
+                                + layer is the region layer (biome/kingdom/etc)
+                                + rID is the identifier of the region
+    @ id_map                - similar data structure as rid_catalogue. Region layer and hexID returns rID hex belongs to. Raises key error if no association! 
+    @ rivers                - dictionary containing lists of paths. Dict key for path type 
+    @ drawscale             - scaling factor of entire map. Establishes hex size 
     """
     def __init__(self):
         self.catalogue = {}
         self.rid_catalogue = {} #region_id -> region object
         self.id_map = {} # hex_id -> reg_id 
+        self.paths = {}
 
         # overal scaling factor 
         self._drawscale = 15.0
-        self.dimensions = ( 0.0, 0.0 )
 
         self._active_id = None
         self._party_hex = None
@@ -368,47 +398,61 @@ class Hexmap:
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
-    def register_new_region( self, target_region ):
-        # verify that the target region doesn't have any hexes already belonging to a registered region
+    def register_new_region( self, target_region, r_layer ):
+        """
+        Registers a new region with this Hexmap. Adds it to the dictionaries, give it a unique rID, and set up all the maps for its contained Hexes 
+        """
 
+
+        # make sure this region layer exists. If it doesn't, let's make it. 
+        if r_layer not in self.id_map:
+            self.id_map[r_layer] = {}
+        if r_layer not in self.rid_catalogue:
+            self.rid_catalogue[r_layer] = {}
+
+        # verify that the target region doesn't have any hexes already belonging to a registered region
         for hex_id in target_region.ids:
-            if hex_id in self.id_map:
-                raise KeyError("Region contains hex {} belonging to other region: {}".format(hex_id, self.id_map[hex_id]))
+            if hex_id in self.id_map[r_layer]:
+                raise KeyError("Region contains hex {} belonging to other region: {}".format(hex_id, self.id_map[r_layer][hex_id]))
 
         # first settle on a new rid - want the smallest, unused rid 
         new_rid = 1
-        while new_rid in self.rid_catalogue:
+        while new_rid in self.rid_catalogue[r_layer]:
             new_rid += 1
         
         target_region.set_color( new_rid )
         # register the region in the hexmap's region catalogue 
-        self.rid_catalogue[ new_rid ] = target_region
+        self.rid_catalogue[r_layer][ new_rid ] = target_region
         # register the connections between the new region's hexes and the new rid
         # this allows for quick correlations from point->hex->region
         for hex_id in target_region.ids:
-            self.id_map[ hex_id ] = new_rid 
+            self.id_map[r_layer][ hex_id ] = new_rid 
         
         # return the new_rid
         return( new_rid )
 
-    def add_to_region( self, rID, hex_id ):
+    def add_to_region( self, rID, hex_id, r_layer ):
         """
         Adds a hex to a region. If the hex belongs to a different region, we remove if from that region first
 
         @param rID      - rID of region to which we are adding
         @param hex_id   - ID of hex to add to region
+        @param r_layer  - string (key) for the desired region layer 
         """
+        if r_layer not in self.rid_catalogue:
+            raise KeyError("Region layer {} does not exist.".format(r_layer))
+
         # throws KeyError if rID not in catalogue
         # we aren't handling that error. Downstream problem...
-        if rID not in self.rid_catalogue:
+        if rID not in self.rid_catalogue[r_layer]:
             raise KeyError("Region no. {} not recognized.".format( rID) )
         if hex_id not in self.catalogue:
             raise KeyError("Hex id no. {} not recognized.".format( hex_id ))
 
         other_rid = -1
         # If the hex is already in a region, remove it from that region 
-        if hex_id in self.id_map:
-            if self.id_map[hex_id]==rID:
+        if hex_id in self.id_map[r_layer]:
+            if self.id_map[r_layer][hex_id]==rID:
                 return # nothing to do
             else:
                 raise RegionPopError("Can't do that.")
@@ -419,54 +463,61 @@ class Hexmap:
 
         # the hex does not belong to a region, has no map in id_map
         # add the hex to the region and update the id map
-        self.rid_catalogue[ rID ].add_hex_to_self( hex_id )
-        self.id_map[ hex_id ] = rID
+        self.rid_catalogue[r_layer][ rID ].add_hex_to_self( hex_id )
+        self.id_map[r_layer][ hex_id ] = rID
 
         return(other_rid)
 
-    def remove_from_region( self, hex_id ):
+    def remove_from_region( self, hex_id, r_layer ):
         """
         Removes a hex from a region
 
         @param hex_id   - ID of hex from which to remove region affiliation 
+        @param r_layer  - string (key) for the desired region layer
         """
+        if r_layer not in self.rid_catalogue:
+            raise KeyError("Region layer {} does not exist.".format(r_layer))
+
         # removes the hex_id from whichever region it's in
-        if hex_id not in self.id_map:
+        if hex_id not in self.id_map[r_layer]:
             raise KeyError("Hex no. {} not registered".format(hex_id))
         
         # update the region extents 
-        self.rid_catalogue[ self.id_map[hex_id] ].pop_hexid_from_self( hex_id )
+        self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].pop_hexid_from_self( hex_id )
         
         # check if region still has size, if not, delete the region
-        if len(self.rid_catalogue[ self.id_map[hex_id] ].ids)==0:
-            del self.rid_catalogue[ self.id_map[hex_id] ]
+        if len(self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].ids)==0:
+            del self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ]
 
         # delete the hexes' association to the now non-existent region
-        del self.id_map[hex_id]
+        del self.id_map[r_layer][hex_id]
         
 
-    def merge_regions( self, rID_main, rID_loser ):
+    def merge_regions( self, rID_main, rID_loser, r_layer ):
         """
         Merges two regions
 
         @param rID_main  - rID of region which will accept the hexes from rID_loser
         @param rID_loser - rID of region which will be absorbed into rID_main
+        @param r_layer   - string (key) for the desired region layer. Eg - biome, border, ...
         """
-        
-        if (rID_main not in self.rid_catalogue):
+        if r_layer not in self.rid_catalogue:
+            raise KeyError("Region layer {} does not exist.".format(r_layer))
+
+        if (rID_main not in self.rid_catalogue[r_layer]):
             raise KeyError ("Region {} not recognized".format(rID_main))
-        if (rID_loser not in self.rid_catalogue):
+        if (rID_loser not in self.rid_catalogue[r_layer]):
             raise KeyError("Region {} not recognized".format(rID_loser))
          
         # merge second region into first one
-        self.rid_catalogue[ rID_main ].merge_with_region( self.rid_catalogue[rID_loser] )
+        self.rid_catalogue[r_layer][ rID_main ].merge_with_region( self.rid_catalogue[r_layer][rID_loser] )
         
         # update the entries in the id_map to point to the new region
-        for hex_id in self.rid_catalogue[rID_loser].ids:
-            self.id_map[ hex_id ] = rID_main
+        for hex_id in self.rid_catalogue[r_layer][rID_loser].ids:
+            self.id_map[r_layer][ hex_id ] = rID_main
 
         # delete the old region
-        del self.rid_catalogue[ rID_loser ]
+        del self.rid_catalogue[r_layer][ rID_loser ]
 
 
     def remove_hex( self, target_id):
@@ -482,6 +533,7 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
+        assert( target_hex._radius == self._drawscale )
         if not isinstance(target_hex, Hex):
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
@@ -601,6 +653,7 @@ class Hexmap:
             raise TypeError("Expected type {} for 'vertex', received {}".format(Point, type(vertex)))
         
         if v_type is None:
+            print("this shouldn't be called either")
             l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
             l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
             r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
@@ -612,20 +665,23 @@ class Hexmap:
                 v_type = 1
             else:
                 raise ValueError("Not sure if {} is a vertex...".format(vertex) )
+        
+
+        assert( type(v_type) == int)
+
+        if v_type==1:
+            neighbors = [   vertex + (Point(-1.0,  0.0       )*self._drawscale), 
+                            vertex + (Point( 0.5,  0.5*rthree)*self._drawscale), 
+                            vertex + (Point( 0.5, -0.5*rthree)*self._drawscale) ]
+        elif v_type==2:
+            neighbors = [   vertex + (Point( 1.0,  0.0       )*self._drawscale), 
+                            vertex + (Point(-0.5,  0.5*rthree)*self._drawscale), 
+                            vertex + (Point(-0.5, -0.5*rthree)*self._drawscale) ]
+
         else:
-            assert( type(v_type) == int)
+            raise ValueError("Unrecognized vertex type {}".format(v_type))
 
-            if v_type==1:
-                neighbors = [ vertex + Point( -1*self._drawscale ), 
-                                vertex + Point( 0.5*self._drawscale, rthree*0.5*self._drawscale), 
-                                vertex + Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale)]
-            elif v_type==2:
-                neighbors = [ vertex + Point( self._drawscale ), 
-                                vertex + Point( -0.5*self._drawscale, rthree*0.5*self._drawscale), 
-                                vertex + Point( -0.5*self._drawscale, -1*rthree*0.5*self._drawscale)]
-            else:
-                raise ValueError("Unrecognized vertex type {}".format(v_type))
-
+        return( neighbors )
 
     def get_ids_around_vertex( self, place, v_type = None):
         """
@@ -643,6 +699,7 @@ class Hexmap:
         # We don't know which 
 
         if v_type is None:
+            print("this shouldn't be called")
             # deduce the vertex type
             l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
             l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
@@ -650,23 +707,56 @@ class Hexmap:
             r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
 
             if l_up==l_down:
-                return([ l_up, r_up, r_down]) # type 2
+                v_type = 2
+                #return([ l_up, r_up, r_down]) # type 2
             elif r_up==r_down:
-                return([ l_up, l_down, r_up]) # type 1
+                v_type=1
+                #return([ l_up, l_down, r_up]) # type 1
             else:
                 raise ValueError("I don't think this place, {}, is a vertex".format(place))
-        else: 
-            assert(type(v_type)==int)
-            if v_type==1:
-                return([ self.get_id_from_point(place+Point(self._drawscale,0.)), 
-                            self.get_id_from_point(place+Point(-0.5*self._drawscale,    rthree*0.5*self._drawscale )),
-                            self.get_id_from_point(place+Point(-0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
-            elif v_type==2:
-                return([ -self.get_id_from_point(place+Point(self._drawscale,0.)), 
-                            self.get_id_from_point(place+Point( 0.5*self._drawscale,    rthree*0.5*self._drawscale )),
-                            self.get_id_from_point(place+Point( 0.5*self._drawscale, -1*rthree*0.5*self._drawscale )) ])
-            else:
-                raise ValueError("Invalid Vertex type value: {}".format(v_type))
+        
+        assert(type(v_type)==int)
+        if v_type==1:
+            return([    self.get_id_from_point( place + Point(1.0 ,  0.0       )*self._drawscale ), 
+                        self.get_id_from_point( place + Point(-0.5,  0.5*rthree)*self._drawscale ),
+                        self.get_id_from_point( place + Point(-0.5, -0.5*rthree)*self._drawscale ) ])
+        elif v_type==2:
+            return([    self.get_id_from_point( place + Point(-1.0 , 0.0       )*self._drawscale ), 
+                        self.get_id_from_point( place + Point( 0.5,  0.5*rthree)*self._drawscale ),
+                        self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self._drawscale ) ])
+
+        else:
+            raise ValueError("Invalid Vertex type value: {}".format(v_type))
+
+    def get_ids_beside_edge(self, start, end):
+        """
+        Returns a pair of hexIDs to the left and right of the edge defined by 'start' and 'end'
+
+        @param start    - type Point, defines start of edge
+        @param end      - type Point, defines end of edge 
+
+        start and end should be drawscale apart
+        """
+
+        if type(start)!=Point:
+            raise TypeError("Arg 'start' is not type point, it is {}".format(start))
+        if type(end)!=Point:
+            raise TypeError("Arg 'end' is not type point, it is {}".format( end ))
+        diff = start-end
+        if (diff.magnitude - self._drawscale)/self._drawscale > 0.01:
+            raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self._drawscale))
+        # displacement vector from 'end' object. 
+        #       points towards CW hex
+        new_angle = diff.angle - 120.
+        displacement = Point( cos( new_angle) , sin(new_angle) )*self._drawscale 
+        CW_hex  = end + displacement 
+
+        new_angle_ccw = diff.angle + 120.
+        displacement_ccw = Point( cos(new_angle_ccw), sin(new_angle_ccw))*self._drawscale
+        CCW_hex = end + displacement_ccw
+
+        return( self.get_id_from_point( CW_hex) , self.get_id_from_point( CCW_hex ) )
+
 
     def get_id_from_point(self, point):
         """
@@ -829,21 +919,21 @@ class Region:
         center = Point(0.0, 0.0)
         for hex_id in self.ids:
             this_hex = self.parent.catalogue[hex_id]
-            center += this_hex._center
+            center += this_hex.center
             if min_x == None:
-                min_y = this_hex._center.y
-                max_y = this_hex._center.y
-                min_x = this_hex._center.x
-                max_x = this_hex._center.x
+                min_y = this_hex.center.y
+                max_y = this_hex.center.y
+                min_x = this_hex.center.x
+                max_x = this_hex.center.x
             else:
-                if min_x>this_hex._center.x:
-                    min_x=this_hex._center.x
-                if max_x<this_hex._center.x:
-                    max_x=this_hex._center.x
-                if min_y>this_hex._center.y:
-                    min_y=this_hex._center.y
-                if max_y<this_hex._center.y:
-                    max_y=this_hex._center.y
+                if min_x>this_hex.center.x:
+                    min_x=this_hex.center.x
+                if max_x<this_hex.center.x:
+                    max_x=this_hex.center.x
+                if min_y>this_hex.center.y:
+                    min_y=this_hex.center.y
+                if max_y<this_hex.center.y:
+                    max_y=this_hex.center.y
 
         extent = Point( max_x-min_x, max_y-min_y )
         center = center*(1.0/len(self.ids))
@@ -1211,15 +1301,48 @@ class Path:
     """
 
     def __init__(self, start):
-        if not isinstance(start_point , Point):
+        if not isinstance(start , Point):
             raise TypeError("Expected type {} for arg 'start', got {}".format(Point, type(start)))
-        self._vertices      = [ start ]
+        self._vertices      = [ Point( start.x, start.y ) ]
 
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
-    def end(self):
-        return( self._vertices[-1] )
+    def end(self, offset=0):
+        if len(self._vertices)==0:
+            return(None)
+        else:
+            return( Point( self._vertices[-1-offset].x, self._vertices[-1-offset].y ) )
+
+    @property
+    def vertices(self):
+        """
+        The points defining this path. Returns a copy! 
+        """
+        built = []
+        for vert in self._vertices:
+            built.append( Point( vert.x, vert.y ) )
+        return( built)
+    
+    def trim_at( self, where):
+        p_type = False 
+        if isinstance( where, int ):
+            p_type = True
+        elif not isinstance( where , Point ):
+            raise TypeError("Arg 'where' must be type {}, received {}".format( Point, type(where)))
+        
+        if p_type:
+            which_index = where
+        else:
+            try:
+                which_index = self._vertices.index( where )
+            except ValueError:
+                raise ValueError("Point {} is not in list of vertices for obj {}".format(where, type(self)))
+
+        
+        # this leaves the self-intersect point there. Good!
+        self._vertices = self._vertices[which_index:]
+
 
     def add_to_end( self, end ):
         """
@@ -1230,16 +1353,19 @@ class Path:
         if not isinstance( end, Point):
             raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(end )))
 
-        if not _step_calc:
+        if not self._step_calc:
             # get the magnitude between the last point and the one we're adding, that's the step size 
-            self._step = ( end - self._vertices[-1] ).magnitude 
+            self._step = ( end - self.end() ).magnitude 
             self._step_calc = True 
         else:
             # if the difference between this step and the precalculated step is >1%, raise an exception! 
-            if (( end - self._vertices[-1] ).magnitude - self._step)/self._step  > 0.01:
+            if (( end - self.end() ).magnitude - self._step)/self._step  > 0.01:
+                print("Step of {}".format( (end-self.end()).magnitude ))
+                print("Expected {}".format(self._step))
+                print("From {} to {}".format(self.end(), end))
                 raise ValueError("Paths must have consistently spaced entries")
 
-        self._vertices = self._vertices + [ end ]
+        self._vertices.append( end )
 
     def add_to_start( self, start):
         """

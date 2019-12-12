@@ -21,12 +21,14 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = hcolor.ocean 
-        
+        self.color = colors.ocean 
+                
         self.width = 1
 
         # by default, should have none
         self.tributaries = None
+
+        self._max_len = 20
 
     def join_with( self, other ):
         """
@@ -38,44 +40,60 @@ class River(Path):
 
         # make sure these rivers are join-able. One river needs to have its end point on the other! 
         r_type = None
-        if other._vertices[-1] in self._vertices:
+        if other.end() in self._vertices:
             r_type = 1
-        elif self._vertices[-1] in other._vertices:
+        elif self.end() in other._vertices:
             r_type = 2
         else:
-            raise ValueError("One river must end on another one")
+            # try joining with its tributaries 
+            if other.tributaries is not None:
+                error_code = self.tributaries[0].join_with( other )
+                if error_code == 0:
+                    return(0)
+                error_code = self.tributaries[1].join_with( other )
+                if error_code == 0:
+                    return(0) 
+                
+                # failed to join other river with itself or its tributaries 
+                return( 1 )
+            else:
+                return( 1)
 
         if r_type==1:
             # other one ends in this one
             tributary_1 = other
             # going to define a tributary 
-            tributary_2 = River( self._vertices[0]  )
+            tributary_2 = River( self.vertices[0]  )
 
             # Merge part of the self into the new tributary 
-            intersect = self._ververtices.index( other._vertices[-1] )
-            tributary_2._vertices = self._vertices[: intersect+1]
+            intersect = self.vertices.index( other.vertices[-1] )
+            tributary_2._vertices = self.vertices[: (intersect+1)]
             tributary_2.tributaries = self.tributaries 
+            self._vertices = self.vertices[intersect:]
 
         else:
-            intersect = other.index( self._vertices[-1] )
+            intersect = other.index( self.vertices[-1] )
 
             # use the 'other' object, part of it, to make the tributary 
-            tributary_1 = other._vertices[: intersect+1]
+            tributary_1 = other.vertices[:(intersect+1)]
             tributary_1.tributaries = other.tributaries
 
             # now use the former self to make another tributary 
             tributary_2 = River( self.vertices[0] )
-            tributary_2._vertices = self._vertices
+            tributary_2._vertices = self.vertices
             tributary_2.tributaries = self.tributaries 
+            self._vertices = other.vertices[intersect:]
 
 
         # modify the self
-        self._vertices = other._vertices[intersect:]
         self.tributaries = [ tributary_1, tributary_2 ]
 
         self.tributaries[0].width = other.width
         self.tributaries[0].width = self.width
         self.width = other.width + self.width 
+
+        # success code 
+        return(0)
 
 class Biome(Region):
     """
@@ -99,6 +117,7 @@ class region_brush(basic_tool):
         self.start = Point(0.0, 0.0)
         self.selected_rid = None
 
+        # parent should be a pointer to the gui object that has this brush 
         self.parent = parent
         self._writing = True
         self._brush_size = 1
@@ -109,6 +128,7 @@ class region_brush(basic_tool):
         self.QPen.setWidth(3)
 
 
+        self.r_layer = 'biome'
         self._outline_obj = None
         self._drawn_regions = {} # map from rid to drawn region
         self._drawn_names = {}
@@ -149,14 +169,14 @@ class region_brush(basic_tool):
         here = Point( event.scenePos().x(), event.scenePos().y())        
         this_id = self.parent.main_map.get_id_from_point( here )
         
-        if this_id not in self.parent.main_map.id_map:
+        if this_id not in self.parent.main_map.id_map[self.r_layer]:
             self.selected_rid = None
             self.parent.ui.RegEdit.setText("")
         else:
-            if self.parent.main_map.id_map[this_id]!=self.selected_rid:
+            if self.parent.main_map.id_map[self.r_layer][this_id]!=self.selected_rid:
 
-                self.selected_rid = self.parent.main_map.id_map[this_id]
-                self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.selected_rid].name)
+                self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
+                self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
 
     def hold(self, event):
         self.activate( event )
@@ -210,7 +230,7 @@ class region_brush(basic_tool):
             if self._writing:
                 self.QBrush.setStyle(6)
                 if self.selected_rid is not None:
-                    self._set_color( self.parent.main_map.rid_catalogue[ self.selected_rid ].color)
+                    self._set_color( self.parent.main_map.rid_catalogue[self.r_layer][ self.selected_rid ].color)
                 else:
                     self.QPen.setColor(QtGui.QColor(114,218,232))
             else:
@@ -226,7 +246,7 @@ class region_brush(basic_tool):
 
             self.QBrush.setStyle(0)
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
-            self._outline_obj.setZValue( 4 )
+            self._outline_obj.setZValue( 10 )
 
     def reg_add(self, event):
         """
@@ -244,31 +264,31 @@ class region_brush(basic_tool):
 
         if self.selected_rid is None:
             # if the hex here is not mapped to a registered region, 
-            if (loc_id not in self.parent.main_map.id_map):
+            if (loc_id not in self.parent.main_map.id_map[self.r_layer]):
                 # make a new region here, set it to the active region, and draw it
                 new_reg = Region( loc_id, self.parent.main_map )
                                 
                 # get the newely created rid, set it to active 
-                self.selected_rid = self.parent.main_map.register_new_region( new_reg )
+                self.selected_rid = self.parent.main_map.register_new_region( new_reg, self.r_layer )
                 
                 # self.parent.main_map.id_map( loc_id )
                 
                 if self._brush_size == 2:
                     # build a new region around this one
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        self.parent.main_map.add_to_region( self.selected_rid, ID )
+                        self.parent.main_map.add_to_region( self.selected_rid, ID, self.r_layer )
 
                 self.redraw_region( self.selected_rid )
             else:
                 # no active region, but the hex here belongs to a region. 
                 # set this hexes' region to the active one 
-                self.selected_rid = self.parent.main_map.id_map[ loc_id ]
+                self.selected_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
         else:
             if self._brush_size==1:
                 try:
                     # try adding it
                     # if it can't, it raises a RegionMergeError exception
-                    other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id )
+                    other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id, self.r_layer )
                     
                     if (other_rid!=-1) and (other_rid is not None): 
                         # add_to_region returns an rid if it removes a hex from another region.
@@ -282,19 +302,19 @@ class region_brush(basic_tool):
             elif self._brush_size==2:
                 # This seems to cause some instability...
                 # ...
-                if loc_id not in self.parent.main_map.id_map:
+                if loc_id not in self.parent.main_map.id_map[self.r_layer]:
                     # create and register a region
                     temp_region = Region( loc_id , self.parent.main_map )
-                    new_rid = self.parent.main_map.register_new_region( temp_region )
+                    new_rid = self.parent.main_map.register_new_region( temp_region, self.r_layer )
 
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
                         try:
-                            self.parent.main_map.add_to_region( new_rid, ID )
+                            self.parent.main_map.add_to_region( new_rid, ID , self.r_layer )
                         except (RegionMergeError, RegionPopError):
                             pass
 
                     # now merge the regions 
-                    self.parent.main_map.merge_regions( self.selected_rid, new_rid )
+                    self.parent.main_map.merge_regions( self.selected_rid, new_rid , self.r_layer)
                     self.redraw_region( self.selected_rid )
                     #for ID in temp_region.ids:
                     #    print("Failed here")
@@ -309,15 +329,15 @@ class region_brush(basic_tool):
         if loc_id not in self.parent.main_map.catalogue:
             return
 
-        if loc_id not in self.parent.main_map.id_map:
+        if loc_id not in self.parent.main_map.id_map[self.r_layer]:
             # nothing to pop
             return
         else:
             # get this hexes's region id 
-            this_rid = self.parent.main_map.id_map[ loc_id ]
+            this_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
             # remvoe this hex from that region
             try:
-                self.parent.main_map.remove_from_region( loc_id )
+                self.parent.main_map.remove_from_region( loc_id, self.r_layer )
                 # redraw that region
                 self.redraw_region( this_rid )
             except RegionPopError:
@@ -330,6 +350,9 @@ class region_brush(basic_tool):
         @ param reg_id  - region id if region to redraw.
         """
 
+        self.redraw_region_text( reg_id )
+        return()
+
         #self.QBrush.setStyle(6)
         self.QBrush.setStyle(1)
         self.QPen.setWidth(3)
@@ -338,7 +361,7 @@ class region_brush(basic_tool):
         if reg_id in self._drawn_regions:
             self.parent.scene.removeItem( self._drawn_regions[ reg_id ] )
         
-        reg_obj = self.parent.main_map.rid_catalogue[ reg_id ]
+        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
         self._set_color( reg_obj.color )
 
         path = QtGui.QPainterPath()
@@ -352,8 +375,8 @@ class region_brush(basic_tool):
             path = path.subtracted( enc_path )
         
         self._drawn_regions[reg_id] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush)
-        self._drawn_regions[reg_id].setZValue(2)
-        self.redraw_region_text( reg_id )
+        self._drawn_regions[reg_id].setZValue(5)
+
 
     def redraw_region_text( self, rid ):
         """
@@ -361,7 +384,7 @@ class region_brush(basic_tool):
 
         @param rid  - region id of region whose name should be redrawn
         """
-        reg_obj = self.parent.main_map.rid_catalogue[ rid ]
+        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
 
         if reg_obj.name=="":
             return
@@ -391,7 +414,7 @@ class region_brush(basic_tool):
         new_color= QtGui.QColor( 250, 250, 250)
         self._drawn_names[rid].setDefaultTextColor( new_color )
         self._drawn_names[rid].setGraphicsEffect( drop )
-        self._drawn_names[rid].setZValue(10)
+        self._drawn_names[rid].setZValue(15)
     
     def drop(self):
         """
@@ -425,6 +448,8 @@ class hex_brush(basic_tool):
 
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
+
+        self._river_drawn = []
 
         # Part of a failed experiment. Leaving in case I pick it up again
         #self.layer = QGraphicsLayer()
@@ -477,7 +502,7 @@ class hex_brush(basic_tool):
 
 
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
-            self._outline_obj.setZValue(4)
+            self._outline_obj.setZValue(10)
     
     def erase(self, event):
         """
@@ -573,9 +598,32 @@ class hex_brush(basic_tool):
             #print("key error")
             pass
 
+    def redraw_rivers( self ):
+        """
+        all the rivers
+        """
+        # self._river_drawn
 
+        def draw_river(river):
 
+            if river.tributaries is not None:
+                draw_river( river.tributaries[0] )
+                draw_river( river.tributaries[1] )
 
+            self.QBrush.setStyle(0)
+            self.QPen.setStyle(1)
+            self.QPen.setWidth(4)
+            self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
+            path = QtGui.QPainterPath()
+            outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.vertices  ) )
+            path.addPolygon(outline)
+            self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
+            self._river_drawn[-1].setZValue(2)
+
+        for river in self.parent.main_map.paths['rivers']:
+            draw_river( river )
+            
+            
 
     def select(self,event):
         self.QBrush.setStyle(0)
@@ -693,6 +741,9 @@ class OHex(Hex):
         self._temperature_base = 1.0
         self._is_land          = True
         self.biome = ""
+    
+        # CW downstream , CCW downstream, runs through
+        self.river_border = [ False ,False , False]
 
     def rescale_color(self):
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
