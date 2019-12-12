@@ -170,8 +170,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     
     # loop over the arctic hexes and spread them a little bit
 
-    print(main_map.rid_catalogue.keys())
-    print(main_map.id_map.keys())
     save_map( main_map, sim )
     
 

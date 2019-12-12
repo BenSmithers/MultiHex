@@ -350,6 +350,9 @@ class region_brush(basic_tool):
         @ param reg_id  - region id if region to redraw.
         """
 
+        self.redraw_region_text( reg_id )
+        return()
+
         #self.QBrush.setStyle(6)
         self.QBrush.setStyle(1)
         self.QPen.setWidth(3)
@@ -373,7 +376,7 @@ class region_brush(basic_tool):
         
         self._drawn_regions[reg_id] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush)
         self._drawn_regions[reg_id].setZValue(5)
-        self.redraw_region_text( reg_id )
+
 
     def redraw_region_text( self, rid ):
         """

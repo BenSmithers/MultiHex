@@ -172,7 +172,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                             break
                         # if it's 1, continue 
                     if error_code == 0:
-                        print( "merged! ")
                         return(None)
                     # if error_code = 1, there was no merge 
 
@@ -184,13 +183,16 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             return( None )
 
     main_map.paths['rivers'] = []
+    print("Making Rivers",end='')
     for i in range( n_rivers ):
+        if i%3==0:
+            print('.',end='')
         this_riv = make_river()
         if this_riv is not None:
             main_map.paths['rivers'].append( this_riv )
 
     save_map( main_map, sim )
-    
+    print(" done!")
 
 if __name__=='__main__':
     if len(sys.argv)>1:
