@@ -3,7 +3,7 @@ from MultiHex.core import Hexmap, load_map, save_map
 
 import random
 import os
-
+import pickle
 #                  Prepare Utilities
 # =====================================================
 
@@ -66,39 +66,6 @@ def point_is_in(point, dimensions):
 # open the files, build the function we need
 #  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
 resources_dir = os.path.join( os.path.dirname(__file__),'..','resources')
-adj_obj = open(os.path.join( resources_dir , "adjectives"),'r')
-_adjectives = adj_obj.readlines()
-adj_obj.close()
-def _get_adj():
-    which = _adjectives[int(random()*len(_adjectives))]
-    return( which[0].upper() + which[1:-1] )
-
-#  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
-noun_obj = open(os.path.join( resources_dir, "nouns"),'r')
-_nouns = noun_obj.readlines()
-noun_obj.close()
-def _get_noun():
-    which = _nouns[int(random()*len(_nouns))]
-    return( which[0].upper() + which[1:-1])
-
-#  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
-def get_name( what ):
-
-    word = ""
-    if random()>0.75:
-        naan = _get_noun()
-        word += _get_adj()+naan[0].lower() + naan[1:] + " "
-    word += "The "+_get_adj() +" "+ what[0].upper()+what[1:]
-    
-    if random()>0.75:
-        word+= " Of "+_get_noun()
-        if random()>0.85:
-            word+=" and "+ _get_noun()
-            
-            if random()>0.97:
-                word+= " and also" + _get_noun() + " too"
-
-    return( word )
 
 #  The following function was written by Ross McGuyer. Credit goes to the author (currently unknown) of
 #  http://pcg.wikidot.com/pcg-algorithm:markov-chain, as much of the code used is derived from the example.
@@ -111,9 +78,15 @@ def get_name( what ):
 #  Description: This function uses a simple markov chain to generate a name.
 
 
-def create_name(what, order=2):
-
-    mid_table, start_list = fill_name_tables(what, order)  # The markov chain
+def create_name(what, order=2, filename="Morrowind"):
+    try:
+        mid_table, start_list = open_tables(filename)
+    except:
+        try:
+            mid_table, start_list = fill_name_tables(what, order, filename)  # The markov chain
+        except:
+            print("Ey yo, file not found dawg!")
+            raise
     syns = fetch_synonyms(what)
     name = generate_name(mid_table, order, start_list)
     final_name = determine_name_style(syns, name)
@@ -124,18 +97,25 @@ def create_name(what, order=2):
 #  fill_name_table
 #  Parameter(s): what - The region type. Eventually used to determine the style of the generated name.
 #                order - Controls how complex each look up syllable.
+#                filename - the text file to read from
 #  Return: A table containing the markov chain and weights
 #  Description: This function reads from a file containing several example words/names and uses that to generate the
 #                   rules for generating names.
 
-mor_obj = open(os.path.join( resources_dir , "Morrowind"),'r')
-_morrowind = mor_obj.readlines()
-mor_obj.close()
-def fill_name_tables(what, order):
+
+def fill_name_tables(what, order, filename):
 
     mid_table = {}
     start_list = []
-    for word in _morrowind:
+    try:
+        file_obj = open(os.path.join(resources_dir, "text_files", filename), 'r')
+        _file_obj = file_obj.readlines()
+        file_obj.close()
+    except IOError as e:
+        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        raise
+
+    for word in _file_obj:
         start_list.append(word[:2])
         for i in range(len(word) - order):
             try:
@@ -143,6 +123,8 @@ def fill_name_tables(what, order):
             except KeyError:
                 mid_table[word[i:i + order]] = []
             mid_table[word[i:i + order]] += word[i+order]
+
+    save_tables(start_list, mid_table, filename)
 
     return mid_table, start_list
 
@@ -162,6 +144,7 @@ def fill_name_tables(what, order):
 def generate_name(mid_table, order, start=None, max_length=20):
 
     name = ""
+
     if start == None:
         name += random.choice(list(mid_table))
     else:
@@ -301,3 +284,49 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
                 # we're not smoothing the rainfall for the ocean
                 pass 
     save_map( main_map, which )
+
+
+#  open_table
+#  Parameter(s): filename - the type of style table to retrieve.
+#  Return: N/A
+#  Description: This takes in both the start_table and the mid_table and pickles them as binary files.
+
+def open_tables(filename):
+
+    try:
+        start_file = open(os.path.join(resources_dir, 'binary_tables',filename + '_start'), 'rb')
+        start_list = pickle.load(start_file)
+        start_file.close()
+
+        mid_file = open(os.path.join(resources_dir, 'binary_tables', filename + '_mid'), 'rb')
+        mid_table = pickle.load(mid_file)
+        mid_file.close()
+    except IOError as e:
+        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        raise
+
+    return mid_table, start_list
+
+#  save_table
+#  Parameter(s): start_table - the table of start characters to be saved
+#                mid_table - the table of mid word syllables
+#                filename - the name of the file associated with the start and mid tables
+#  Return: N/A
+#  Description: This takes in both the start_table and the mid_table and pickles them as binary files.
+
+
+def save_tables(start_table, mid_table, filename):
+
+    try:
+        start_file = open(os.path.join(resources_dir, 'binary_tables', filename + '_start'), 'wb')
+        pickle.dump(start_table, start_file, -1)
+        start_file.close()
+
+        mid_file = open(os.path.join(resources_dir, 'binary_tables', filename + '_mid'), 'wb')
+        pickle.dump(mid_table, mid_file, -1)
+        mid_file.close()
+    except IOError as e:
+        print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        raise
+
+    return
