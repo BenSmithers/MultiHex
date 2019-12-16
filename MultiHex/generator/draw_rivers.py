@@ -160,7 +160,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 # both the hexes to my left and right are on the same side of a river 
                 
                 if (main_map.catalogue[ccw].river_border[0] and  main_map.catalogue[cw].river_border[0]) or (main_map.catalogue[ccw].river_border[1] and main_map.catalogue[cw].river_border[1]):
-                    # this means that the river has now reached another river 
+                    # this means that the river has now reached another river -- maybe
 
                     # search through the other rivers, find the one with my end on it
                     # fortunately, this river hasn't been registered yet

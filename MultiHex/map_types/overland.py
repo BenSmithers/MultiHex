@@ -32,8 +32,7 @@ class River(Path):
 
     def join_with( self, other ):
         """
-        Joins with the other river. Makes this object the 'lower' part of the river, with the tributaries higher up
-
+        Joins with the other river! 
         """
         if not isinstance( other, River ):
             raise TypeError("Cannot join with ")
@@ -66,13 +65,13 @@ class River(Path):
             tributary_2 = River( self.vertices[0]  )
 
             # Merge part of the self into the new tributary 
-            intersect = self.vertices.index( other.vertices[-1] )
+            intersect = self.vertices.index( other.end() )
             tributary_2._vertices = self.vertices[: (intersect+1)]
             tributary_2.tributaries = self.tributaries 
-            self._vertices = self.vertices[intersect:]
+            self.trim_at( intersect )
 
         else:
-            intersect = other.index( self.vertices[-1] )
+            intersect = other.index( self.end() )
 
             # use the 'other' object, part of it, to make the tributary 
             tributary_1 = other.vertices[:(intersect+1)]
@@ -82,14 +81,15 @@ class River(Path):
             tributary_2 = River( self.vertices[0] )
             tributary_2._vertices = self.vertices
             tributary_2.tributaries = self.tributaries 
+
             self._vertices = other.vertices[intersect:]
 
 
         # modify the self
         self.tributaries = [ tributary_1, tributary_2 ]
-
         self.tributaries[0].width = other.width
-        self.tributaries[0].width = self.width
+        self.tributaries[1].width = self.width
+
         self.width = other.width + self.width 
 
         # success code 
@@ -313,9 +313,14 @@ class region_brush(basic_tool):
                         except (RegionMergeError, RegionPopError):
                             pass
 
-                    # now merge the regions 
-                    self.parent.main_map.merge_regions( self.selected_rid, new_rid , self.r_layer)
-                    self.redraw_region( self.selected_rid )
+                    # now merge the regions
+                    try: 
+                        self.parent.main_map.merge_regions( self.selected_rid, new_rid , self.r_layer)
+                        self.redraw_region( self.selected_rid )
+                    except RegionMergeError:
+                        # delete that region, remove it
+                        self.parent.main_map.remove_region( new_rid , self.r_layer )
+
                     #for ID in temp_region.ids:
                     #    print("Failed here")
                     #    self.parent.main_map.remove_from_region( ID )
@@ -351,7 +356,7 @@ class region_brush(basic_tool):
         """
 
         self.redraw_region_text( reg_id )
-        return()
+        #return()
 
         #self.QBrush.setStyle(6)
         self.QBrush.setStyle(1)
@@ -361,7 +366,11 @@ class region_brush(basic_tool):
         if reg_id in self._drawn_regions:
             self.parent.scene.removeItem( self._drawn_regions[ reg_id ] )
         
-        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
+        try:
+            reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
+        except KeyError:
+            return
+
         self._set_color( reg_obj.color )
 
         path = QtGui.QPainterPath()
@@ -612,7 +621,7 @@ class hex_brush(basic_tool):
 
             self.QBrush.setStyle(0)
             self.QPen.setStyle(1)
-            self.QPen.setWidth(4)
+            self.QPen.setWidth(3 + river.width)
             self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
             path = QtGui.QPainterPath()
             outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.vertices  ) )
@@ -621,6 +630,7 @@ class hex_brush(basic_tool):
             self._river_drawn[-1].setZValue(2)
 
         for river in self.parent.main_map.paths['rivers']:
+            assert( isinstance( river, River) )
             draw_river( river )
             
             

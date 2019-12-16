@@ -482,15 +482,17 @@ class Hexmap:
         if hex_id not in self.id_map[r_layer]:
             raise KeyError("Hex no. {} not registered".format(hex_id))
         
-        # update the region extents 
-        self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].pop_hexid_from_self( hex_id )
-        
-        # check if region still has size, if not, delete the region
-        if len(self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].ids)==0:
-            del self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ]
+        if len(self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].ids )==1:
+            # if this is the last hex in the region, just delete this guy. It's the responsibility of the calling function to redraw the region (if desired)
+            del self.rid_catalogue[r_layer][self.id_map[r_layer][hex_id]]
 
-        # delete the hexes' association to the now non-existent region
-        del self.id_map[r_layer][hex_id]
+        else:
+
+            # update the region extents 
+            self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].pop_hexid_from_self( hex_id )
+
+            # delete the hexes' association to the now non-existent region
+            del self.id_map[r_layer][hex_id]
         
 
     def merge_regions( self, rID_main, rID_loser, r_layer ):
@@ -546,7 +548,20 @@ class Hexmap:
             self.catalogue[new_id].rescale_color()
         else:
             self.catalogue[new_id] = target_hex
-    
+    def remove_region(self, rid, r_layer):
+        if not isinstance(rid, int):
+            raise TypeError("Expected type {} for arg `int`, got{}".format(int, type(rid)) )
+        if rid not in self.rid_catalogue[r_layer]:
+            raise KeyError("Region ID {} not in catalogue".format(rid))
+
+        for ID in self.rid_catalogue[r_layer][rid].ids:
+            try:
+                del self.id_map[r_layer][ID]
+            except KeyError:
+                pass
+         
+        del self.rid_catalogue[r_layer][rid] 
+
 
     def set_active_hex(self, id):
         if self._active_id is not None:
@@ -867,10 +882,6 @@ def deconstruct_id( id ):
 
     return((x_id,y_id, on_primary_grid))
 
-"""
-@class  Region  - representation of a collection of hexes
-@method glom    - combines two lists of points into a single list of points
-"""
 
 # by the four-color theorem, we only need four colors
 # six just makes it easier and prettier 
@@ -897,6 +908,15 @@ class Region:
     """
 
     def __init__(self, hex_id, parent):
+        """
+        Constructor for Region class
+
+        @param hex_id   - int64_t, key for the starting Hex of the region in param `parent`s Hex catalogue
+        @param parent   - Hexmap containing this Region
+        """
+        if not isinstance( parent, Hexmap):
+            raise TypeError("Arg `parent` must by type {}, received {}.".format(Hexmap, type(parent)))
+
         self.enclaves = [  ]
         self.ids = [ hex_id ]
         # regions don't know their own region_id. That's a hexmap thing
@@ -907,9 +927,16 @@ class Region:
         
         self.parent = parent
         # may throw KeyError! That's okay, should be handled downstream 
-        self.perimeter = self.parent.catalogue[hex_id]._vertices
+        self.perimeter = self.parent.catalogue[hex_id].vertices
          
     def get_center_size(self):
+        """
+        Calculates and returns an approximate size of the region. 
+
+        Returns tuple:
+             - `center`     - Point representing approximate center
+             - `extent`     - Point (as vector) representing length in X and Y
+        """
         min_x = None
         max_x = None 
         min_y = None
@@ -940,10 +967,18 @@ class Region:
         return( center, extent )
 
     def set_color(self, number):
-        # not hard-coding the number of colors in case I add more
+        """
+        Sets the color of the region
+
+        @param `number`    - which color to use
+        """
         self.color = region_colors[ number % len(region_colors) ]
 
     def add_hex_to_self( self, hex_id ):
+        """
+        Add the hex at `hex_id` in this region's Hexmap to this region
+        """
+
         # build a region around this hex and merge with it
         if hex_id in self.ids:
             return #nothing to do...
@@ -955,8 +990,12 @@ class Region:
         """
         Takes another region and merges it into this one.
 
+        @param other_region     - region to merge with this one
         """
         #TODO: prepare a write up of this algorithm 
+
+        if not isinstance( other_region, Region):
+            raise TypeError("Arg `other_region` is of type {}, expected {}".format(type(other_region), Region))
 
         # determine if Internal or External region merge
         internal = False  # is 
@@ -1096,7 +1135,7 @@ class Region:
         #    3. hex borders perimeter multiple times. Popping hex will create multiple regions. We forbid this possibility... 
 
         this_hex = self.parent.catalogue[ hex_id ]
-        hex_perim = this_hex._vertices[::-1]
+        hex_perim = this_hex.vertices[::-1]
 
         # check perimeter
 
@@ -1138,17 +1177,18 @@ class Region:
 
             # walk around the outer perimeter until we get to a point 
             start_index = 0
-            while self.perimeter[start_index] not in hex_perim:
+            while (self.perimeter[start_index] in hex_perim):
                 start_index += 1
 
             index = start_index
+
             while self.perimeter[index % len(self.perimeter)] not in hex_perim:
                 new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
                 index += 1
 
             new_perim.append( self.perimeter[ index % len( self.perimeter) ] )
 
-            hex_index = (hex_perim.index( self.perimeter[index %len(self.perimeter)] ) + 1 )%len(hex_perim)
+            hex_index = (hex_perim.index( self.perimeter[index %len(self.perimeter)] ) + 1 ) % len(hex_perim)
 
             while hex_perim[hex_index % len(hex_perim)] not in self.perimeter:
                 
