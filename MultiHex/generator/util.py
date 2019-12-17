@@ -79,6 +79,7 @@ resources_dir = os.path.join( os.path.dirname(__file__),'..','resources')
 
 
 def create_name(what, order=2, filename="Morrowind"):
+
     try:
         mid_table, start_list = open_tables(filename)
     except:
@@ -119,13 +120,17 @@ def fill_name_tables(what, order, filename):
         raise
 
     for word in _file_obj:
-        start_list.append(word[:2])
-        for i in range(len(word) - order):
+        if word[-1] == '\n':
+            no_newline = word[0:len(word)-1]
+        else:
+            no_newline = word
+        start_list.append(no_newline[:2])
+        for i in range(len(no_newline) - order):
             try:
-                mid_table[word[i:i+order]]
+                mid_table[no_newline[i:i+order]]
             except KeyError:
-                mid_table[word[i:i + order]] = []
-            mid_table[word[i:i + order]] += word[i+order]
+                mid_table[no_newline[i:i + order]] = []
+            mid_table[no_newline[i:i + order]] += no_newline[i+order]
 
     save_tables(start_list, mid_table, filename)
 
@@ -154,7 +159,10 @@ def generate_name(mid_table, order, start=None, max_length=20):
         name += random.choice(start)
     try:
         while len(name) < max_length:
-            name += random.choice(mid_table[name[-order:]])
+            if not break_name_loop(name):
+                name += random.choice(mid_table[name[-order:]])
+            else:
+                break
     except KeyError:
         pass
 
@@ -173,8 +181,8 @@ def fetch_synonyms(what):
         "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
         "mountain": ["Mountains", "Peaks", "Crags"],
         "forest": ["Forest", "Woods", "Woodlands", "Backwoods", "Wilds"],
-        "arctic": ["Boreal","Frost", "tundra","Arctic"],
-        "river": ["Creek","River","Stream"]
+        "arctic": ["Boreal","Frost", "Tundra","Arctic"],
+        "river": ["Creek","River","Stream", "Rapids"]
     }
 
     return switcher.get(what, ["Invalid What"])
@@ -297,8 +305,6 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
 #  Description: This takes in both the start_table and the mid_table and pickles them as binary files.
 
 def open_tables(filename):
-    
-
     try:
         start_file = open(os.path.join(resources_dir, 'binary_tables',filename + '_start'), 'rb')
         start_list = pickle.load(start_file)
@@ -309,6 +315,7 @@ def open_tables(filename):
         mid_file.close()
     except IOError as e:
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
+        print("Could not find existing table that matched, creating new table from text file.")
         raise
 
     return mid_table, start_list
@@ -335,7 +342,22 @@ def save_tables(start_table, mid_table, filename):
         pickle.dump(mid_table, mid_file, -1)
         mid_file.close()
     except IOError as e:
+        print("The following error occurred while trying to create new table...")
         print("I/O error({0}): {1}".format(e.errno, e.strerror))
         raise
 
     return
+
+#  break_name_loop
+#  Parameter(s): name - the name being generated thus far
+#  Return: True/False
+#  Description: This takes in the currently generated name and decides whether or not to continue building
+#                   the name or cutting it short. It will ensure that all names are at least 3 characters long.
+
+
+def break_name_loop(name):
+    if len(name) >= 3:
+        chance = 100 - len(name)*5
+        if random.randint(1, 100) >= chance:
+            return True
+    return False
