@@ -190,10 +190,12 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 # now set the borders properly 
                 try:
                     main_map.catalogue[cw_id].river_border[0] = True
+                    main_map.catalogue[cw_id]._rainfall_base = min( 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1 )
                 except KeyError:
                     break
                 try:
                     main_map.catalogue[ccw_id].river_border[1] = True
+                    main_map.catalogue[ccw_id]._rainfall_base = min( 1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 )
                 except KeyError:
                     break
 

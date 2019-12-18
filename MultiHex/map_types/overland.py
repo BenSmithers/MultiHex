@@ -356,7 +356,7 @@ class region_brush(basic_tool):
         """
 
         self.redraw_region_text( reg_id )
-        #return()
+        return()
 
         #self.QBrush.setStyle(6)
         self.QBrush.setStyle(1)
