@@ -88,18 +88,16 @@ Improvements and additions to the world generation
 
 * ~~ Use region backend to define geographical regions like deserts, forests, grasslands, and mountain regions. 
 Region names will be superimposed over map. ~~ (implemented!)
-Region names are generated using the list of words posted by [hugsy](https://gist.github.com/hugsy) at [here](https://gist.github.com/hugsy/8910dc78d208e40de42deb29e62df913)
 
 * Gui for modifying world generation parameters. Currently the world gen params are stored in the `config.json` file in the generator folder; this is not ideal. 
 
-* rivers, lakes.
-Rivers will flow between hexes to areas of lower altitude. Rivers eventually reach the ocean, a lake, or dry up. _(in progress)_
+* ~~ rivers, lakes ~~ (_implemented_) 
+One bug still exists where rivers won't _quite_ reach the ocean. 
 
 * biodiversity. Will be influenced by rainfall, temperature 
 
-* hex feature-dependent color.
-At the moment hex color is just ridge and rainfall dependent. 
-This is subject to change. 
+* Hex feature-dependent color.
+Currently implemented in a hacky way. Needs improvement. 
 
 ## World Edit
 
@@ -107,8 +105,6 @@ This is subject to change.
 Region subtypes within general region type. 
 
 ## Miscellaneous
-
-* ~~region definitions~~ (implemented, but with some bugs)
 
 * Generic `entity` object. Allow hexes to house entities. 
 Will be a catch-all entry for things that are on hexes: cities, space stations, points of interest. 
@@ -122,5 +118,7 @@ Consider this as being a non-player character, or the party, etc...
 Save only the minimum necessary information necessary to recreate a hexmap.
 Will use an intermediate class instance from which to pickle and two functions for creating one from another. 
 Will become more necesary once we get to more complicated maps. _(low priority)_
+
+* Seasonal variation of rivers 
 
 * Export maps as pngs 
