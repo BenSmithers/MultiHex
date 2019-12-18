@@ -701,6 +701,9 @@ class Hexmap:
     def get_ids_around_vertex( self, place, v_type = None):
         """
         This returns three IDs. It is assumed that `place` is a vertex. will return inconsistent results otherwise 
+
+        @param place    - Point type object. Should be a vertex of a hex in a hexmap
+        @param v_type   = optional argument. Specify the vertex type (see below) to save time in calculating it 
         """
         
         if type(place)!=Point:
@@ -752,11 +755,14 @@ class Hexmap:
 
         start and end should be drawscale apart
         """
-
+        
+        # verify the arguments passed are of the right type: `Point` 
         if type(start)!=Point:
             raise TypeError("Arg 'start' is not type point, it is {}".format(start))
         if type(end)!=Point:
             raise TypeError("Arg 'end' is not type point, it is {}".format( end ))
+
+        # verify that this edge is the right length (drawscale)
         diff = start-end
         if (diff.magnitude - self._drawscale)/self._drawscale > 0.01:
             raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self._drawscale))
@@ -1349,10 +1355,37 @@ class Path:
         self._step_calc     = False
         self._step          = None 
     def end(self, offset=0):
+        """
+        Returns the a copy of the endPoint of this Path. Note: the endpoint is the last point added
+
+        @param offset   - a shift from that endpoint. Number of indices away from the endpoint. Positive values of offset step towards the beginning! 
+        """
+        if isinstance(offset, int):
+            pass
+        elif isinstance( offset, float):
+            offset = int(offset)
+            print("ATTN: received `offset` of type {}, rounding. This may be an issue!".format(float))
+        else:
+            raise TypeError("Received type {} for arg `offset`, expected {}".format( type(offset), int))
+
         if len(self._vertices)==0:
             return(None)
         else:
-            return( Point( self._vertices[-1-offset].x, self._vertices[-1-offset].y ) )
+            which_vertex = -1-offset
+            if abs(which_vertex)>len(self._vertices):
+                raise ValueError("Invalid vertex requested")
+            else:
+                return( Point( self._vertices[which_vertex].x, self._vertices[which_vertex].y ) )
+
+    def start(self, offset=0):
+        """
+        Returns a copy of start point of this Path. Note: start point is the first point added. 
+
+        @param offset   - number of steps away from the start point. Positive offset steps towards the end
+        """
+        reversed_offset = -1 - offset  
+        return( self.end( reversed_offset ) )
+        
 
     @property
     def vertices(self):
@@ -1364,13 +1397,23 @@ class Path:
             built.append( Point( vert.x, vert.y ) )
         return( built)
     
-    def trim_at( self, where):
+    def trim_at( self, where, keep_upper=False):
+        """
+        trims the path at 'where'
+
+        @param where        - type Int or Point. If Int, trims the path at the vertex indexed by `where', else trims the path at the vertex `where`
+        @param keep_upper   - type Bool. Keeps   
+        """
+
         p_type = False 
         if isinstance( where, int ):
             p_type = True
         elif not isinstance( where , Point ):
-            raise TypeError("Arg 'where' must be type {}, received {}".format( Point, type(where)))
+            raise TypeError("Arg 'where' must be type {} or {}, received {}".format( Point, int , type(where)))
         
+        if not isinstance(keep_upper, bool):
+            raise TypeError("Arg 'keep_upper' must be type {}, received {}.".format(bool, type(keep_upper)))
+
         if p_type:
             which_index = where
         else:
@@ -1381,7 +1424,10 @@ class Path:
 
         
         # this leaves the self-intersect point there. Good!
-        self._vertices = self._vertices[which_index:]
+        if keep_upper:
+            self._vertices = self._vertices[:which_index]
+        else:
+            self._vertices = self._vertices[which_index:]
 
 
     def add_to_end( self, end ):
