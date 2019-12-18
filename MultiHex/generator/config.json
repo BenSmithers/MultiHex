@@ -29,7 +29,7 @@
             "reg_size" :20
         },
         "rivers": {
-            "n_rivers":60,
+            "n_rivers":100,
             "max_len":35
         }
     },
