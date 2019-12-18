@@ -105,10 +105,11 @@ class editor_gui(QMainWindow):
         self.scene._held = None
 
     def set_region_name(self):
+        # this needs to be fixed!
         if self.region_control.selected_rid is None:
             return
         else:
-            self.main_map.rid_catalogue[self.region_control.selected_rid].name = self.ui.RegEdit.text()
+            self.main_map.rid_catalogue['biomes'][self.region_control.selected_rid].name = self.ui.RegEdit.text()
             print("Setting Region Name to {}".format(self.ui.RegEdit.text()))
 
         self.region_control.redraw_region_text( self.region_control.selected_rid )
@@ -148,10 +149,11 @@ class editor_gui(QMainWindow):
         print("redrawing")
         for ID in self.main_map.catalogue: 
             self.writer_control.redraw_hex( ID )
-        
-        for rid in self.main_map.rid_catalogue['biome']:
-            self.region_control.redraw_region( rid )
-        
+
+        if 'biome' in self.main_map.rid_catalogue :
+            for rid in self.main_map.rid_catalogue['biome']:
+                self.region_control.redraw_region( rid )
+            
         self.writer_control.redraw_rivers()
         
 
