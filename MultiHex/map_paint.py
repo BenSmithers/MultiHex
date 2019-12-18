@@ -109,7 +109,7 @@ class editor_gui(QMainWindow):
         if self.region_control.selected_rid is None:
             return
         else:
-            self.main_map.rid_catalogue['biomes'][self.region_control.selected_rid].name = self.ui.RegEdit.text()
+            self.main_map.rid_catalogue['biome'][self.region_control.selected_rid].name = self.ui.RegEdit.text()
             print("Setting Region Name to {}".format(self.ui.RegEdit.text()))
 
         self.region_control.redraw_region_text( self.region_control.selected_rid )
