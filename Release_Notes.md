@@ -1,3 +1,17 @@
+## December 18 2019
+
+### Additions
+
+* MCMC name generator for cooler, theme-appropriate names.
+
+* Rivers and lakes are now created. 
+
+### Fixes
+
+* Fixed issue where removing hexes from reginos would sometimes mess up the region border
+
+* Fixed issue where adding hex to region would _sometimes_ crash application
+
 ## December 1 2019
 
 ### Additions 
