@@ -9,7 +9,7 @@ Implements the overland map type, its brushes, and its hexes
 
 Objects:
     River           - Path implementation
-    Biome           - region for, well, biomes
+    Biome           - Region implementation for, well, biomes
     region_brush    - basic tool, makes regions
     hex_brush       - basic tool, makes hexes
     OHex            - Hex implementation for land hexes
@@ -798,12 +798,14 @@ def Grassland_Hex(center,radius):
 def Forest_Hex(center,radius):
     temp = OHex( center, radius )
     temp.fill = colors.fores
+    temp._is_land = True
     return(temp)
 
 def Mountain_Hex(center,radius):
     temp = OHex( center, radius )
     temp.fill = colors.mount
     temp.genkey = '01000000'
+    temp._is_land = True
     return(temp)
 
 def Arctic_Hex(center,radius):
@@ -828,6 +830,7 @@ def Ridge_Hex(center, radius):
     temp = OHex( center, radius )
     temp.fill = colors.ridge
     temp.genkey = '11000000'
+    temp._is_land = True
     return(temp)
 
 
