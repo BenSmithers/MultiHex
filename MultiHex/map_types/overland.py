@@ -767,14 +767,16 @@ class hcolor:
     """
     def __init__(self):
         self.ocean = (100,173,209)
-        self.grass = (149,207,68)
-        self.fores = (36, 94, 25)
-        self.arcti = (171,224,224)
-        self.mount = (158,140,96)
+        self.grassland = (149,207,68)
+        self.forest = (36, 94, 25)
+        self.arctic = (171,224,224)
+        self.tundra = (112,183,204)
+        self.mountain = (158,140,96)
         self.ridge = (99,88,60)
-        self.deser = (230,178,110)
-        self.rainf = (22,77,57)
-        self.savan = (170, 186, 87)
+        self.desert = (230,178,110)
+        self.rainforest = (22,77,57)
+        self.savanah = (170, 186, 87)
+        self.wetlands = (30,110,84)
 colors = hcolor()
 
 
@@ -791,26 +793,26 @@ def Ocean_Hex(center, radius):
 
 def Grassland_Hex(center,radius):
     temp = OHex( center, radius )
-    temp.fill = colors.grass
+    temp.fill = colors.grassland
     temp._is_land = True
     return(temp)
 
 def Forest_Hex(center,radius):
     temp = OHex( center, radius )
-    temp.fill = colors.fores
+    temp.fill = colors.forest
     temp._is_land = True
     return(temp)
 
 def Mountain_Hex(center,radius):
     temp = OHex( center, radius )
-    temp.fill = colors.mount
+    temp.fill = colors.mountain
     temp.genkey = '01000000'
     temp._is_land = True
     return(temp)
 
 def Arctic_Hex(center,radius):
     temp = OHex( center, radius )
-    temp.fill = colors.arcti
+    temp.fill = colors.arctic
     temp._temperature_base = 0.0
     temp._rainfall_base    = 0.0
     temp._altitude_base    = 0.0
@@ -819,7 +821,7 @@ def Arctic_Hex(center,radius):
 
 def Desert_Hex(center,radius):
     temp = OHex( center, radius )
-    temp.fill = colors.deser
+    temp.fill = colors.desert
     temp._temperature_base = 1.0
     temp._rainfall_base    = 0.0
     temp._altitude_base    = 0.0
