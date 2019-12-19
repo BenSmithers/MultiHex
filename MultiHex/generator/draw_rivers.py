@@ -218,7 +218,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                             main_map.catalogue[ID]._altitude_base = 0.0
                             main_map.catalogue[ID]._is_land = False
     
-                    new_river.trim_at( which )
+                    new_river.trim_at( which-1, True )
                     break
                 
 

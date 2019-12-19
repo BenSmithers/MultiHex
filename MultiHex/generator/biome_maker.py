@@ -1,4 +1,4 @@
-from MultiHex.core import Point, Hexmap, save_map, load_map, Region, RegionMergeError
+from MultiHex.core import Point, Hexmap, save_map, load_map, Region, RegionMergeError, Hex
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
 
@@ -16,6 +16,76 @@ Uses some simple thresholds to determine what kind of Hex a given Hex is
 
 Is it a forest? A Desert? Let's find out! 
 """
+
+colors = hcolor()
+
+# each entry has endcaps: 0.0 and 1.0
+# arctic, temperate, hot
+temperature_thresholds = [0.0 , 0.25, 0.75, 1.0]
+# arid, temperate, wet 
+rainfall_thresholds = [0.0, 0.4, 0.7 , 1.0]
+# no dependence 
+altitude_thresholds = [0.0, 1.0 ]
+
+#        temp: cold ---> hot 
+#       dry 
+#         |
+# Rain:   |
+#         V
+#       Rainy
+#
+# Plus one extra dimension for the altitude dependence 
+
+names = [
+        [[ "arctic",     "savanah", "desert"],
+         [ "tundra", "grassland", "wetlands"],
+         [ "forest",     "forest",     "rainforest"]]
+        ]
+assert( len(names)      == ( len(altitude_thresholds)-1 ) )
+assert( len(names[0])   == ( len(rainfall_thresholds)-1 ) )
+assert( len(names[0][0])== ( len(temperature_thresholds)-1))
+
+def apply_biome( target ):
+    """
+    Assigns a hex its biome and its color. Requires an entry in the 'hcolor' object in the overland map type script with an attribute name corresponding to the biome name in the 'names' table above
+
+    @param target   - the hex
+    """
+    
+    if not target._is_land:
+        target.fill = colors.ocean
+        target.biome= "ocean"
+        return
+    if target.genkey[0]=='1':
+        target.fill = colors.ridge
+        target.biome = "mountain"
+        return
+    if target.genkey[1]=='1':
+        target.fill = colors.mountain
+        target.biome = "mountain"
+        return
+
+    def get_index( target, thresholds):
+        index = 0
+        if target._rainfall_base <= thresholds[0]:
+            index = 0
+        elif target._rainfall_base >= thresholds[-1]:
+            index = -1 
+        else:
+            while (thresholds[index] < target._rainfall_base ):
+                index += 1
+            index -= 1
+        return( index )
+
+    rain_index          = get_index( target, rainfall_thresholds )
+    temperature_index   = get_index( target, temperature_thresholds )
+    altitude_index      = get_index( target, altitude_thresholds )
+    
+    target.biome = names[ altitude_index ][rain_index][temperature_index]
+    try:
+        target.fill = getattr( colors, target.biome )
+    except AttributeError:
+        target.fill = (0.0, 0.0, 0.0 )
 
 def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
 
@@ -45,67 +115,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
     # if tempterature < 0.1 --> arctic circle
 
-    colors = hcolor()
+
 
     for ID in main_map.catalogue:
-        # most important, arctic circle! 
-        this_hex = main_map.catalogue[ID]
-        if not this_hex._is_land:
-            continue
-        if this_hex.genkey[0] == '1':
-            main_map.catalogue[ID].fill = colors.mount
-            main_map.catalogue[ID].biome = "mountain"
-            continue
-        elif this_hex.genkey[1] == '1':
-            main_map.catalogue[ID].fill = colors.ridge
-            main_map.catalogue[ID].biome = "mountain"
-            continue
-
-        if this_hex._temperature_base<0.08:
-            # this is very cold. It's an arctic hex
-            main_map.catalogue[ID].fill = colors.arcti
-            main_map.catalogue[ID].biome = "arctic"
-        elif this_hex._temperature_base < 0.92:
-            if this_hex._altitude_base < 0.6:
-                # lowlands 
-                # we in the the temperate regions
-                if this_hex._rainfall_base < 0.4:
-                    # arid - desert
-                    main_map.catalogue[ID].fill = colors.deser
-                    main_map.catalogue[ID].biome = "desert"
-                elif this_hex._rainfall_base < 0.7:
-                    # temperate - grass
-                    main_map.catalogue[ID].fill = colors.grass
-                    main_map.catalogue[ID].biome = "grassland"
-                else:
-                    # rainy - forest
-                    main_map.catalogue[ID].fill = colors.fores
-                    main_map.catalogue[ID].biome = "forest"
-            else:
-                if this_hex._rainfall_base < 0.3:
-                    main_map.catalogue[ID].fill = colors.deser
-                    main_map.catalogue[ID].biome = "desert"
-                elif this_hex._rainfall_base < 0.4:
-                    main_map.catalogue[ID].fill = colors.grass
-                    main_map.catalogue[ID].biome = "grassland"
-                else:
-                    main_map.catalogue[ID].fill = colors.fores
-                    main_map.catalogue[ID].biome = "forest"
-        else:
-            # within the tropics
-            if this_hex._rainfall_base < 0.2:
-                main_map.catalogue[ID].fill = colors.deser
-                main_map.catalogue[ID].biome = "desert"
-            elif this_hex._rainfall_base < 0.4:
-                main_map.catalogue[ID].fill = colors.savan
-                main_map.catalogue[ID].biome = "grassland"
-            elif this_hex._rainfall_base < 0.6:
-                main_map.catalogue[ID].fill = colors.grass
-                main_map.catalogue[ID].biome = "grassland"
-            else:
-                main_map.catalogue[ID].fill = colors.rainf
-                main_map.catalogue[ID].biome = "forest"
-        
+        apply_biome( main_map.catalogue[ID] )
         main_map.catalogue[ID].rescale_color()
 
     from collections import deque
