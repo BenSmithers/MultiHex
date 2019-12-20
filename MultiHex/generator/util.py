@@ -180,9 +180,13 @@ def fetch_synonyms(what):
         "grassland": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
         "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
         "mountain": ["Mountains", "Peaks", "Crags"],
-        "forest": ["Forest", "Woods", "Woodlands", "Backwoods", "Wilds"],
-        "arctic": ["Boreal","Frost", "Tundra","Arctic"],
-        "river": ["Creek","River","Stream", "Rapids"]
+        "forest": ["Forest", "Woods", "Woodlands", "Backwoods"],
+        "rainforest": ["Darkwoods","Tangle", "Rainforest", "Wilds", "Jungle"],
+        "arctic": ["Boreal","Frost","Arctic"],
+        "tundra": ["Tundra"],
+        "river": ["Creek","River","Stream", "Rapids"],
+        "wetlands":["Bog", "Fen", "Swamp", "Marsh"],
+        "savanah":["Savanah"]
     }
 
     return switcher.get(what, ["Invalid What"])

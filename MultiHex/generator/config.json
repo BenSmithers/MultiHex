@@ -1,21 +1,21 @@
 {
     "cont": {
         "land": {
-            "land_spread": 0.06,
-            "land_width": 0.03,
-            "mnt_thicc": 2.3,
+            "land_spread": 0.08,
+            "land_width": 0.04,
+            "mnt_thicc": 1.5,
             "water_spread": 0.02,
             "water_width": 0.01
         },
         "mountains": {
-            "avg_range": 15.0,
+            "avg_range": 18.0,
             "dimensions": [
                 6000,
                 3000
             ],
             "n_peaks": 9,
-            "sigma": 60,
-            "zones": 4
+            "sigma": 40,
+            "zones": 3
         },
         "weather": {
             "diffusion": 0.03,
@@ -25,11 +25,11 @@
             "resr_weight": 1.25
         },
         "regions": {
-            "n_regions":15,
+            "n_regions":24,
             "reg_size" :20
         },
         "rivers": {
-            "n_rivers":100,
+            "n_rivers":60,
             "max_len":35
         }
     },

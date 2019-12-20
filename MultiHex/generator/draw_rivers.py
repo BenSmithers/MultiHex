@@ -32,6 +32,31 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
 
     main_map = load_map( sim )
+    
+    def set_banks( river ):
+        vertices = river.vertices
+
+        for counter in range(len( vertices) - 1):
+            # get the ids beside a segment of the river
+            cw_id, ccw_id = main_map.get_ids_beside_edge( vertices[counter], vertices[counter + 1])
+
+            # set those hexes to river borders 
+            try:
+                main_map.catalogue[cw_id].river_border[0] = True
+                main_map.catalogue[cw_id]._rainfall_base = min( 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1 )
+            except KeyError:
+                pass
+            try:
+                main_map.catalogue[ccw_id].river_border[1] = True
+                main_map.catalogue[ccw_id]._rainfall_base = min( 1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 )
+            except KeyError:
+                pass
+
+        # now we need to call this on the tributaries of this river (yay recursion!) 
+        if river.tributaries is not None:
+            set_banks( river.tributaries[0] )
+            set_banks( river.tributaries[1] )
+
 
     def point_hits_source( point, river ):
         """
@@ -166,38 +191,17 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 # ========================================================================
 
                 
-                # set river border types
-                cw_id, ccw_id = main_map.get_ids_beside_edge( new_river.end(), verts[which_index])
                 # before setting the river border bools, we should see if we're about to hit the end of another river...
-                try:
-                    if main_map.catalogue[cw_id].river_border[0] and main_map.catalogue[ccw_id].river_border[1]:
-                        # this means this river may have ran into the end of another river. For now, let's just forbid this 
-                        bad = False
-                        for river in main_map.paths['rivers']:
-                            # check if the new point is the source of this river 
-                            if point_hits_source( verts[which_index], river ):
-                                bad = True
-                                break
-                        if bad:
-                            # if it did, we just give up on this river. 
-                            return(None) 
-                except KeyError:
-                    pass
+                bad = False
+                for river in main_map.paths['rivers']:
+                    # check if the new point is the source of this river 
+                    if point_hits_source( verts[which_index], river ):
+                        bad = True
+                        break
+                if bad:
+                    # if it did, we just give up on this river. 
+                    return(None) 
 
-                #                           Set Riverbanks
-                # ========================================================================
-                
-                # now set the borders properly 
-                try:
-                    main_map.catalogue[cw_id].river_border[0] = True
-                    main_map.catalogue[cw_id]._rainfall_base = min( 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1 )
-                except KeyError:
-                    break
-                try:
-                    main_map.catalogue[ccw_id].river_border[1] = True
-                    main_map.catalogue[ccw_id]._rainfall_base = min( 1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 )
-                except KeyError:
-                    break
 
                 
                 #                    Check if river loops back on self
@@ -205,22 +209,41 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
                 # check if this new point is already on the river, if it is, we realized we have completed a loop. Snip the river and make some lakes  
                 if verts[which_index] in new_river.vertices:
-                    
+                    odds = rnd.random()
+
+
                     all_verts = new_river.vertices 
                     which = all_verts.index( verts[which_index] )
                     
                     # total length is len(all_verts)
                     # we just want the ones after 'which',
-                    for it in range(len(all_verts) - which):
-                        ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
-                        for ID in ids:
-                            main_map.catalogue[ID].fill = colors.ocean
-                            main_map.catalogue[ID]._altitude_base = 0.0
-                            main_map.catalogue[ID]._is_land = False
-    
-                    new_river.trim_at( which )
-                    break
-                
+                    if odds>0.75:
+                        # make a lake
+                        for it in range(len(all_verts) - which):
+                            ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
+                            for ID in ids:
+                                main_map.catalogue[ID].fill = colors.ocean
+                                main_map.catalogue[ID]._altitude_base = 0.0
+                                main_map.catalogue[ID]._is_land = False
+                                main_map.catalogue[ID].biome = "lake"
+                                main_map.catalogue[ID].river_border = [False, False, False]
+        
+                        new_river.trim_at( which-1, True )
+                        break
+                    else:
+                        for it in range(len(all_verts)-which):
+                            ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it])
+                            for ID in ids:
+                                main_map.catalogue[ID]._altitude_base = min( 1.0, 1.2*main_map.catalogue[ID]._altitude_base)
+                                main_map.catalogue[ID].river_border = [False, False, False]
+                                
+                                neighbors = main_map.get_hex_neighbors( ID )
+                                for neighbor in neighbors:
+                                    main_map.catalogue[neighbor]._altitude_base = min( 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base)
+                                    main_map.catalogue[neighbor].river_border = [False, False, False]
+                        return( None )
+
+                                    
 
                 #                    Append Point to River, Vertex Type
                 # ========================================================================
@@ -271,6 +294,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             print('.',end='')
         this_riv = make_river()
         if this_riv is not None:
+            set_banks( this_riv )
             main_map.paths['rivers'].append( this_riv )
             counter += 1
 
