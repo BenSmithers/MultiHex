@@ -205,22 +205,41 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
                 # check if this new point is already on the river, if it is, we realized we have completed a loop. Snip the river and make some lakes  
                 if verts[which_index] in new_river.vertices:
-                    
+                    odds = rnd.random()
+
+
                     all_verts = new_river.vertices 
                     which = all_verts.index( verts[which_index] )
                     
                     # total length is len(all_verts)
                     # we just want the ones after 'which',
-                    for it in range(len(all_verts) - which):
-                        ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
-                        for ID in ids:
-                            main_map.catalogue[ID].fill = colors.ocean
-                            main_map.catalogue[ID]._altitude_base = 0.0
-                            main_map.catalogue[ID]._is_land = False
-    
-                    new_river.trim_at( which-1, True )
-                    break
-                
+                    if odds>0.75:
+                        # make a lake
+                        for it in range(len(all_verts) - which):
+                            ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
+                            for ID in ids:
+                                main_map.catalogue[ID].fill = colors.ocean
+                                main_map.catalogue[ID]._altitude_base = 0.0
+                                main_map.catalogue[ID]._is_land = False
+                                main_map.catalogue[ID].biome = "lake"
+                                main_map.catalogue[ID].river_border = [False, False, False]
+        
+                        new_river.trim_at( which-1, True )
+                        break
+                    else:
+                        for it in range(len(all_verts)-which):
+                            ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it])
+                            for ID in ids:
+                                main_map.catalogue[ID]._altitude_base = min( 1.0, 1.2*main_map.catalogue[ID]._altitude_base)
+                                main_map.catalogue[ID].river_border = [False, False, False]
+                                
+                                neighbors = main_map.get_hex_neighbors( ID )
+                                for neighbor in neighbors:
+                                    main_map.catalogue[neighbor]._altitude_base = min( 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base)
+                                    main_map.catalogue[neighbor].river_border = [False, False, False]
+                        return( None )
+
+                                    
 
                 #                    Append Point to River, Vertex Type
                 # ========================================================================
