@@ -1,5 +1,6 @@
-from MultiHex.core import Hexmap, save_map, clicker_control
-from MultiHex.map_types.overland import Mountain_Hex, Ridge_Hex, hex_brush
+from MultiHex.core import Hexmap, save_map
+from MultiHex.tools import clicker_control
+from MultiHex.map_types.overland import Mountain_Hex, Ridge_Hex, OHex_Brush
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget
@@ -26,7 +27,7 @@ class ridge_gui(QMainWindow):
         # give this a hex brush and make it paint Mountains
         self.scene = clicker_control( self.ui.graphicsView, self )
 
-        self.writer_control = hex_brush(self)
+        self.writer_control = OHex_Brush(self)
         self.writer_control._brush_type = Ridge_Hex
 
         self.scene._active = self.writer_control
