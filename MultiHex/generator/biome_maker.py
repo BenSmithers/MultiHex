@@ -19,43 +19,46 @@ Is it a forest? A Desert? Let's find out!
 
 colors = hcolor()
 
-# each entry has endcaps: 0.0 and 1.0
-# arctic, temperate, hot
-temperature_thresholds = [0.0 , 0.08, 0.92, 1.0]
-# arid, temperate, wet 
-rainfall_thresholds = [0.0, 0.3, 0.7 , 1.0]
-# no dependence 
-altitude_thresholds = [0.0, 0.5, 1.0 ]
-
-#        temp: cold ---> hot 
-#       dry 
-#         |
-# Rain:   |
-#         V
-#       Rainy
-#
-# Plus one extra dimension for the altitude dependence 
-
-names = [ # lowlands
-        [[ "arctic", "grassland", "desert"],
-         [ "arctic", "grassland",    "savanah"],
-         [ "tundra", "forest",  "rainforest"]],
-          # highlands
-        [[ "arctic", "grassland","grassland"],
-         [ "tundra", "forest", "grassland"],
-         [ "tundra", "tundra", "forest"]]
-        ]
-assert( len(names)      == ( len(altitude_thresholds)-1 ) )
-assert( len(names[0])   == ( len(rainfall_thresholds)-1 ) )
-assert( len(names[0][0])== ( len(temperature_thresholds)-1))
-
-def apply_biome( target ):
+def apply_biome_to_hex( target ):
     """
     Assigns a hex its biome and its color. Requires an entry in the 'hcolor' object in the overland map type script with an attribute name corresponding to the biome name in the 'names' table above
 
     @param target   - the hex
     """
-   
+    # each entry has endcaps: 0.0 and 1.0
+    # arctic, temperate, hot
+    temperature_thresholds = [0.0 , 0.08, 0.92, 1.0]
+    # arid, temperate, moist,  wet 
+    rainfall_thresholds = [0.0, 0.2, 0.4 , 0.8, 1.0]
+    # no dependence 
+    altitude_thresholds = [0.0, 0.4, 1.0 ]
+
+    #        temp: cold ---> hot 
+    #       dry 
+    #         |
+    # Rain:   |
+    #         V
+    #       Rainy
+    #
+    # Plus one extra dimension for the altitude dependence 
+
+    names = [ # lowlands
+              # cold      temperate     hot 
+            [[ "arctic", "grassland", "desert"],    # dry
+             [ "arctic", "grassland", "savanah"],   # temperate
+             [ "arctic", "grassland", "grassland"], # moist 
+             [ "tundra", "forest",  "rainforest"]], # hot
+              # highlands
+            [[ "arctic", "grassland","grassland"],
+             [ "tundra", "forest", "grassland"],
+             [ "tundra", "forest", "forest"],
+             [ "tundra", "forest", "forest"]]
+            ]
+
+    assert( len(names)      == ( len(altitude_thresholds)-1 ) )
+    assert( len(names[0])   == ( len(rainfall_thresholds)-1 ) )
+    assert( len(names[0][0])== ( len(temperature_thresholds)-1))
+  
     # oceans, ridges, and mountains aren't restricted to the same rules
     if not target._is_land:
         target.fill = colors.ocean
@@ -131,8 +134,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
 
     for ID in main_map.catalogue:
-        apply_biome( main_map.catalogue[ID] )
-        main_map.catalogue[ID].rescale_color()
+        apply_biome_to_hex( main_map.catalogue[ID] )
+        if main_map.catalogue[ID].biome!="mountain":
+            main_map.catalogue[ID].rescale_color()
 
     from collections import deque
     r_layer = 'biome'
