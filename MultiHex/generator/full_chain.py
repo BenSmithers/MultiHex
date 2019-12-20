@@ -1,7 +1,7 @@
 from MultiHex.generator import make_ridges
 from MultiHex.generator import fill_land
 from MultiHex.generator import sim_weather
-from MultiHex.generator import region_maker
+from MultiHex.generator import biome_maker
 from MultiHex.generator import draw_rivers
 
 import os
@@ -20,7 +20,7 @@ def ridge_onward( size, name ):
     fill_land.generate( size, name )
     sim_weather.generate( size, name )
     draw_rivers.generate(size, name)
-    region_maker.generate( size, name )
+    biome_maker.generate( size, name )
 
 def full_sim( size, name ):
     make_ridges.generate( size, name )
