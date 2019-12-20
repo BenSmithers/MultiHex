@@ -21,11 +21,11 @@ colors = hcolor()
 
 # each entry has endcaps: 0.0 and 1.0
 # arctic, temperate, hot
-temperature_thresholds = [0.0 , 0.25, 0.75, 1.0]
+temperature_thresholds = [0.0 , 0.08, 0.92, 1.0]
 # arid, temperate, wet 
-rainfall_thresholds = [0.0, 0.4, 0.7 , 1.0]
+rainfall_thresholds = [0.0, 0.3, 0.7 , 1.0]
 # no dependence 
-altitude_thresholds = [0.0, 1.0 ]
+altitude_thresholds = [0.0, 0.5, 1.0 ]
 
 #        temp: cold ---> hot 
 #       dry 
@@ -36,10 +36,14 @@ altitude_thresholds = [0.0, 1.0 ]
 #
 # Plus one extra dimension for the altitude dependence 
 
-names = [
-        [[ "arctic",     "savanah", "desert"],
-         [ "tundra", "grassland", "wetlands"],
-         [ "forest",     "forest",     "rainforest"]]
+names = [ # lowlands
+        [[ "arctic", "grassland", "desert"],
+         [ "arctic", "grassland",    "savanah"],
+         [ "tundra", "forest",  "rainforest"]],
+          # highlands
+        [[ "arctic", "grassland","grassland"],
+         [ "tundra", "forest", "grassland"],
+         [ "tundra", "tundra", "forest"]]
         ]
 assert( len(names)      == ( len(altitude_thresholds)-1 ) )
 assert( len(names[0])   == ( len(rainfall_thresholds)-1 ) )
@@ -51,7 +55,8 @@ def apply_biome( target ):
 
     @param target   - the hex
     """
-    
+   
+    # oceans, ridges, and mountains aren't restricted to the same rules
     if not target._is_land:
         target.fill = colors.ocean
         target.biome= "ocean"
@@ -65,21 +70,29 @@ def apply_biome( target ):
         target.biome = "mountain"
         return
 
-    def get_index( target, thresholds):
+    def get_index( target, thresholds, hex_quantity):
+        """
+        Takes a hex and one of the thresholds (rain, altitude, or temperature). Returns which range the hex falls in
+
+        @param target       - the Hex
+        @param thresholds   - the set of thresholds
+        @param hex_quantity - the string name of the Hexes quantity to test against
+        """
+
         index = 0
         if target._rainfall_base <= thresholds[0]:
             index = 0
         elif target._rainfall_base >= thresholds[-1]:
             index = -1 
         else:
-            while (thresholds[index] < target._rainfall_base ):
+            while (thresholds[index] < getattr( target, hex_quantity) ):
                 index += 1
             index -= 1
         return( index )
 
-    rain_index          = get_index( target, rainfall_thresholds )
-    temperature_index   = get_index( target, temperature_thresholds )
-    altitude_index      = get_index( target, altitude_thresholds )
+    rain_index          = get_index( target, rainfall_thresholds, "_rainfall_base" )
+    temperature_index   = get_index( target, temperature_thresholds, "_temperature_base" )
+    altitude_index      = get_index( target, altitude_thresholds, "_altitude_base" )
     
     target.biome = names[ altitude_index ][rain_index][temperature_index]
     try:

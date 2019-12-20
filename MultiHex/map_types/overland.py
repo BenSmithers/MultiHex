@@ -21,8 +21,8 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = colors.ocean 
-                
+        self.color = (colors.ocean[0]*0.8, colors.ocean[1]*0.8, colors.ocean[2]*0.8)
+
         self.width = 1
 
         # by default, should have none
@@ -33,17 +33,14 @@ class River(Path):
     def join_with( self, other ):
         """
         Joins with the other river! 
+
+        Other river must connect to this one 
         """
         if not isinstance( other, River ):
-            raise TypeError("Cannot join with ")
+            raise TypeError("Cannot join with object of type {}".format(type(other)))
 
         # make sure these rivers are join-able. One river needs to have its end point on the other! 
-        r_type = None
-        if other.end() in self._vertices:
-            r_type = 1
-        elif self.end() in other._vertices:
-            r_type = 2
-        else:
+        if other.end() not in self._vertices:
             # try joining with its tributaries 
             if other.tributaries is not None:
                 error_code = self.tributaries[0].join_with( other )
@@ -58,33 +55,19 @@ class River(Path):
             else:
                 return( 1)
 
-        if r_type==1:
-            # other one ends in this one
-            tributary_1 = other
-            # going to define a tributary 
-            tributary_2 = River( self.vertices[0]  )
+        # other one ends in this one
+        tributary_1 = other
+        # going to define a tributary 
+        tributary_2 = River( self.start() )
 
-            # Merge part of the self into the new tributary 
-            intersect = self.vertices.index( other.end() )
-            tributary_2._vertices = self.vertices[: (intersect+1)]
-            tributary_2.tributaries = self.tributaries 
-            self.trim_at( intersect )
+        # Merge part of the self into the new tributary 
+        intersect = self.vertices.index( other.end() )
+        
+        tributary_2._vertices = self.vertices[: (intersect+1)]
+        tributary_2.tributaries = self.tributaries 
 
-        else:
-            intersect = other.index( self.end() )
-
-            # use the 'other' object, part of it, to make the tributary 
-            tributary_1 = other.vertices[:(intersect+1)]
-            tributary_1.tributaries = other.tributaries
-
-            # now use the former self to make another tributary 
-            tributary_2 = River( self.vertices[0] )
-            tributary_2._vertices = self.vertices
-            tributary_2.tributaries = self.tributaries 
-
-            self._vertices = other.vertices[intersect:]
-
-
+        self.trim_at( intersect, keep_upper=False )
+ 
         # modify the self
         self.tributaries = [ tributary_1, tributary_2 ]
         self.tributaries[0].width = other.width
@@ -770,7 +753,7 @@ class hcolor:
         self.grassland = (149,207,68)
         self.forest = (36, 94, 25)
         self.arctic = (171,224,224)
-        self.tundra = (112,183,204)
+        self.tundra = (47,105,89)
         self.mountain = (158,140,96)
         self.ridge = (99,88,60)
         self.desert = (230,178,110)
