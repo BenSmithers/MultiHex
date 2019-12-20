@@ -763,20 +763,15 @@ class Hexmap:
             raise TypeError("Arg 'end' is not type point, it is {}".format( end ))
 
         # verify that this edge is the right length (drawscale)
-        diff = start-end
+        diff = end - start 
         if (diff.magnitude - self._drawscale)/self._drawscale > 0.01:
             raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self._drawscale))
         # displacement vector from 'end' object. 
         #       points towards CW hex
-        new_angle = diff.angle - 120.
-        displacement = Point( cos( new_angle) , sin(new_angle) )*self._drawscale 
-        CW_hex  = end + displacement 
-
-        new_angle_ccw = diff.angle + 120.
-        displacement_ccw = Point( cos(new_angle_ccw), sin(new_angle_ccw))*self._drawscale
-        CCW_hex = end + displacement_ccw
-
-        return( self.get_id_from_point( CW_hex) , self.get_id_from_point( CCW_hex ) )
+         
+        diag_cw  = start + diff*0.5 + Point( diff.y, -diff.x)*0.5*rthree*self._drawscale/diff.magnitude
+        diag_ccw = start + diff*0.5 + Point(-diff.y,  diff.x)*0.5*rthree*self._drawscale/diff.magnitude
+        return( self.get_id_from_point( diag_cw ) , self.get_id_from_point( diag_ccw ) )
 
 
     def get_id_from_point(self, point):
@@ -805,7 +800,7 @@ class Hexmap:
         base_idx_2 = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
         
         # this is in the off-grid
-        candidate_point_2 =Point(base_idx*3*self._drawscale, base_idy*rthree*self._drawscale )
+        candidate_point_2 =Point(base_idx_2*3*self._drawscale, base_idy_2*rthree*self._drawscale )
         candidate_point_2 += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
         
         if (og_point - candidate_point)**2 < (og_point - candidate_point_2)**2:
