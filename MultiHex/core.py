@@ -258,8 +258,14 @@ class Hexmap:
     """
     def __init__(self):
         self.catalogue = {}
+        
         self.rid_catalogue = {} #region_id -> region object
         self.id_map = {} # hex_id -> reg_id 
+        
+        # catalogue of entities
+        self.eid_catalogue = {} # eID -> Entity obj
+        self.eid_map = {} # hex_id -> [ list of eIDs ]
+
         self.paths = {}
 
         # overal scaling factor 
@@ -274,6 +280,112 @@ class Hexmap:
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
+
+    def register_new_entity( self, target_entity):
+        """
+        Registers a new entity with the Entity catalogue and map
+
+        @param target_entity    - the Entity
+        @param location_id      - where to place the Entity on the map
+        """
+        if not isinstance( target_entity, Entity):
+            raise TypeError("Cannot register non-Entity of type {}".format( type(target_entity)) )
+        
+        if location_id not in self.catalogue:
+            raise ValueError("No registered Hex with ID {}".format( location_id ))
+
+        new_eid = 0 
+        while new_eid in self.eid_catalogue:
+            new_eid += 1
+
+        
+        self.eid_catalogue[ new_eid ] = target_entity 
+
+        if location_id not in self.eid_map:
+            self.eid_map[location_id] = [ new_eid ]
+        else:
+            self.eid_map[location_id].append( new_eid )
+
+        return( new_eid )
+    
+    def move_mobile( self, eID, new_location):
+        """
+        Moves the Mobile from where it is to the new location
+        
+        @param eID  - the eID of the Mobile to move 
+        @param new_location     - the hexID of the new location
+        """
+        if not isinstance( eID, int):
+            raise TypeError("eID provided is of type {}, should be of type {}".format(type(eID), int))
+        if eID not in self.eid_catalogue:
+            raise ValueError("No registered entity of eID {}".format(eID))
+
+        if not isinstance( self.eid_catalogue[eID], Mobile):
+            raise TypeError("Cannot mobe object of type {}. Only {} objects can move".format( type(self.eid_catalogue[eID]), Mobile))
+
+        curr_id = self.eid_catalogue[eID].location
+
+        # removing Entity from the map. That's fine
+        if curr_id not in self.catalogue:
+            return # nothing to do... from nowhere to nowhere 
+        else:
+            if curr_id not in self.eid_map:
+                pass
+            else:
+                if eID not in self.eid_map[curr_id]:
+                    pass
+                else:
+                    # remove the mapping to this entity from its old location
+                    self.eid_map[curr_id].pop( self.eidmap[curr_id].index( eID ) )
+            if len(self.eid_map[curr_id])==0:
+                del self.eid_map[curr_id]
+
+        self.eid_catalogue[eID].set_location(new_location)
+
+        if new_location in self.catalogue: 
+            if new_location in self.eid_map:
+                self.eid_map[ new_location ].append( eID )
+            else:
+                self.eid_map[ new_location ] = [ eID ]
+
+
+    def remove_entity( self, eID ):
+        """
+        Removes the entity with the given eID. Updates both the eid_catalogue and the eid_map
+
+        @param eID  - the eID of the Entity to remove. Deletes the entity! 
+        """
+
+        if not isinstance( eID, int):
+            raise TypeError("eID provided is of type {}, should be of type {}".format(type(eID), int))
+        if eID not in self.eid_catalogue:
+            raise ValueError("No registered entity of eID {}".format(eID))
+
+        # first remove the entity from the eid_map
+        ent = self.eid_catalogue[ eID ]
+        loc_id = ent.location 
+
+        # Entity may not have a location. That's fine. Just skip this part 
+        if loc_id is not None:    
+            if loc_id not in self.eid_map:
+                # that means the Entity thought it was somewhere that the Map thought had nothing
+
+                print("WARN! Inconsistency in eIDs")
+            else:
+                if eID not in self.eid_map[loc_id]:
+                    # means that the Entity thought it was somewhere that the Map that had some things, just not this thing 
+                    print("WARN! Inconsistency in eIDS (2)")
+                else:
+                    # otherwise remove the eID from this list 
+                    self.eid_map[loc_id].pop( self.eid_map[loc_id].index( eID ) )
+
+                # if we removed the last entity from this hex then delete the entry 
+                if len( self.eid_map[loc_id] )==0:
+                    del self.eid_map[loc_id]
+        
+        # delete the entity from the catalogue 
+        del self.eid_catalogue[ eID ]
+
     def register_new_region( self, target_region, r_layer ):
         """
         Registers a new region with this Hexmap. Adds it to the dictionaries, give it a unique rID, and set up all the maps for its contained Hexes 
@@ -1185,26 +1297,6 @@ def glom( original, new, start_index):
 
     return( new_perimeter )
 
-class Entity:
-    """
-    Defines static entity that can be placed on a Hex
-    """
-    def __init__(self, name):
-        if not type(name)==str:
-            raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
-        self.name = name
-
-        self.speed  = 1. #miles/minute
-        self.contains = {}
-
-class Mobile:
-    """
-    Defines a mobile map entity
-    """
-    def __init__(self, name):
-        if not type(name)==str:
-            raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
-        self.name = name
 
 class Path:
     """
