@@ -1,4 +1,5 @@
 from PyQt5 import QtCore
+from MultiHex.objects import Entity, Mobile
 
 try:
     from numpy import sqrt, atan, pi, floor, cos, sin
@@ -286,13 +287,13 @@ class Hexmap:
         Registers a new entity with the Entity catalogue and map
 
         @param target_entity    - the Entity
-        @param location_id      - where to place the Entity on the map
         """
         if not isinstance( target_entity, Entity):
             raise TypeError("Cannot register non-Entity of type {}".format( type(target_entity)) )
-        
-        if location_id not in self.catalogue:
-            raise ValueError("No registered Hex with ID {}".format( location_id ))
+       
+        if (target_entity.location is not None) and (target_entity.location not in self.id_catalogue):
+            # -1 represents 'outside' the map! 
+            target_entity.set_location = -1 
 
         new_eid = 0 
         while new_eid in self.eid_catalogue:
@@ -300,11 +301,13 @@ class Hexmap:
 
         
         self.eid_catalogue[ new_eid ] = target_entity 
-
-        if location_id not in self.eid_map:
-            self.eid_map[location_id] = [ new_eid ]
-        else:
-            self.eid_map[location_id].append( new_eid )
+        
+        # you can register an entity without it being in the map
+        if target_entity.location in self.catalogue:
+            if target_entity.location not in self.eid_map:
+                self.eid_map[target_entity.location] = [ new_eid ]
+            else:
+                self.eid_map[target_entity.location].append( new_eid )
 
         return( new_eid )
     
@@ -327,26 +330,32 @@ class Hexmap:
 
         # removing Entity from the map. That's fine
         if curr_id not in self.catalogue:
-            return # nothing to do... from nowhere to nowhere 
+            # this is fine, curr_id could be None
+            pass 
         else:
+            # Remove its previous map location associaiton
             if curr_id not in self.eid_map:
-                pass
+                raise ValueError("Mobile no {} thought it was here: {}. No entry for this ID in eID_map!".format(eID, curr_id))
             else:
                 if eID not in self.eid_map[curr_id]:
-                    pass
+                    raise ValueError("Mobile with eID {} thought it was here: {}. Hex only contains eIDs {}".format(eID, curr_id, self.eid_map[curr_id]))
                 else:
                     # remove the mapping to this entity from its old location
                     self.eid_map[curr_id].pop( self.eidmap[curr_id].index( eID ) )
+            # After this, if there are no more entities at this Hex, just remove the mapping! 
             if len(self.eid_map[curr_id])==0:
                 del self.eid_map[curr_id]
-
+        
+        # this just changes the location that the Mobile has for itself 
         self.eid_catalogue[eID].set_location(new_location)
 
-        if new_location in self.catalogue: 
-            if new_location in self.eid_map:
-                self.eid_map[ new_location ].append( eID )
-            else:
-                self.eid_map[ new_location ] = [ eID ]
+        if new_location not in self.catalogue:
+            new_location = -1 
+
+        if new_location in self.eid_map:
+            self.eid_map[ new_location ].append( eID )
+        else:
+            self.eid_map[ new_location ] = [ eID ]
 
 
     def remove_entity( self, eID ):
@@ -365,23 +374,22 @@ class Hexmap:
         ent = self.eid_catalogue[ eID ]
         loc_id = ent.location 
 
-        # Entity may not have a location. That's fine. Just skip this part 
-        if loc_id is not None:    
-            if loc_id not in self.eid_map:
-                # that means the Entity thought it was somewhere that the Map thought had nothing
+        # Entity may not have a location.     
+        if loc_id not in self.eid_map:
+            # that means the Entity thought it was somewhere that the Map thought had nothing
 
-                print("WARN! Inconsistency in eIDs")
+            print("WARN! Inconsistency in eIDs")
+        else:
+            if eID not in self.eid_map[loc_id]:
+                # means that the Entity thought it was somewhere that the Map that had some things, just not this thing 
+                print("WARN! Inconsistency in eIDS (2)")
             else:
-                if eID not in self.eid_map[loc_id]:
-                    # means that the Entity thought it was somewhere that the Map that had some things, just not this thing 
-                    print("WARN! Inconsistency in eIDS (2)")
-                else:
-                    # otherwise remove the eID from this list 
-                    self.eid_map[loc_id].pop( self.eid_map[loc_id].index( eID ) )
+                # otherwise remove the eID from this list 
+                self.eid_map[loc_id].pop( self.eid_map[loc_id].index( eID ) )
 
-                # if we removed the last entity from this hex then delete the entry 
-                if len( self.eid_map[loc_id] )==0:
-                    del self.eid_map[loc_id]
+            # if we removed the last entity from this hex then delete the entry 
+            if len( self.eid_map[loc_id] )==0:
+                del self.eid_map[loc_id]
         
         # delete the entity from the catalogue 
         del self.eid_catalogue[ eID ]
@@ -961,6 +969,9 @@ class Region:
 
         @param `number`    - which color to use
         """
+        if not isinstance(number, int):
+            raise TypeError("Expected arg of type {}, received {}".format(int, type(number)))
+
         self.color = region_colors[ number % len(region_colors) ]
 
     def add_hex_to_self( self, hex_id ):
