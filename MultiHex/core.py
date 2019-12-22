@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect, QGraphicsItem, QGraphicsPolygonItem
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtCore
+from MultiHex.objects import Entity, Mobile
 
 try:
     from numpy import sqrt, atan, pi, floor, cos, sin
@@ -36,129 +36,6 @@ def is_number(object):
     except TypeError:
         return(False)
 
-class basic_tool:
-    """
-    Prototype a basic tool 
-    """
-    def __init__(self, parent=None):
-        pass
-    def press(self,event):
-        """
-        Called when the right mouse button is depressed 
-
-        @param event 
-        """
-        pass
-    def activate(self, event):
-        """
-        This is called when the right mouse button is released from a localized click. 
-
-        @param event - location of release
-        """
-        pass
-    def hold(self,event ):
-        """
-        Called continuously while the right mouse button is moved and depressed 
-
-        @param event - current mouse location
-        @param setp  - vector pointing from last called location to @place
-        """
-        pass
-    def select(self, event ):
-        """
-        Left click released event, used to select something
-
-        @param event - Qt event object. has where the mouse is
-        """
-        pass
-    def move(self, event):
-        """
-        Called continuously while the mouse is in the widget
-
-        @param place - where the mouse is 
-        """
-        pass
-    def drop(self):
-        """
-        Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles)
-        """
-        pass
-    def toggle_mode(self, force=None):
-        pass
-
-class clicker_control(QGraphicsScene):
-    """
-    Manages the mouse interface for to the canvas.
-    """
-    def __init__(self, parent=None, master=None):
-        QGraphicsScene.__init__(self, parent)
-
-        self._active = None
-        self._held = False
-        
-        self.master = master
-
-        self._alt_held = False
-
-    def keyPressEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = True
-    def keyReleaseEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = False
-
-    def mousePressEvent(self, event):
-        """
-        Called whenever the mouse is pressed within its bounds (The drawspace)
-        """
-        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
-            event.accept() # accept the event
-            self._held = True # say that the mouse is being held 
-            self._active.press( event )
-
-    def mouseReleaseEvent( self, event):
-        """
-        Called when a mouse button is released 
-        """
-        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
-            # usually a brush event 
-            event.accept()
-            self._held = False
-            self._active.activate(event)
-
-        elif event.button()==QtCore.Qt.LeftButton:
-            # usually a selection event
-            event.accept()
-            self._active.select( event )
-
-   #mouseMoveEvent 
-    def mouseMoveEvent(self,event):
-        """
-        called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
-        """
-        event.accept()
-        if self._held:
-            self._active.hold( event )
- 
-        self._active.move( event )
-
-    # in c++ these could've been templates and that would be really cool 
-    def to_hex(self):
-        """
-        We need to switch over to calling the writer control, and have the selector clean itself up. These two cleaners are used to git rid of any drawn selection outlines 
-        """
-        self._active.drop()
-        self._active = self.master.writer_control
-
-    def to_region(self):
-        """
-        same...
-        """
-        self._active.drop()
-        self._active = self.master.region_control
- 
 class Point:
     """
     A vector in 2D Cartesian space.
@@ -382,8 +259,14 @@ class Hexmap:
     """
     def __init__(self):
         self.catalogue = {}
+        
         self.rid_catalogue = {} #region_id -> region object
         self.id_map = {} # hex_id -> reg_id 
+        
+        # catalogue of entities
+        self.eid_catalogue = {} # eID -> Entity obj
+        self.eid_map = {} # hex_id -> [ list of eIDs ]
+
         self.paths = {}
 
         # overal scaling factor 
@@ -398,6 +281,119 @@ class Hexmap:
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
+
+    def register_new_entity( self, target_entity):
+        """
+        Registers a new entity with the Entity catalogue and map
+
+        @param target_entity    - the Entity
+        """
+        if not isinstance( target_entity, Entity):
+            raise TypeError("Cannot register non-Entity of type {}".format( type(target_entity)) )
+       
+        if (target_entity.location is not None) and (target_entity.location not in self.id_catalogue):
+            # -1 represents 'outside' the map! 
+            target_entity.set_location = -1 
+
+        new_eid = 0 
+        while new_eid in self.eid_catalogue:
+            new_eid += 1
+
+        
+        self.eid_catalogue[ new_eid ] = target_entity 
+        
+        # you can register an entity without it being in the map
+        if target_entity.location in self.catalogue:
+            if target_entity.location not in self.eid_map:
+                self.eid_map[target_entity.location] = [ new_eid ]
+            else:
+                self.eid_map[target_entity.location].append( new_eid )
+
+        return( new_eid )
+    
+    def move_mobile( self, eID, new_location):
+        """
+        Moves the Mobile from where it is to the new location
+        
+        @param eID  - the eID of the Mobile to move 
+        @param new_location     - the hexID of the new location
+        """
+        if not isinstance( eID, int):
+            raise TypeError("eID provided is of type {}, should be of type {}".format(type(eID), int))
+        if eID not in self.eid_catalogue:
+            raise ValueError("No registered entity of eID {}".format(eID))
+
+        if not isinstance( self.eid_catalogue[eID], Mobile):
+            raise TypeError("Cannot mobe object of type {}. Only {} objects can move".format( type(self.eid_catalogue[eID]), Mobile))
+
+        curr_id = self.eid_catalogue[eID].location
+
+        # removing Entity from the map. That's fine
+        if curr_id not in self.catalogue:
+            # this is fine, curr_id could be None
+            pass 
+        else:
+            # Remove its previous map location associaiton
+            if curr_id not in self.eid_map:
+                raise ValueError("Mobile no {} thought it was here: {}. No entry for this ID in eID_map!".format(eID, curr_id))
+            else:
+                if eID not in self.eid_map[curr_id]:
+                    raise ValueError("Mobile with eID {} thought it was here: {}. Hex only contains eIDs {}".format(eID, curr_id, self.eid_map[curr_id]))
+                else:
+                    # remove the mapping to this entity from its old location
+                    self.eid_map[curr_id].pop( self.eidmap[curr_id].index( eID ) )
+            # After this, if there are no more entities at this Hex, just remove the mapping! 
+            if len(self.eid_map[curr_id])==0:
+                del self.eid_map[curr_id]
+        
+        # this just changes the location that the Mobile has for itself 
+        self.eid_catalogue[eID].set_location(new_location)
+
+        if new_location not in self.catalogue:
+            new_location = -1 
+
+        if new_location in self.eid_map:
+            self.eid_map[ new_location ].append( eID )
+        else:
+            self.eid_map[ new_location ] = [ eID ]
+
+
+    def remove_entity( self, eID ):
+        """
+        Removes the entity with the given eID. Updates both the eid_catalogue and the eid_map
+
+        @param eID  - the eID of the Entity to remove. Deletes the entity! 
+        """
+
+        if not isinstance( eID, int):
+            raise TypeError("eID provided is of type {}, should be of type {}".format(type(eID), int))
+        if eID not in self.eid_catalogue:
+            raise ValueError("No registered entity of eID {}".format(eID))
+
+        # first remove the entity from the eid_map
+        ent = self.eid_catalogue[ eID ]
+        loc_id = ent.location 
+
+        # Entity may not have a location.     
+        if loc_id not in self.eid_map:
+            # that means the Entity thought it was somewhere that the Map thought had nothing
+
+            print("WARN! Inconsistency in eIDs")
+        else:
+            if eID not in self.eid_map[loc_id]:
+                # means that the Entity thought it was somewhere that the Map that had some things, just not this thing 
+                print("WARN! Inconsistency in eIDS (2)")
+            else:
+                # otherwise remove the eID from this list 
+                self.eid_map[loc_id].pop( self.eid_map[loc_id].index( eID ) )
+
+            # if we removed the last entity from this hex then delete the entry 
+            if len( self.eid_map[loc_id] )==0:
+                del self.eid_map[loc_id]
+        
+        # delete the entity from the catalogue 
+        del self.eid_catalogue[ eID ]
+
     def register_new_region( self, target_region, r_layer ):
         """
         Registers a new region with this Hexmap. Adds it to the dictionaries, give it a unique rID, and set up all the maps for its contained Hexes 
@@ -973,6 +969,9 @@ class Region:
 
         @param `number`    - which color to use
         """
+        if not isinstance(number, int):
+            raise TypeError("Expected arg of type {}, received {}".format(int, type(number)))
+
         self.color = region_colors[ number % len(region_colors) ]
 
     def add_hex_to_self( self, hex_id ):
@@ -1309,26 +1308,6 @@ def glom( original, new, start_index):
 
     return( new_perimeter )
 
-class Entity:
-    """
-    Defines static entity that can be placed on a Hex
-    """
-    def __init__(self, name):
-        if not type(name)==str:
-            raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
-        self.name = name
-
-        self.speed  = 1. #miles/minute
-        self.contains = {}
-
-class Mobile:
-    """
-    Defines a mobile map entity
-    """
-    def __init__(self, name):
-        if not type(name)==str:
-            raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
-        self.name = name
 
 class Path:
     """

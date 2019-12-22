@@ -8,7 +8,6 @@ from MultiHex.map_paint import editor_gui
 from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
 
 from MultiHex.ridge_editor import ridge_gui
-from MultiHex.region_editor import region_gui
 from MultiHex.generator import full_chain
 
 import os
@@ -30,7 +29,6 @@ class main_gui(QMainWindow):
         # because of that it's important that these two clean themselves up when told to hide 
         self.editor_ui = editor_gui(self)
         self.ridge_ui  = ridge_gui(self)
-        self.region_ui = region_gui(self)
 
         # connecting buttons 
         self.ui.pushButton_2.clicked.connect( QtCore.QCoreApplication.instance().quit )
@@ -62,12 +60,7 @@ class main_gui(QMainWindow):
         """
         filename = QFileDialog.getOpenFileName( None, 'Edit Regions', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
         if filename!='':
-            self.hide()
             print("Loading {}".format(filename))
-        else:
-            return()
-        self.region_ui.prep_map(filename)
-        self.region_ui.show()
         
 
     def editor(self):

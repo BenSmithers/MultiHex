@@ -1,7 +1,8 @@
 ## #!/usr/bin/python3.6m
 
-from MultiHex.core import Hexmap, save_map, load_map, clicker_control
-from MultiHex.map_types.overland import hex_brush, region_brush
+from MultiHex.core import Hexmap, save_map, load_map
+from MultiHex.tools import clicker_control, region_brush
+from MultiHex.map_types.overland import OHex_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -44,8 +45,8 @@ class editor_gui(QMainWindow):
         # manages the writer and selector controls. This catches clicky-events on the graphicsView
         self.scene = clicker_control( self.ui.graphicsView, self )
         # start with the hex as the currently used tool
-        self.writer_control = hex_brush(self)
-        self.region_control = region_brush(self)
+        self.writer_control = OHex_Brush(self)
+        self.region_control = region_brush(self, 'biome')
        
         
         self.scene._active = self.writer_control
@@ -156,20 +157,5 @@ class editor_gui(QMainWindow):
             
         self.writer_control.redraw_rivers()
         
-
-# this stuff is commented out since this script is not meant to be called directly! 
-
-#application = QtGui.QApplication(sys.argv)
-#editor_instance = gui()
-
-#thing = open_map()
-#thing.show()
-#sys.exit( applicaiton.exec_() )
-    #    return( editor_instance )
-
-#if __name__=="__main__":
-#    
-#    editor_instance.show()
-#    sys.exit(application.exec_())
 
 
