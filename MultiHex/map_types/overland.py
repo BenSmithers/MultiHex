@@ -1,5 +1,7 @@
 from MultiHex.core import Hex, Point, Region, Path
 from MultiHex.core import RegionMergeError, RegionPopError
+
+from MultiHex.objects import Settlement
 from MultiHex.tools import basic_tool, hex_brush
 
 from PyQt5 import QtGui
@@ -7,13 +9,55 @@ from PyQt5 import QtGui
 """
 Implements the overland map type, its brushes, and its hexes 
 
-Objects:
-    River           - Path implementation
+Entries:
+    Town            - Settlement (Entity) implementation 
+    River           - Path implementation. For rivers
+    Road            - Path implementation. For roads...
+    County          - Region implementation to create counties 
     Biome           - Region implementation for, well, biomes
     region_brush    - basic tool, makes regions
     hex_brush       - basic tool, makes hexes
     OHex            - Hex implementation for land hexes
 """
+
+class Town( Settlement ):
+    """
+    Implements settlements for overland medieval towns! 
+    """
+    def __init__(self, name, location = None, is_ward = False):
+        Settlement.__init__( self, name, location, is_ward )
+
+        self.walled = False 
+
+    @property
+    def size( self ):
+        total_pop = self.population
+        
+        if self._is_ward:
+            return("Ward")
+        
+        if total_pop < 10:
+            return("Hamlet")
+        elif total_pop < 150:
+            return("Village") 
+        elif total_pop < 1000:
+            return("Town")
+        elif total_pop < 7500:
+            return("City")
+        else:
+            return("Metropolis")
+
+class Road(Path):
+    """
+    Implements the path object for roads
+    """
+    def __init__(self, start):
+        Path.__init__(self, start)
+
+        self.color = ( 196, 196, 196 )
+        self.width = 2
+
+        self.quality = 1.50 
 
 class River(Path):
     """
@@ -77,6 +121,59 @@ class River(Path):
 
         # success code 
         return(0)
+
+
+class County(Region):
+    """
+    Implements the Region class for Counties. 
+    """
+
+    def __init__(self, hex_id, parent):
+        Region.__init__(self, hex_id, parent)
+
+    @property
+    def eIDs( self ):
+        """
+        A list of entity IDs contained within this County's borders 
+        """
+        which = []
+        for ID in self.ids:
+            if ID in self.parent.eid_map:
+                which += self.parent.eid_map[ID]
+        return( which )
+
+    @property
+    def population( self ):
+        pop = 0 
+        for eID in self.eIDs:
+            if isinstance( self.parent.eid_catalogue[ eID ], Settlement ):
+                pop += self.parent.eid_catalogue[eID].population 
+        return( pop )
+
+class Kingdom( County ):
+    """
+    A Collection of Counties. One County serves as the seat of the Kingdom, and that's this one. 
+    """
+    def __init__(self, hex_id, parent):
+        County.__init__(self, hex_id, parent)
+
+        self.counties = []
+    
+    def add_county( self, other ):
+        if not isinstance( other, County):
+            raise TypeError("Expected arg of type {}, received {}".format(County, type(other)))
+        
+        other.color = self.color 
+        self.counties.append( other )
+
+    def remove_county( self, county_index ):
+        if not isinstance( county_index , int):
+            raise TypeError("Expected arg of type {}, received {}".format(int, type(county_index)))
+        if county_index>=len(self.counties):
+            raise ValueError("Cannot remove county of index {}. Only have {} counties".format(county_index, len(self.counties) ))
+
+        self.counties[county_index].set_color( 5 )
+        self.counties.pop( county_index )
 
 class Biome(Region):
     """
@@ -189,11 +286,12 @@ class OHex(Hex):
         self._altitude_base    = 1.0
         self._temperature_base = 1.0
         self._is_land          = True
-        self.biome = ""
-    
+        self.biome             = ""
+        self.on_road           = None
+
         # CW downstream , CCW downstream, runs through
         self.river_border = [ False ,False , False]
-
+        
     def rescale_color(self):
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
