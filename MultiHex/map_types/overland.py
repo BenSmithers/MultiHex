@@ -28,6 +28,9 @@ class Town( Settlement ):
         Settlement.__init__( self, name, location, is_ward )
 
         self.walled = False 
+        
+        # gold! 
+        self.wealth = 1
 
     @property
     def size( self ):
@@ -132,6 +135,16 @@ class County(Region):
         Region.__init__(self, hex_id, parent)
 
     @property
+    def wealth( self ):
+        this_wealth = 0
+        for eID in self.eIDs:
+            if isinstance( self.parent.eid_catalogue[eID], Settlement ):
+                this_wealth += self.parent.eid_catalogue[eID].wealth
+
+        # returns in gp per person 
+        return(this_wealth)
+
+    @property
     def eIDs( self ):
         """
         A list of entity IDs contained within this County's borders 
@@ -158,6 +171,21 @@ class Kingdom( County ):
         County.__init__(self, hex_id, parent)
 
         self.counties = []
+   
+    @property
+    def subjects( self ):
+        pop = self.population
+        for county in self.counties:
+            pop += county.population
+        return( pop )
+    
+    @property
+    def total_wealth( self ):
+        wea = self.wealth
+        for county in self.counties:
+            wea += county.wealth
+        return(wea)
+
     
     def add_county( self, other ):
         if not isinstance( other, County):
