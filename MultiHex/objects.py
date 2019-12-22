@@ -1,16 +1,28 @@
 
+"""
+Implements several objects to be added on the map
+
+Entries
+    Entity          - A static object on the map
+    Settlement      - Implements Entity. Represents somewhere people live 
+    Mobile          - Implements Entity. A moving object on the map.
+"""
+
 class Entity:
     """
     Defines static entity that can be placed on a Hex
     """
     def __init__(self, name, location = None ):
         """
-        
+        @param name     - String. name of this entity
+        @param location - HexID. Where this entity is placed. (optional. Entites can be off the map)
         """
 
         if not type(name)==str:
             raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
-        self.name = name
+        self.name        = name
+        self.description = ""
+        self.icon        = ""
 
         self._location = location
     
@@ -19,16 +31,17 @@ class Entity:
         copy = self._location
         return( copy )
 
+
 class Settlement(Entity):
     """
-    Representation of ... 
+    Generic implementation for settlements of people. Can be applied for space stations, planets, towns, or anything really. Maintains a total population and its demographics. 
+
+    Settlements can be divided into `wards` to represent sub-sections of the 
     """
     def __init__(self, name, location=None, is_ward=False):
         Entity.__init__(self, name, location)
 
         self._population = 1
-        self.walled = False
-
         self.wards = [ ]
         self._is_ward = is_ward
 
@@ -212,4 +225,4 @@ class Mobile( Entity ):
         # add a check thingy
         self._location = location
 
-
+    
