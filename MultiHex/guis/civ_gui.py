@@ -8,7 +8,11 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-class Ui_MainWindow(object):
+import os
+
+art_dir = os.path.join( os.path.dirname(__file__), '..', '..', 'Artwork' )
+
+class editor_gui_window(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1004, 834)
@@ -24,7 +28,7 @@ class Ui_MainWindow(object):
         self.ent_select_button_0 = QtWidgets.QToolButton(self.centralwidget)
         self.ent_select_button_0.setMinimumSize(QtCore.QSize(40, 40))
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("Artwork/select_location.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap(os.path.join( art_dir, "select_location.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.ent_select_button_0.setIcon(icon)
         self.ent_select_button_0.setIconSize(QtCore.QSize(32, 32))
         self.ent_select_button_0.setObjectName("ent_select_button_0")
@@ -32,7 +36,7 @@ class Ui_MainWindow(object):
         self.count_sel_button_1 = QtWidgets.QToolButton(self.centralwidget)
         self.count_sel_button_1.setMinimumSize(QtCore.QSize(40, 40))
         icon1 = QtGui.QIcon()
-        icon1.addPixmap(QtGui.QPixmap("Artwork/temp.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon1.addPixmap(QtGui.QPixmap(os.path.join(art_dir, "temp.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.count_sel_button_1.setIcon(icon1)
         self.count_sel_button_1.setIconSize(QtCore.QSize(32, 32))
         self.count_sel_button_1.setObjectName("count_sel_button_1")
@@ -42,7 +46,7 @@ class Ui_MainWindow(object):
         self.loc_button_1 = QtWidgets.QToolButton(self.centralwidget)
         self.loc_button_1.setMinimumSize(QtCore.QSize(40, 40))
         icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap("Artwork/new_location.svg"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon2.addPixmap(QtGui.QPixmap(os.path.join(art_dir, "new_location.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.loc_button_1.setIcon(icon2)
         self.loc_button_1.setIconSize(QtCore.QSize(32, 32))
         self.loc_button_1.setObjectName("loc_button_1")
@@ -260,4 +264,4 @@ class Ui_MainWindow(object):
         self.actionTowns.setText(_translate("MainWindow", "Towns"))
         self.actionLocations.setText(_translate("MainWindow", "Locations"))
 
-import resource_file_rc
+#import resource_file_rc
