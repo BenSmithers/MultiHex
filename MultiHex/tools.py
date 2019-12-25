@@ -2,6 +2,10 @@ from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5 import QtGui, QtCore
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError
+from MultiHex.objects import Icons, Entity 
+
+import os # used for some of the icons
+
 
 class basic_tool:
     """
@@ -47,11 +51,20 @@ class basic_tool:
         pass
     def drop(self):
         """
-        Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles)
+        Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles). This is needed when closing one of the guis 
         """
         pass
     def toggle_mode(self, force=None):
+        """
+        Toggles the 'mode' of the tool. Optionally passed a 'corce' argument 
+        """
         pass
+
+    def clear(self):
+        """
+        Called when parent window is closing. Clears list of drawn items 
+        """
+        pass 
 
 class clicker_control(QGraphicsScene):
     """
@@ -125,6 +138,121 @@ class clicker_control(QGraphicsScene):
         """
         self._active.drop()
         self._active = self.master.region_control
+
+class path_brush(basic_tool):
+    """
+    Basic tool implementation for drawing Path objects like rivers and roads
+    """
+    def __init__(self, parent):
+        self._drawing = False
+        self._active_path = None
+
+        self._drawn_rivers = []
+
+    def redraw_rivers(self):
+        pass
+
+    def move( self, event ):
+        pass
+    # update the position of the river icon
+        
+
+class entity_brush(basic_tool):
+    """
+    Basic tool implementaion for adding and editing entities on the map! 
+    """
+    def __init__(self, parent):
+        self.parent = parent
+
+        self._drawn_entities = {}
+
+        # are we in the process of placing a thingy
+        self._placing = False
+        self._placing_type = 0
+
+        # eID of the selected entity 
+        self._selected = None
+        
+        # icon size should be derived from the map's drawscale.
+        # fixing this will require a better and more dedicated map drawing function 
+        self._drawn_icon = None
+        self._icon_size = 32 #int(self.parent.main_map._drawscale*2)
+        self._icon = None 
+        self._all_icons = None
+
+    def prep_new(self, ent_type = 0):
+        assert( isinstance(ent_type, int))
+        self._placing = True
+        self._placing_type = ent_type 
+
+    def move(self, event):
+        if self._icon is None:
+            self._all_icons = Icons()
+            self._icon = self._all_icons.location
+
+        # meaning we want to 
+        if self._placing:
+            if self._drawn_icon is None:
+                self._drawn_icon = self.parent.scene.addPixmap( self._icon )
+                self._drawn_icon.setZValue(20)
+            else:
+                self._drawn_icon.setX( event.scenePos().x() -(self._icon_size)/2 )
+                self._drawn_icon.setY( event.scenePos().y() -(self._icon_size)/2 )
+        else:
+            if self._drawn_icon is not None:
+                self.parent.scene.removeItem( self._drawn_icon )
+                self._drawn_icon = None 
+
+            
+    def activate( self, event ):
+        if self._placing:
+            # we are going to create 
+            if self._drawn_icon is not None:
+                self.parent.scene.removeItem( self._drawn_icon )
+                self._drawn_icon = None   
+            
+            place = Point( event.scenePos().x(), event.scenePos().y() ) 
+            loc_id = self.parent.main_map.get_id_from_point( place )
+
+            new_ent = Entity( "temp" , loc_id )
+            new_ent.icon = self._icon
+            #QtGui.QPixmap( os.path.join('..','Artwork','location.svg')).scaledToWidth(32)
+
+            self._selected = self.parent.main_map.register_new_entity( new_ent )
+            self.parent.main_map.eid_catalogue[self._selected].name = "Entity {}".format(self._selected)
+            self.configure_toolbox_loc()
+            self.redraw_entity( self._selected )
+
+            print("New entity, number {}, at {}".format( self._selected, loc_id ))
+
+            self._placing = False
+
+    def configure_toolbox_loc(self):
+        self.parent.ui.loc_name_edit.setText( self.parent.main_map.eid_catalogue[ self._selected ].name)
+        self.parent.ui.loc_desc_edit.setText( self.parent.main_map.eid_catalogue[ self._selected].description)
+
+    def redraw_entity(self, eID):
+        if eID not in self.parent.main_map.eid_catalogue:
+            raise ValueError("eID {} not registered in catalogue".format(eID))
+
+        # delete old drawing if it exists
+        if eID in self._drawn_entities:
+            self.parent.scene.removeItem( self._drawn_entities[ eID ] )
+            del self._drawn_entities[ eID ]
+        
+        self._drawn_entities[eID] = self.parent.scene.addPixmap( self.parent.main_map.eid_catalogue[ eID ].icon )
+        self._drawn_entities[eID].setZValue(2)
+        location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
+        self._drawn_entities[eID].setX( location.x - self.parent.main_map.eid_catalogue[eID].icon.width()/2 )
+        self._drawn_entities[eID].setY( location.y - self.parent.main_map.eid_catalogue[eID].icon.height()/2)
+
+
+    def drop(self):
+        if self._drawn_icon is not None:
+            self.parent.scene.removeItem( self._drawn_icon )
+
+    def clear(self):
+        self.drop()
 
 class hex_brush(basic_tool):
     """
@@ -353,7 +481,11 @@ class hex_brush(basic_tool):
             self.parent.scene.removeItem( self._selected_out )
             self._selected_out = None
         self._selected_id = None
-
+    
+    def clear(self):
+        self.drawn_hexes = {}
+        self._outline_obj = {}
+        
 
 
 class region_brush(basic_tool):
@@ -684,5 +816,8 @@ class region_brush(basic_tool):
         if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
 
-
+    def clear(self):
+        self._drawn_names = {}
+        self._drawn_regions = {}
+        self._outline_obj = None
 
