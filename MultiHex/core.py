@@ -23,8 +23,6 @@ Objects:
         deconstruct_id 
     Region          - A perimeter, lists of IDs associated with it, and means to modify this
         glom
-    Entity          - static entity on a Hex
-    Mobile          - a mobile object that travels between hexes
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
@@ -237,7 +235,6 @@ class Hexmap:
     Methods:
     @ remove_hex            - unregister hex from catalogue
     @ register_hex          - register a hex in the catalogue
-    @ set_active_hex        - sets hex to "active"
     @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
     @ get_neighbor_outline      - retursn list of points to outline cursor 
     @ points_to_draw        - takes list of map-Points, prepares flattened list of draw coordinates 
@@ -282,6 +279,11 @@ class Hexmap:
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
 
+    @property 
+    def drawscale(self):
+        copy = self._drawscale
+        return( copy )
+
     def register_new_entity( self, target_entity):
         """
         Registers a new entity with the Entity catalogue and map
@@ -291,7 +293,7 @@ class Hexmap:
         if not isinstance( target_entity, Entity):
             raise TypeError("Cannot register non-Entity of type {}".format( type(target_entity)) )
        
-        if (target_entity.location is not None) and (target_entity.location not in self.id_catalogue):
+        if (target_entity.location is not None) and (target_entity.location not in self.catalogue):
             # -1 represents 'outside' the map! 
             target_entity.set_location = -1 
 
@@ -531,7 +533,7 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
-        assert( target_hex._radius == self._drawscale )
+        assert( target_hex._radius == self.drawscale )
         if not isinstance(target_hex, Hex):
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
@@ -560,6 +562,8 @@ class Hexmap:
 
 
     def set_active_hex(self, id):
+        # totally deprecated... I think 
+
         if self._active_id is not None:
             self.catalogue[self._active_id].outline = '#ddd'
         
@@ -614,16 +618,16 @@ class Hexmap:
         perimeter_points = []
         
         if size==1:
-            perimeter_points +=[ center + Point( -0.5, 0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point(  0.5, 0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point(  1.0, 0.0)*self._drawscale]
-            perimeter_points +=[ center + Point(  0.5,-0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point( -0.5,-0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point( -1.0, 0.0)*self._drawscale]
+            perimeter_points +=[ center + Point( -0.5, 0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point(  0.5, 0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point(  1.0, 0.0)*self.drawscale]
+            perimeter_points +=[ center + Point(  0.5,-0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point( -0.5,-0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point( -1.0, 0.0)*self.drawscale]
             return(perimeter_points)
         else:
             # these are shifts to the three unique vertices on the Northern Hexes' outer perimeter
-            vector_shift = [ Point(self._drawscale, self._drawscale*rthree),Point(self._drawscale*0.5, 3*rthree*0.5*self._drawscale) , Point(-self._drawscale*0.5, 3*rthree*0.5*self._drawscale)] 
+            vector_shift = [ Point(self.drawscale, self.drawscale*rthree),Point(self.drawscale*0.5, 3*rthree*0.5*self.drawscale) , Point(-self.drawscale*0.5, 3*rthree*0.5*self.drawscale)] 
             perimeter_points += vector_shift 
             # now we will rotate these over 5 multiples of -60 degrees  (clockwise rotation)
             
@@ -665,10 +669,10 @@ class Hexmap:
         
         if v_type is None:
             print("this shouldn't be called either")
-            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
-            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
 
             if l_up==l_down:
                 v_type = 2
@@ -681,13 +685,13 @@ class Hexmap:
         assert( type(v_type) == int)
 
         if v_type==1:
-            neighbors = [   vertex + (Point(-1.0,  0.0       )*self._drawscale), 
-                            vertex + (Point( 0.5,  0.5*rthree)*self._drawscale), 
-                            vertex + (Point( 0.5, -0.5*rthree)*self._drawscale) ]
+            neighbors = [   vertex + (Point(-1.0,  0.0       )*self.drawscale), 
+                            vertex + (Point( 0.5,  0.5*rthree)*self.drawscale), 
+                            vertex + (Point( 0.5, -0.5*rthree)*self.drawscale) ]
         elif v_type==2:
-            neighbors = [   vertex + (Point( 1.0,  0.0       )*self._drawscale), 
-                            vertex + (Point(-0.5,  0.5*rthree)*self._drawscale), 
-                            vertex + (Point(-0.5, -0.5*rthree)*self._drawscale) ]
+            neighbors = [   vertex + (Point( 1.0,  0.0       )*self.drawscale), 
+                            vertex + (Point(-0.5,  0.5*rthree)*self.drawscale), 
+                            vertex + (Point(-0.5, -0.5*rthree)*self.drawscale) ]
 
         else:
             raise ValueError("Unrecognized vertex type {}".format(v_type))
@@ -715,10 +719,10 @@ class Hexmap:
         if v_type is None:
             print("this shouldn't be called")
             # deduce the vertex type
-            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
-            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
 
             if l_up==l_down:
                 v_type = 2
@@ -731,13 +735,13 @@ class Hexmap:
         
         assert(type(v_type)==int)
         if v_type==1:
-            return([    self.get_id_from_point( place + Point(1.0 ,  0.0       )*self._drawscale ), 
-                        self.get_id_from_point( place + Point(-0.5,  0.5*rthree)*self._drawscale ),
-                        self.get_id_from_point( place + Point(-0.5, -0.5*rthree)*self._drawscale ) ])
+            return([    self.get_id_from_point( place + Point(1.0 ,  0.0       )*self.drawscale ), 
+                        self.get_id_from_point( place + Point(-0.5,  0.5*rthree)*self.drawscale ),
+                        self.get_id_from_point( place + Point(-0.5, -0.5*rthree)*self.drawscale ) ])
         elif v_type==2:
-            return([    self.get_id_from_point( place + Point(-1.0 , 0.0       )*self._drawscale ), 
-                        self.get_id_from_point( place + Point( 0.5,  0.5*rthree)*self._drawscale ),
-                        self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self._drawscale ) ])
+            return([    self.get_id_from_point( place + Point(-1.0 , 0.0       )*self.drawscale ), 
+                        self.get_id_from_point( place + Point( 0.5,  0.5*rthree)*self.drawscale ),
+                        self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self.drawscale ) ])
 
         else:
             raise ValueError("Invalid Vertex type value: {}".format(v_type))
@@ -760,13 +764,13 @@ class Hexmap:
 
         # verify that this edge is the right length (drawscale)
         diff = end - start 
-        if (diff.magnitude - self._drawscale)/self._drawscale > 0.01:
-            raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self._drawscale))
+        if (diff.magnitude - self.drawscale)/self.drawscale > 0.01:
+            raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self.drawscale))
         # displacement vector from 'end' object. 
         #       points towards CW hex
          
-        diag_cw  = start + diff*0.5 + Point( diff.y, -diff.x)*0.5*rthree*self._drawscale/diff.magnitude
-        diag_ccw = start + diff*0.5 + Point(-diff.y,  diff.x)*0.5*rthree*self._drawscale/diff.magnitude
+        diag_cw  = start + diff*0.5 + Point( diff.y, -diff.x)*0.5*rthree*self.drawscale/diff.magnitude
+        diag_ccw = start + diff*0.5 + Point(-diff.y,  diff.x)*0.5*rthree*self.drawscale/diff.magnitude
         return( self.get_id_from_point( diag_cw ) , self.get_id_from_point( diag_ccw ) )
 
 
@@ -781,23 +785,23 @@ class Hexmap:
         # keep a copy of the untranslated point! 
         og_point = Point( point.x, point.y )
                 
-        base_idy = int(floor((point.y/( rthree*self._drawscale)) + 0.5) )
-        base_idx = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
+        base_idy = int(floor((point.y/( rthree*self.drawscale)) + 0.5) )
+        base_idx = int(floor((point.x/(3.*self.drawscale)) + (1./3.)))
          
         # this could be the point 
-        candidate_point =Point(base_idx*3*self._drawscale, base_idy*rthree*self._drawscale )
+        candidate_point =Point(base_idx*3*self.drawscale, base_idy*rthree*self.drawscale )
 
          # the secondary grid is shifted over a bit, so let's do the same again... 
-        point.x -= 1.5*self._drawscale
-        point.y -= rthree*self._drawscale*0.5
+        point.x -= 1.5*self.drawscale
+        point.y -= rthree*self.drawscale*0.5
 
         # recalculate these
-        base_idy_2 = int(floor((point.y/( rthree*self._drawscale)) + 0.5))
-        base_idx_2 = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
+        base_idy_2 = int(floor((point.y/( rthree*self.drawscale)) + 0.5))
+        base_idx_2 = int(floor((point.x/(3.*self.drawscale)) + (1./3.)))
         
         # this is in the off-grid
-        candidate_point_2 =Point(base_idx_2*3*self._drawscale, base_idy_2*rthree*self._drawscale )
-        candidate_point_2 += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
+        candidate_point_2 =Point(base_idx_2*3*self.drawscale, base_idy_2*rthree*self.drawscale )
+        candidate_point_2 += Point( 1.5*self.drawscale, rthree*self.drawscale*0.5)
         
         if (og_point - candidate_point)**2 < (og_point - candidate_point_2)**2:
             return( construct_id(base_idx, base_idy, True ))
@@ -812,10 +816,10 @@ class Hexmap:
         x_id, y_id, on_primary_grid = deconstruct_id(id)
         
         # build the poin
-        built_point = Point( x_id*3*self._drawscale, y_id*rthree*self._drawscale )
+        built_point = Point( x_id*3*self.drawscale, y_id*rthree*self.drawscale )
         if not on_primary_grid:
             # transform it if it's on the shifted grid
-            built_point += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
+            built_point += Point( 1.5*self.drawscale, rthree*self.drawscale*0.5)
         
         #built_point -= self.draw_relative_to
 

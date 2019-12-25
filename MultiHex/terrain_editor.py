@@ -8,7 +8,7 @@ from MultiHex.map_types.overland import OHex_Brush
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
 
-from MultiHex.guis.map_editor_gui import editor_gui_window
+from MultiHex.guis.terrain_editor_gui import editor_gui_window
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
@@ -96,13 +96,10 @@ class editor_gui(QMainWindow):
         # need to clear the canvas too!
         self.hide()
         
-        self.region_control._drawn_names = {}
-        self.region_control._drawn_regions = {}
-        self.region_control._outline_obj = None
+        self.region_control.clear()
         self.selected_rid = None
 
-        self.writer_control.drawn_hexes = {}
-        self.writer_control._outline_obj = None
+        self.writer_control.clear()
         self.scene._held = None
 
     def set_region_name(self):

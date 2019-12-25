@@ -89,6 +89,7 @@ class editor_gui_window(object):
         self.graphicsView.setObjectName("graphicsView")
         self.horizontalLayout.addWidget(self.graphicsView)
         self.toolBox = QtWidgets.QToolBox(self.centralwidget)
+        self.toolBox.setMinimumSize(QtCore.QSize(250, 0))
         self.toolBox.setMaximumSize(QtCore.QSize(250, 16777215))
         self.toolBox.setObjectName("toolBox")
         self.Locations = QtWidgets.QWidget()
