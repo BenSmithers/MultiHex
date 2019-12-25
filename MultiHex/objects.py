@@ -8,6 +8,19 @@ Entries
     Mobile          - Implements Entity. A moving object on the map.
 """
 
+from PyQt5 import QtGui
+import os
+
+class Icons:
+    def __init__(self):
+        self._art_dir = os.path.join( '..', 'Artwork')
+        self._icon_size = 24
+
+        # for locations. It's not a location
+        self.location = QtGui.QPixmap( os.path.join( self._art_dir, 'location.svg')).scaledToWidth( self._icon_size )
+        pass
+
+
 class Entity:
     """
     Defines static entity that can be placed on a Hex
@@ -22,7 +35,7 @@ class Entity:
             raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
         self.name        = name
         self.description = ""
-        self.icon        = ""
+        self.icon        = None
 
         self._location = location
     
