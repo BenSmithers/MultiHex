@@ -80,6 +80,9 @@ class clicker_control(QGraphicsScene):
 
         self._alt_held = False
 
+        self._primary = QtCore.Qt.LeftButton
+        self._secondary = QtCore.Qt.Rightbutton
+
     def keyPressEvent(self, event):
         event.accept()
         if event.key() == QtCore.Qt.Key_Alt:
@@ -93,7 +96,7 @@ class clicker_control(QGraphicsScene):
         """
         Called whenever the mouse is pressed within its bounds (The drawspace)
         """
-        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
+        if event.button()==self._primary:
             event.accept() # accept the event
             self._held = True # say that the mouse is being held 
             self._active.primary_mouse_depressed( event )
@@ -102,13 +105,13 @@ class clicker_control(QGraphicsScene):
         """
         Called when a mouse button is released 
         """
-        if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
+        if event.button()==self._primary:
             # usually a brush event 
             event.accept()
             self._held = False
             self._active.primary_mouse_released(event)
 
-        elif event.button()==QtCore.Qt.LeftButton:
+        elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
             self._active.secondary_mouse_released( event )
