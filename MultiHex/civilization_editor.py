@@ -54,13 +54,46 @@ class editor_gui(QMainWindow):
         self.ui.actionSave.triggered.connect( self.save_map )
         self.ui.actionSave_As.triggered.connect( self.save_as)
         
-        #buttons
-        self.ui.loc_button_1.clicked.connect( self.new_location_button )
+        #toolbar buttons
+        self.ui.loc_button_1.clicked.connect( self.new_location_button_toolbar)
         
+        # location tab buttons and things
+        self.ui.loc_save.clicked.connect( self.loc_save_entity )
+        self.ui.loc_delete.clicked.connect( self.loc_delete )
+        self.ui.loc_deselect.clicked.connect( self.loc_deselect )
+        self.ui.loc_list_view.clicked[QtCore.QModelIndex].connect(self.loc_list_item_clicked)
+
         self.file_name = ''
         self.main_map = Hexmap()
+   
+    def loc_deselect(self):
+        self.entity_control.deselect_hex()
 
-    def new_location_button(self):
+    def loc_delete(self):
+        if self.entity_control.selected is not None:
+            self.main_map.remove_entity( self.entity_control.selected )
+            self.entity_control.redraw_entity( self.entity_control.selected)
+            self.entity_control.update_selection()
+            self.ui.status_label.setText("deleted")
+    
+    def loc_save_entity(self):
+        if self.entity_control.selected is not None:
+            self.main_map.eid_catalogue[ self.entity_control.selected ].name = self.ui.loc_name_edit.text()
+            self.main_map.eid_catalogue[ self.entity_control.selected ].description = self.ui.loc_desc_edit.toPlainText()
+            self.entity_control.update_selection()
+            self.ui.status_label.setText("saved")
+        
+
+    def loc_list_item_clicked( self , index):
+        item = self.ui.loc_list_entry.itemFromIndex(index)
+        
+        # select the new entity and update the name/description
+        self.entity_control.select_entity( item.eID )
+        self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ item.eID ].name )
+        self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ item.eID ].description )
+
+
+    def new_location_button_toolbar(self):
         self.scene._active = self.entity_control 
         self.entity_control.prep_new(0)
 
@@ -77,7 +110,6 @@ class editor_gui(QMainWindow):
 
     def save_map(self):
         save_map( self.main_map, self.file_name)
-        self.ui.label_2.setText("Saved!")
 
     def save_as(self):
         """
@@ -108,5 +140,6 @@ class editor_gui(QMainWindow):
             
         self.writer_control.redraw_rivers()
         
-
+        for eID in self.main_map.eid_catalogue:
+            self.entity_control.redraw_entity( eID )
 

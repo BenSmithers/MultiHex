@@ -13,21 +13,21 @@ class basic_tool:
     """
     def __init__(self, parent=None):
         pass
-    def press(self,event):
+    def primary_mouse_depressed(self,event):
         """
         Called when the right mouse button is depressed 
 
         @param event 
         """
         pass
-    def activate(self, event):
+    def primary_mouse_released(self, event):
         """
         This is called when the right mouse button is released from a localized click. 
 
         @param event - location of release
         """
         pass
-    def hold(self,event ):
+    def primary_mouse_held(self,event ):
         """
         Called continuously while the right mouse button is moved and depressed 
 
@@ -35,14 +35,14 @@ class basic_tool:
         @param setp  - vector pointing from last called location to @place
         """
         pass
-    def select(self, event ):
+    def secondary_mouse_released(self, event ):
         """
         Left click released event, used to select something
 
         @param event - Qt event object. has where the mouse is
         """
         pass
-    def move(self, event):
+    def mouse_moved(self, event):
         """
         Called continuously while the mouse is in the widget
 
@@ -96,7 +96,7 @@ class clicker_control(QGraphicsScene):
         if event.button()==QtCore.Qt.RightButton: # or (event.button()==QtCore.Qt.LeftButton and self._alt_held):
             event.accept() # accept the event
             self._held = True # say that the mouse is being held 
-            self._active.press( event )
+            self._active.primary_mouse_depressed( event )
 
     def mouseReleaseEvent( self, event):
         """
@@ -106,12 +106,12 @@ class clicker_control(QGraphicsScene):
             # usually a brush event 
             event.accept()
             self._held = False
-            self._active.activate(event)
+            self._active.primary_mouse_released(event)
 
         elif event.button()==QtCore.Qt.LeftButton:
             # usually a selection event
             event.accept()
-            self._active.select( event )
+            self._active.secondary_mouse_released( event )
 
    #mouseMoveEvent 
     def mouseMoveEvent(self,event):
@@ -120,9 +120,9 @@ class clicker_control(QGraphicsScene):
         """
         event.accept()
         if self._held:
-            self._active.hold( event )
+            self._active.primary_mouse_held( event )
  
-        self._active.move( event )
+        self._active.mouse_moved( event )
 
     # in c++ these could've been templates and that would be really cool 
     def to_hex(self):
@@ -152,10 +152,24 @@ class path_brush(basic_tool):
     def redraw_rivers(self):
         pass
 
-    def move( self, event ):
+    def mouse_moved( self, event ):
         pass
     # update the position of the river icon
         
+class QEntityItem(QtGui.QStandardItem):
+    """
+    Item object to be used with the entity lists in the GUI. These things are the same, but also carry around an eID attribute.
+    """
+    def __init__(self, value, eID):
+        super(QEntityItem, self).__init__( value)
+        assert( isinstance(eID, int))
+        assert( eID >= 0)
+        self._eID = eID
+
+    @property
+    def eID(self):
+        copy = self._eID
+        return(copy)
 
 class entity_brush(basic_tool):
     """
@@ -173,22 +187,40 @@ class entity_brush(basic_tool):
         # eID of the selected entity 
         self._selected = None
         
-        # icon size should be derived from the map's drawscale.
-        # fixing this will require a better and more dedicated map drawing function 
+        # HexID of the selected Hex, and its object 
+        self._selected_hex = None
+        self._selected_hex_outline = None
+
+        # these are used for the 
         self._drawn_icon = None
         self._icon_size = 32 #int(self.parent.main_map._drawscale*2)
-        self._icon = None 
+
+        # whether or not assets have been loaded
+        self._loaded = False
+        # where the assets are loaded
         self._all_icons = None
+
+        # icon we are writing with
+        self._icon = None 
+    
+    @property
+    def selected(self):
+        copy = self._selected
+        return(copy)
+    def select_entity(self, eID):
+        assert( isinstance( eID, int ))
+        if not eID in self.parent.main_map.eid_catalogue:
+            raise ValueError("eID {} not registered, but is being selected?".format(eID))
+        self._selected = eID
 
     def prep_new(self, ent_type = 0):
         assert( isinstance(ent_type, int))
         self._placing = True
         self._placing_type = ent_type 
 
-    def move(self, event):
-        if self._icon is None:
-            self._all_icons = Icons()
-            self._icon = self._all_icons.location
+    def mouse_moved(self, event):
+        if not self._loaded:
+            self.load_assets()
 
         # meaning we want to 
         if self._placing:
@@ -203,19 +235,52 @@ class entity_brush(basic_tool):
                 self.parent.scene.removeItem( self._drawn_icon )
                 self._drawn_icon = None 
 
-            
-    def activate( self, event ):
+    def deselect_hex(self):
+        self._selected_hex = None
+        self.update_selection()
+
+    def update_selection(self):
+        """
+        Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
+        """
+        self.parent.ui.status_label.setText("...")
+        self.parent.ui.loc_name_edit.setText( "" )
+        self.parent.ui.loc_desc_edit.setText( "" )
+
+        if self._selected_hex_outline is not None:
+            self.parent.scene.removeItem( self._selected_hex_outline )
+            self._selected_hex_outline = None
+        
+        # clear out the list no matter what
+        self.parent.ui.loc_list_entry.clear()
+        if self._selected_hex is not None:
+            # write out a list of all the entities at the selected Hex
+            try:
+                for eID in self.parent.main_map.eid_map[ self._selected_hex ]:
+                    self.parent.ui.loc_list_entry.appendRow( QEntityItem(self.parent.main_map.eid_catalogue[eID].name , eID))
+            except KeyError:
+                # there are no entities here
+                pass
+
+        # deselect any entity 
+        self._selected = None
+
+    def primary_mouse_released( self, event ):
+        place = Point( event.scenePos().x(), event.scenePos().y() ) 
+        loc_id = self.parent.main_map.get_id_from_point( place )
+        
+        self._selected_hex = loc_id 
+
         if self._placing:
             # we are going to create 
             if self._drawn_icon is not None:
                 self.parent.scene.removeItem( self._drawn_icon )
                 self._drawn_icon = None   
             
-            place = Point( event.scenePos().x(), event.scenePos().y() ) 
-            loc_id = self.parent.main_map.get_id_from_point( place )
+
 
             new_ent = Entity( "temp" , loc_id )
-            new_ent.icon = self._icon
+            new_ent.icon = "location"
             #QtGui.QPixmap( os.path.join('..','Artwork','location.svg')).scaledToWidth(32)
 
             self._selected = self.parent.main_map.register_new_entity( new_ent )
@@ -226,33 +291,55 @@ class entity_brush(basic_tool):
             print("New entity, number {}, at {}".format( self._selected, loc_id ))
 
             self._placing = False
+        else:
+            pass
+
+        self.update_selection()
 
     def configure_toolbox_loc(self):
         self.parent.ui.loc_name_edit.setText( self.parent.main_map.eid_catalogue[ self._selected ].name)
         self.parent.ui.loc_desc_edit.setText( self.parent.main_map.eid_catalogue[ self._selected].description)
 
+    def load_assets(self):
+        self._all_icons = Icons()
+        self._icon = self._all_icons.location
+        self._loaded = True
+
     def redraw_entity(self, eID):
-        if eID not in self.parent.main_map.eid_catalogue:
+        # this should draw based off of a given HexID, not entity ID. Then it will draw these based on the number of entities there. 
+
+        if not self._loaded:
+            self.load_assets()
+
+        if (eID not in self.parent.main_map.eid_catalogue) and (eID not in self._drawn_entities):
             raise ValueError("eID {} not registered in catalogue".format(eID))
 
         # delete old drawing if it exists
         if eID in self._drawn_entities:
             self.parent.scene.removeItem( self._drawn_entities[ eID ] )
             del self._drawn_entities[ eID ]
-        
-        self._drawn_entities[eID] = self.parent.scene.addPixmap( self.parent.main_map.eid_catalogue[ eID ].icon )
-        self._drawn_entities[eID].setZValue(2)
-        location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
-        self._drawn_entities[eID].setX( location.x - self.parent.main_map.eid_catalogue[eID].icon.width()/2 )
-        self._drawn_entities[eID].setY( location.y - self.parent.main_map.eid_catalogue[eID].icon.height()/2)
+
+        if eID in self.parent.main_map.eid_catalogue:
+            self._drawn_entities[eID] = self.parent.scene.addPixmap( getattr( self._all_icons, self.parent.main_map.eid_catalogue[ eID ].icon ))
+            self._drawn_entities[eID].setZValue(2)
+            location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
+            self._drawn_entities[eID].setX( location.x - self._all_icons.shift)
+            self._drawn_entities[eID].setY( location.y - self._all_icons.shift)
 
 
     def drop(self):
+        self._selected_hex = None
+        self.update_selection()
+       
+        if self._selected_hex_outline is not None:
+            self.parent.scene.removeItem( self._selected_hex_outline )
+
         if self._drawn_icon is not None:
             self.parent.scene.removeItem( self._drawn_icon )
 
     def clear(self):
-        self.drop()
+        self.drop() 
+        self._drawn_entities = {}
 
 class hex_brush(basic_tool):
     """
@@ -279,15 +366,15 @@ class hex_brush(basic_tool):
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
 
-    def activate(self, event):
+    def primary_mouse_released(self, event):
         if self.writing:
             self.write(event)
         else:
             self.erase(event)
-    def hold(self, event):
-        self.activate(event)
+    def primary_mouse_held(self, event):
+        self.primary_mouse_released(event)
     
-    def move(self, event):
+    def mouse_moved(self, event):
         """
         While moving it continuously removes and redraws the outline
         """
@@ -411,7 +498,7 @@ class hex_brush(basic_tool):
                
             
 
-    def select(self,event):
+    def secondary_mouse_released(self,event):
         self.QBrush.setStyle(0)
         self.QPen.setColor(QtGui.QColor(75,75,245))
         self.QPen.setWidth(4)
@@ -546,7 +633,7 @@ class region_brush(basic_tool):
         else:
             raise ValueError("Can't set brush size to {}".format(size))
 
-    def select(self, event):
+    def secondary_mouse_released(self, event):
         """
         Selects the region under the cursor. If no region is there, deselect whatever region is active 
         """
@@ -562,10 +649,10 @@ class region_brush(basic_tool):
                 self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
                 self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
 
-    def hold(self, event):
-        self.activate( event )
+    def primary_mouse_held(self, event):
+        self.primary_mouse_released( event )
 
-    def activate(self, event):
+    def primary_mouse_released(self, event):
         """
         Right click 
         """
@@ -587,7 +674,7 @@ class region_brush(basic_tool):
                 self._brush_size = 1
             else:
                 self._writing = True
-    def move(self, event):
+    def mouse_moved(self, event):
         """
         While moving it continuously removes and redraws the outline - reimplimentation of the 'move' function in the hex brush
         """

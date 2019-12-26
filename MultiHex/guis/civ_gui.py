@@ -129,6 +129,9 @@ class editor_gui_window(object):
         self.loc_list_view = QtWidgets.QListView(self.formLayoutWidget)
         self.loc_list_view.setObjectName("loc_list_view")
         self.formLayout.setWidget(5, QtWidgets.QFormLayout.SpanningRole, self.loc_list_view)
+        self.loc_list_entry = QtGui.QStandardItemModel()
+        self.loc_list_view.setModel( self.loc_list_entry )
+
         self.loc_delete = QtWidgets.QPushButton(self.formLayoutWidget)
         self.loc_delete.setObjectName("loc_delete")
         self.formLayout.setWidget(6, QtWidgets.QFormLayout.LabelRole, self.loc_delete)

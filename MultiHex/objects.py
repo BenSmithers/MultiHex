@@ -17,8 +17,12 @@ class Icons:
         self._icon_size = 24
 
         # for locations. It's not a location
+#        self.location = ""
         self.location = QtGui.QPixmap( os.path.join( self._art_dir, 'location.svg')).scaledToWidth( self._icon_size )
-        pass
+    
+    @property
+    def shift(self):
+        return( self._icon_size / 2)
 
 
 class Entity:
@@ -35,7 +39,7 @@ class Entity:
             raise TypeError("Arg 'name' must be {}, received {}".format(str, type(name)))
         self.name        = name
         self.description = ""
-        self.icon        = None
+        self.icon        = ""
 
         self._location = location
     
