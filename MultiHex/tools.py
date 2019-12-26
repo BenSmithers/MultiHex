@@ -81,7 +81,7 @@ class clicker_control(QGraphicsScene):
         self._alt_held = False
 
         self._primary = QtCore.Qt.LeftButton
-        self._secondary = QtCore.Qt.Rightbutton
+        self._secondary = QtCore.Qt.RightButton
 
     def keyPressEvent(self, event):
         event.accept()

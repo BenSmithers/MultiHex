@@ -11,14 +11,24 @@ Entries
 from PyQt5 import QtGui
 import os
 
+from glob import glob
+
 class Icons:
     def __init__(self):
-        self._art_dir = os.path.join( '..', 'Artwork')
+        self._art_dir = os.path.join(os.path.dirname(__file__), '..', 'Artwork')
         self._icon_size = 24
+        
+        self._allowed_extensions = [".svg", ".png" ]
 
-        # for locations. It's not a location
-#        self.location = ""
-        self.location = QtGui.QPixmap( os.path.join( self._art_dir, 'location.svg')).scaledToWidth( self._icon_size )
+        for file_type in self._allowed_extensions:
+            # gets a list of filenames matching the provided path, with * being a wildcard
+            files_found = glob( os.path.join( self._art_dir, "*" + file_type) )
+        
+            # load that file in and apply it to the self
+            for found_file in files_found:
+                obj_name = os.path.basename(found_file).split(".")[0]
+                setattr( self, obj_name , QtGui.QPixmap(found_file).scaledToWidth( self._icon_size) )
+                print("Loaded media '{}{}'".format( obj_name, file_type ))
     
     @property
     def shift(self):
