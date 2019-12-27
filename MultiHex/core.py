@@ -48,9 +48,9 @@ class Point:
         if not is_number(why):
             raise TypeError("Expected type {} for arg 'why', received {}".format(float, type(why)))
 
-        # do the thing
-        self.x = ex
-        self.y = why
+        # protected vector components
+        self._x = ex
+        self._y = why
         
         # use the bool so that we only have to calculate the magnitude once 
         self._mcalculated   = False
@@ -102,6 +102,18 @@ class Point:
         else:
             # returns a scalar! 
             return( self.x**obj + self.y**obj )
+
+    # functions used to access vector components
+
+    @property
+    def x(self):
+        copy = self._x
+        return( copy )
+
+    @property
+    def y(self):
+        copy = self._y
+        return( copy )
 
     @property
     def magnitude(cls):
@@ -792,8 +804,7 @@ class Hexmap:
         candidate_point =Point(base_idx*3*self.drawscale, base_idy*rthree*self.drawscale )
 
          # the secondary grid is shifted over a bit, so let's do the same again... 
-        point.x -= 1.5*self.drawscale
-        point.y -= rthree*self.drawscale*0.5
+        point -= Point( 1.5*self.drawscale, rthree*self.drawscale*0.5)
 
         # recalculate these
         base_idy_2 = int(floor((point.y/( rthree*self.drawscale)) + 0.5))

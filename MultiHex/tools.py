@@ -2,7 +2,8 @@ from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5 import QtGui, QtCore
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError
-from MultiHex.objects import Icons, Entity 
+from MultiHex.objects import Icons, Entity, Mobile, Settlement 
+
 
 import os # used for some of the icons
 
@@ -184,18 +185,22 @@ class entity_brush(basic_tool):
         self._drawn_entities = {}
 
         # are we in the process of placing a thingy
-        self._placing = False
-        self._placing_type = 0
+        self._placing = -1 
+        
+        # which menu is open
+        self._menu = 0
+        # 0 - locations
+        # 1 - settlements 
 
         # eID of the selected entity 
-        self._selected = None
+        self._selected_eid = None
         
         # HexID of the selected Hex, and its object 
         self._selected_hex = None
         self._selected_hex_outline = None
 
         # these are used for the 
-        self._drawn_icon = None
+        self._ghosted_placement = None
         self._icon_size = 32 #int(self.parent.main_map._drawscale*2)
 
         # whether or not assets have been loaded
@@ -208,37 +213,66 @@ class entity_brush(basic_tool):
     
     @property
     def selected(self):
-        copy = self._selected
+        copy = self._selected_eid
         return(copy)
     def select_entity(self, eID):
+        """
+        Function exposing the selected eID. Allows it to be set by non-member functions
+        """
         assert( isinstance( eID, int ))
         if not eID in self.parent.main_map.eid_catalogue:
             raise ValueError("eID {} not registered, but is being selected?".format(eID))
-        self._selected = eID
+        self._selected_eid = eID
 
     def prep_new(self, ent_type = 0):
+        """
+        Prepares this object to place a new Entity. Optional argument to specify /which/ kind of entity to place. Creates a ghost outline to show where the new Entity will be 
+        """
         assert( isinstance(ent_type, int))
-        self._placing = True
-        self._placing_type = ent_type 
+        self._placing = ent_type 
+
+        if self._ghosted_placement is not None:
+            self.parent.scene.removeItem(self._ghosted_placement)
+            self._ghosted_placement = None 
+
+        if ent_type == 0:
+            self._ghosted_placement = self.parent.scene.addPixmap( self._icon )
+            self._ghosted_placement.setZValue(20)
+        else:
+            pass
+
+    def unprepare_new(self):
+        """
+        Yeah cancel that
+        """
+        self._placing = -1
+        if self._ghosted_placement is not None:
+            self.parent.scene.removeItem(self._ghosted_placement)
+            self._ghosted_placement = None 
 
     def mouse_moved(self, event):
+        """
+        All this really does is move the ghost around. If it turns out that we aren't placing things then get rid of the ghosts 
+        """
         if not self._loaded:
             self.load_assets()
 
-        # meaning we want to 
-        if self._placing:
-            if self._drawn_icon is None:
-                self._drawn_icon = self.parent.scene.addPixmap( self._icon )
-                self._drawn_icon.setZValue(20)
+        # this is the case when the user is placing a Location  ( 0 )
+        if self._placing == 0:
+            if self._ghosted_placement is None:
+                raise Exception("This shouldn't happen")
             else:
-                self._drawn_icon.setX( event.scenePos().x() -(self._icon_size)/2 )
-                self._drawn_icon.setY( event.scenePos().y() -(self._icon_size)/2 )
+                self._ghosted_placement.setX( event.scenePos().x() -(self._icon_size)/2 )
+                self._ghosted_placement.setY( event.scenePos().y() -(self._icon_size)/2 )
         else:
-            if self._drawn_icon is not None:
-                self.parent.scene.removeItem( self._drawn_icon )
-                self._drawn_icon = None 
+            if self._ghosted_placement is not None:
+                self.parent.scene.removeItem( self._ghosted_placement )
+                self._ghosted_placement = None 
 
     def deselect_hex(self):
+        """
+        Called when this is no longer looking at any Hex
+        """
         self._selected_hex = None
         self.update_selection()
 
@@ -246,70 +280,117 @@ class entity_brush(basic_tool):
         """
         Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
         """
-        self.parent.ui.status_label.setText("...")
-        self.parent.ui.loc_name_edit.setText( "" )
-        self.parent.ui.loc_desc_edit.setText( "" )
-
+        
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )
             self._selected_hex_outline = None
-        
-        # clear out the list no matter what
-        self.parent.ui.loc_list_entry.clear()
-        if self._selected_hex is not None:
-            # write out a list of all the entities at the selected Hex
-            try:
-                for eID in self.parent.main_map.eid_map[ self._selected_hex ]:
-                    self.parent.ui.loc_list_entry.appendRow( QEntityItem(self.parent.main_map.eid_catalogue[eID].name , eID))
-            except KeyError:
-                # there are no entities here
-                pass
+
+        if self._menu == 0:
+            # tell the gui to update the proper menu
+            self.parent.loc_update_selection( self._selected_hex )
+        elif self._menu==1:
+            pass
+        else:
+            pass
 
         # deselect any entity 
-        self._selected = None
+        self._selected_eid = None
 
     def primary_mouse_released( self, event ):
+        """
+        Select the hex that was clicked on. If we're placing, create the Entity and place it. Then update the menus
+        """
         place = Point( event.scenePos().x(), event.scenePos().y() ) 
         loc_id = self.parent.main_map.get_id_from_point( place )
         
         self._selected_hex = loc_id 
 
-        if self._placing:
+        if self._placing in [ 0 ]:
             # we are going to create 
-            if self._drawn_icon is not None:
-                self.parent.scene.removeItem( self._drawn_icon )
-                self._drawn_icon = None   
+            if self._ghosted_placement is not None:
+                self.parent.scene.removeItem( self._ghosted_placement )
+                self._ghosted_placement = None   
             
-
-
             new_ent = Entity( "temp" , loc_id )
             new_ent.icon = "location"
             #QtGui.QPixmap( os.path.join('..','Artwork','location.svg')).scaledToWidth(32)
 
-            self._selected = self.parent.main_map.register_new_entity( new_ent )
-            self.parent.main_map.eid_catalogue[self._selected].name = "Entity {}".format(self._selected)
-            self.configure_toolbox_loc()
-            self.redraw_entity( self._selected )
+            self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
+            self.parent.main_map.eid_catalogue[self._selected_eid].name = "Entity {}".format(self._selected_eid)
+            self.update_wrt_new_eid()
+            self.redraw_entities_at_hex( loc_id )
 
-            print("New entity, number {}, at {}".format( self._selected, loc_id ))
-
-            self._placing = False
+            self._placing = -1 
         else:
             pass
 
         self.update_selection()
 
-    def configure_toolbox_loc(self):
-        self.parent.ui.loc_name_edit.setText( self.parent.main_map.eid_catalogue[ self._selected ].name)
-        self.parent.ui.loc_desc_edit.setText( self.parent.main_map.eid_catalogue[ self._selected].description)
-
+    def update_wrt_new_eid(self):
+        """
+        Called when a new /entity/ is selected. Chooses and updates the proper menu
+        """
+        if self._menu == 0:
+            self.parent.loc_update_name_text( self._selected_eid )
+        
     def load_assets(self):
+        """
+        Loads all the artwork into an Icon object held 
+        """
         self._all_icons = Icons()
         self._icon = self._all_icons.location
         self._loaded = True
+    
+    def redraw_entities_at_hex(self, hID):
+        """
+        Redraws the entities at the hexID provided. This function decides which entity to draw. 
+        """
 
-    def redraw_entity(self, eID):
-        # this should draw based off of a given HexID, not entity ID. Then it will draw these based on the number of entities there. 
+        if hID == -1:
+            return
+        if hID not in self.parent.main_map.eid_map:
+            raise ValueError("HexID {} has no entry in {}".format(hID))
+
+        eIDs = self.parent.main_map.eid_map[hID]
+        
+        # make sure none of these have been drawn
+        for eID in eIDs:
+            if eID in self._drawn_entities:
+                self.parent.scene.removeItem( self._drawn_entities[eID])
+                del self._drawn_entities[eID]
+        
+        which_eID = None
+        for eID in eIDs:
+            if which_eID is None:
+                which_eID = eID 
+                continue
+            
+            is_mob = isinstance( self.parent.main_map.eid_catalogue[eID], Mobile )
+            if is_mob:
+                print("Don't know how to draw a mob")
+                continue
+
+            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], Settlement)
+            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], Settlement )
+            
+            # if the chosen one is a settlement and this one isn't, skip
+            if other_is_set and (not is_set):
+                continue
+            # otherwise, if this one is a settlement and the other isn't, swap to this one. 
+            elif is_set and ( not other_is_set ):
+                which_eID = eID
+            # if they /both/ are settlements
+            elif other_is_set and is_set:
+                # choose the one with the higher population
+                if self.main_map.eid_catalogue[eID].population > self.main_map.eid_catalogue[which_eID].population:
+                    which_eID = eID
+
+        self.draw_entity( which_eID )    
+
+    def draw_entity(self, eID):
+        """
+        Draws the entity with eID provided. 
+        """
 
         if not self._loaded:
             self.load_assets()
@@ -337,8 +418,8 @@ class entity_brush(basic_tool):
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )
 
-        if self._drawn_icon is not None:
-            self.parent.scene.removeItem( self._drawn_icon )
+        if self._ghosted_placement is not None:
+            self.parent.scene.removeItem( self._ghosted_placement )
 
     def clear(self):
         self.drop() 

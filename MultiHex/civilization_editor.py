@@ -2,7 +2,7 @@
 
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.map_types.overland import OHex_Brush
-from MultiHex.tools import clicker_control, basic_tool, entity_brush, region_brush
+from MultiHex.tools import clicker_control, basic_tool, entity_brush, region_brush, QEntityItem
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -60,19 +60,50 @@ class editor_gui(QMainWindow):
         # location tab buttons and things
         self.ui.loc_save.clicked.connect( self.loc_save_entity )
         self.ui.loc_delete.clicked.connect( self.loc_delete )
-        self.ui.loc_deselect.clicked.connect( self.loc_deselect )
+        self.ui.loc_deselect.clicked.connect( self.entity_control.deselect_hex )
         self.ui.loc_list_view.clicked[QtCore.QModelIndex].connect(self.loc_list_item_clicked)
 
         self.file_name = ''
         self.main_map = Hexmap()
-   
-    def loc_deselect(self):
-        self.entity_control.deselect_hex()
+
+    def loc_update_name_text(self, eID):
+        self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ eID ].name)
+        self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ eID ].description)
+
+    def loc_update_selection(self, HexID=None):
+        """
+        Updates the location menu gui with the proper information for the specified Hex 
+        """
+        self.ui.status_label.setText("...")
+        self.ui.loc_name_edit.setText( "" )
+        self.ui.loc_desc_edit.setText( "" )
+
+        # clear out the list no matter what
+        self.ui.loc_list_entry.clear()
+        if HexID is not None:
+            # write out a list of all the entities at the selected Hex
+            try:
+                for eID in self.main_map.eid_map[ HexID ]:
+                    self.ui.loc_list_entry.appendRow( QEntityItem(self.main_map.eid_catalogue[eID].name , eID))
+            except KeyError:
+                # there are no entities here
+                pass
+
 
     def loc_delete(self):
         if self.entity_control.selected is not None:
+            loc_id = self.main_map.eid_catalogue[ self.entity_control.selected ].location
             self.main_map.remove_entity( self.entity_control.selected )
-            self.entity_control.redraw_entity( self.entity_control.selected)
+            
+            # this deletes the old drawing 
+            try:
+                self.entity_control.draw_entity( self.entity_control.selected )
+            except ValueError:
+                # this means that the entity was never drawn. That's okay. Just pass it...
+                pass 
+
+            # redraw the entities here in case we now have a more prominent thing to draw  
+            self.entity_control.redraw_entities_at_hex( loc_id )
             self.entity_control.update_selection()
             self.ui.status_label.setText("deleted")
     
@@ -140,6 +171,6 @@ class editor_gui(QMainWindow):
             
         self.writer_control.redraw_rivers()
         
-        for eID in self.main_map.eid_catalogue:
-            self.entity_control.redraw_entity( eID )
+        for hexID in self.main_map.eid_map:
+            self.entity_control.redraw_entities_at_hex( hexID )
 

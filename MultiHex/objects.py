@@ -27,6 +27,10 @@ class Icons:
             # load that file in and apply it to the self
             for found_file in files_found:
                 obj_name = os.path.basename(found_file).split(".")[0]
+                if hasattr( self, obj_name):
+                    print("Skipping '{}{}', already have file with same name".format( obj_name, file_type))
+                    continue
+
                 setattr( self, obj_name , QtGui.QPixmap(found_file).scaledToWidth( self._icon_size) )
                 print("Loaded media '{}{}'".format( obj_name, file_type ))
     
