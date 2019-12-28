@@ -58,10 +58,17 @@ class editor_gui(QMainWindow):
         self.ui.loc_button_1.clicked.connect( self.new_location_button_toolbar)
         
         # location tab buttons and things
+        self.ui.loc_list_entry = QtGui.QStandardItemModel()
+        self.ui.loc_list_view.setModel( self.ui.loc_list_entry )
         self.ui.loc_save.clicked.connect( self.loc_save_entity )
         self.ui.loc_delete.clicked.connect( self.loc_delete )
         self.ui.loc_deselect.clicked.connect( self.entity_control.deselect_hex )
         self.ui.loc_list_view.clicked[QtCore.QModelIndex].connect(self.loc_list_item_clicked)
+       
+        # page number can be accessed from
+        # ui.toolBox.currentIndex() -> number
+        # and set from
+        # ui.toolBox.setCurrentIndex( number )
 
         self.file_name = ''
         self.main_map = Hexmap()
@@ -174,3 +181,60 @@ class editor_gui(QMainWindow):
         for hexID in self.main_map.eid_map:
             self.entity_control.redraw_entities_at_hex( hexID )
 
+
+def parse_demographic( text ):
+    """
+    This parses the text in the demographic box. It ignores lines with a comment character: #. 
+    
+    It builds a dictionary assuming that the user prepares the data like 
+        key : value
+    and it ignores whitespace. If it fails, it raises a ValueError 
+    """
+    
+    lines = []
+    line = ""
+    ignore = False
+    for char in text:
+        # at an end of line character we append what we have and start reading again
+        if char == '\n':
+            stripped = "".join( line.split(" ") )
+            if stripped!="":
+                lines.append( stripped )
+                line = ""
+            ignore = False
+            continue
+
+        # if we hit a comment character, ignore the rest of the line 
+        if char =="#":
+            ignore = True
+            continue
+
+        if ignore:
+            continue
+
+        line = line + char 
+    
+    # parse the lines intoa dictionary 
+    new_dict = {}
+    for line in lines:
+        split = line.split(":")
+        if len(split)!=2:
+            # this means there aren't the right number of ":" in the line
+            raise ValueError("Bad formatting")
+        # make it lower case to avoid case-sensitivity 
+        key = split[0].lower()
+        # will raise ValueError if this is not a number 
+        value = float(split[1])
+
+
+        new_dict[key]=value
+    
+    # normalize the built dictionary
+    total = 0
+    for key in new_dict:
+        total += new_dict[key]
+    # divide each value by the sum of the values
+    for key in new_dict:
+        new_dict[key]/= float(total)
+
+    return( new_dict )
