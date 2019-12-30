@@ -1042,7 +1042,7 @@ class Region:
                     if on_border:
                         start_indices.append( (point+start_index)%len(self.perimeter)) 
                         on_border = False
-            loops = [glom( self.perimeter, other_region.perimeter, ind ) for ind in start_indices]
+            loops = [_glom( self.perimeter, other_region.perimeter, ind ) for ind in start_indices]
             max_x = None
             which = None
             # the perimeter loop will, of course, have a greater extent in every direction. So we just find the loop which goes the furthest in x and know that's the perimeter
@@ -1061,7 +1061,7 @@ class Region:
                 print("Loops: {}".format(loops))
                 print("self.perimeter: {}".format(self.perimeter))
                 print("other one: {}".format(other_region.perimeter))
-                raise TypeError("Some bullshit has happened. Tell Ben because this shouldn't happen.")
+                raise TypeError("Some bad stuff has happened.")
             self.perimeter = which
             for loop in loops:
                 if loop!=which:
@@ -1099,7 +1099,7 @@ class Region:
 
                 # that old enclave is split into multiple new enclaves (or even just one)
                 self.enclaves.pop( self.enclaves.index( enclave ) )
-                self.enclaves += [ glom( enclave, other_region.perimeter, index) for index in start_indices ] 
+                self.enclaves += [ _glom( enclave, other_region.perimeter, index) for index in start_indices ] 
             if not found_enclave:
                 # the target region doesn't border an enclave and it doesn't border the perimeter.
                 # we can't merge these
@@ -1281,7 +1281,7 @@ class Region:
         
         self.ids.pop( which )
 
-def glom( original, new, start_index):
+def _glom( original, new, start_index):
     """
     Partially gloms two perimeters together.
 
