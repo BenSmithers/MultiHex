@@ -29,9 +29,7 @@ class Town( Settlement ):
 
         self.walled = False 
         
-        # gold! 
-        self.wealth = 1
-
+    
     @property
     def size( self ):
         total_pop = self.population

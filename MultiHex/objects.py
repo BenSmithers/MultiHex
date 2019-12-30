@@ -72,12 +72,116 @@ class Settlement(Entity):
     def __init__(self, name, location=None, is_ward=False):
         Entity.__init__(self, name, location)
 
+        # these values are assigned to the city-center 
         self._population = 1
+        self._wealth = 1
+
+        self._order = 1.0
+        self._war   = 1.0
+        self._spirit= 1.0
+
         self.wards = [ ]
         self._is_ward = is_ward
 
         # this only describes the population directly contained by the _population attribute
         self.demographics = { 'racial': { 'human': 1.00 } }
+
+    @property 
+    def order(self):
+        copy = self._order
+        return(copy)
+    @property 
+    def war(self):
+        copy = self._war
+        return(copy)
+    @property
+    def spirit(self):
+        copy = self._spirit
+        return(spirit)
+    def set_order(self, new):
+        if not ( isinstance(new,int) or isinstance(new,float)):
+            raise TypeError("Invalid type {} for order, expected {}".format(type(new), float ))
+        self._order =  min( 1.0, max( 0.0, new))
+    def set_war(self, new)
+        if not ( isinstance(new,int) or isinstance(new,float)):
+            raise TypeError("Invalid type {} for war, expected {}".format(type(new), float ))
+        self._war =  min( 1.0, max( 0.0, new))
+    def set_spirit(self,new):
+        if not ( isinstance(new,int) or isinstance(new,float)):
+            raise TypeError("Invalid type {} for spirit, expected {}".format(type(new), float ))
+        self._spirit =  min( 1.0, max( 0.0, new))
+
+    def get_demographics_as_str(self , ward, key):
+        """
+        Returns an entry in the demographics object formated in the ward-dialog style. Must specify a ward and the demographic
+        """
+        if not isinstance(ward, int):
+            raise TypeError("Expected type {} for ward, but got {}".format( int, type(ward)))
+        if not isinstance(key, str):
+            raise TypeError("Expected type {} for key, but got {}".format( str, type(key)))
+    
+        out = ""
+        if ward == 0:
+            if key not in self.demographics:
+                raise KeyError("Demographic {} is not in demographics.".format(key))
+
+            for subkey in self.demographics[key]:
+                out += "{}:{}".format(subkey, self.demographics[key][subkey])
+        else:
+            if key not in self.wards.demographics[ward-1]:
+                raise KeyError("Demographic {} is not in Ward {}'s demographics".fprmat(key,ward))
+            for subkey in self.wards.demographics[ward-1][key]:
+                out += "{}:{}".format(subkey, self.wards[ward-1].demographics[key][subkey])
+        return(out)
+
+
+    @property
+    def partial_wealth(self):
+        """
+        returns just the wealth belonging to the 'city center'. Does not include any ward wealth
+        """
+        return(self._wealth)
+
+    @property
+    def partial_population(self):
+        """
+        returns just the wealth belonging to the city center
+        """
+        return(self._population)
+
+    def set_wealth(self,new_wealth, ward=None):
+        diff = new_wealth - self.wealth
+
+        self.add_wealth( diff, ward )
+
+    def add_wealth( self, amount, which_ward = None):
+        """
+        Adds an amount of wealth to the settlement. If no ward is specified, it spreads the wealth according to populations 
+        """
+        if which_ward is None:
+            self._wealth += int(amount*float(self._population/self.population))
+            for ward in self.wards:
+                ward.add_wealth( int(amount*float(ward.population/self.population)))
+        else:
+            if not isinstance( which_ward, int):
+                raise TypeError("Expected type {} for ward, got {}".format(int, type(which_ward)))
+
+            if which_ward == 0:
+                self._wealth += amount
+            else:
+                lowered = which_ward - 1
+                self.wards[lowered].add_wealth( amount )
+
+    @property
+    def wealth(self):
+        """
+        returns all the wealth of all the wards combined 
+        """
+        total_wealth = self._wealth
+        for ward in self.wards:
+            total_weatlth+= ward._wealth
+        return(total_wealth)
+
     def add_ward( self, new_ward ):
         """
         Adds a ward to this settlement's list, such that it is now a part of this Settlement. 
@@ -129,6 +233,8 @@ class Settlement(Entity):
     def add_population(self, to_add, ward=None, demographics = None):
         """
         Adds population to the Settlement. If no ward is specified, it divides added population evently between the wards.  
+
+        To specify wards are enumerated starting at 1. The 0-Ward is the city-center. 
         """
         if (demographics is not None) and (not self._valid_demo_structure( demographics )):
             raise ValueError("Arg 'demographics' is not structured properly.")
@@ -206,7 +312,7 @@ class Settlement(Entity):
         for ward in self.wards:
             pop += ward.population
         return( pop )
-
+        
     @property
     def size( self ):
         """
