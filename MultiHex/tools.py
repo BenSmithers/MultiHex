@@ -235,9 +235,14 @@ class entity_brush(basic_tool):
             self.parent.scene.removeItem(self._ghosted_placement)
             self._ghosted_placement = None 
 
-        if ent_type == 0:
+        if ent_type == 0 or ent_type == 1:
+            if ent_type==0:
+                self._icon = self._all_icons.location
+            else:
+                self._icon = self._all_icons.village 
             self._ghosted_placement = self.parent.scene.addPixmap( self._icon )
             self._ghosted_placement.setZValue(20)
+            
         else:
             pass
 
@@ -274,13 +279,15 @@ class entity_brush(basic_tool):
         Called when this is no longer looking at any Hex
         """
         self._selected_hex = None
-        self.update_selection()
+        self.update_wrt_new_hex()
 
-    def update_selection(self):
+    def update_wrt_new_hex(self, eID = None):
         """
         Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
         """
         
+        self._menu = self.parent.ui.toolBox.currentIndex()
+
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )
             self._selected_hex_outline = None
@@ -289,12 +296,10 @@ class entity_brush(basic_tool):
             # tell the gui to update the proper menu
             self.parent.loc_update_selection( self._selected_hex )
         elif self._menu==1:
-            pass
-        else:
-            pass
+            self.parent.set_update_selection( self._selected_eid )
 
-        # deselect any entity 
-        self._selected_eid = None
+
+        self._selected_eid = eID
 
     def primary_mouse_released( self, event ):
         """
@@ -305,26 +310,35 @@ class entity_brush(basic_tool):
         
         self._selected_hex = loc_id 
 
-        if self._placing in [ 0 ]:
+        self.update_wrt_new_hex()
+
+        if self._placing in [ 0, 1 ]:
             # we are going to create 
             if self._ghosted_placement is not None:
                 self.parent.scene.removeItem( self._ghosted_placement )
                 self._ghosted_placement = None   
             
-            new_ent = Entity( "temp" , loc_id )
-            new_ent.icon = "location"
-            #QtGui.QPixmap( os.path.join('..','Artwork','location.svg')).scaledToWidth(32)
+            if self._placing == 0:
+                new_ent = Entity( "temp" , loc_id )
+                new_ent.icon = "location"
+            else:
+                new_ent = Settlement("temp", loc_id )
+                new_ent.icon = "village"
 
             self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
             self.parent.main_map.eid_catalogue[self._selected_eid].name = "Entity {}".format(self._selected_eid)
             self.update_wrt_new_eid()
             self.redraw_entities_at_hex( loc_id )
 
+            if self._placing == 0:
+                self.update_wrt_new_hex()
+
             self._placing = -1 
+
         else:
             pass
 
-        self.update_selection()
+
 
     def update_wrt_new_eid(self):
         """
@@ -332,7 +346,10 @@ class entity_brush(basic_tool):
         """
         if self._menu == 0:
             self.parent.loc_update_name_text( self._selected_eid )
-        
+        elif self._menu==1:
+            pass
+
+
     def load_assets(self):
         """
         Loads all the artwork into an Icon object held 
@@ -413,7 +430,7 @@ class entity_brush(basic_tool):
 
     def drop(self):
         self._selected_hex = None
-        self.update_selection()
+        self.update_wrt_new_hex()
        
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )
@@ -603,7 +620,6 @@ class hex_brush(basic_tool):
                 self._selected_out.setZValue(4)
                 self._selected_id = this_id
                 
-                self.update_selection()
 
                 
             else:
@@ -612,8 +628,6 @@ class hex_brush(basic_tool):
                 self._selected_out = None
                 self._selected_id = None
 
-    def update_selection(self):
-        pass
 
     
     def toggle_brush_size(self):
