@@ -5,8 +5,8 @@ from MultiHex.guis.civ_gui import editor_gui_window
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
-from MultiHex.map_types.overland import OHex_Brush
-from MultiHex.tools import clicker_control, basic_tool, entity_brush, region_brush, QEntityItem
+from MultiHex.tools import clicker_control, basic_tool, region_brush, QEntityItem
+from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -45,7 +45,7 @@ class editor_gui(QMainWindow):
 
         # manages the writer and selector controls. This catches clicky-events on the graphicsView
         self.scene = clicker_control( self.ui.graphicsView, self )
-        self.entity_control = entity_brush(self)
+        self.entity_control = OEntity_Brush(self)
         self.writer_control = OHex_Brush(self)
         self.biome_control = region_brush(self, 'biome')
 
@@ -61,6 +61,10 @@ class editor_gui(QMainWindow):
         self.ui.actionSave_As.triggered.connect( self.save_as)
         
         #toolbar buttons
+        self.ui.ent_select_button_0.clicked.connect(  self.entity_selector_toolbar)
+        self.ui.count_sel_button_1.clicked.connect( self.county_selector_toolbar )
+        self.ui.hand_button_2.clicked.connect( self.hand_button_toolbar )
+
         self.ui.loc_button_1.clicked.connect( self.new_location_button_toolbar)
         self.ui.setl_button_2.clicked.connect( self.new_settlement_button_toolbar )
         self.ui.road_button_3.clicked.connect( self.new_road_button_toolbar )
@@ -76,6 +80,8 @@ class editor_gui(QMainWindow):
         
         # settlement tab buttons and things
         self.ui.set_ward_dd.currentIndexChanged.connect( self.set_dropdown_activate )
+        self.ui.set_button_apply.clicked.connect( self.set_button_apply )
+        self.ui.set_edit_button.clicked.connect( self.set_ward_edit_button )
 
         # page number can be accessed from
         # ui.toolBox.currentIndex() -> number
@@ -87,29 +93,85 @@ class editor_gui(QMainWindow):
     
         self.ward_accept = False
 
+
+    def set_button_apply(self):
+
+        which = self.entity_control.selected
+
+        # skip this if nothing is selected
+        if not isinstance(which, int):
+            return
+
+        # ensure that the selected eID is actually an entity
+        if not isinstance( self.main_map.eid_catalogue[which], Town ):
+            raise TypeError("A {} type object is selected instead of a town. How did this happen?".format(type(self.main_map.eid_catalogue[which])))
+
+        # apply the changes
+        self.main_map.eid_catalogue[which].name = self.ui.set_name_edit.text()
+        self.main_map.eid_catalogue[which].description = self.ui.set_desc_edit.toPlainText()
+
     def set_dropdown_activate(self, index):
-        print("Wow! Index {} of {}".format(index, self.ui.set_ward_dd.count()))
+        """
+        Called when an entry is selected in the drop down menu in the settlement tab
+         0 - city as a whole
+         1 - city center
+         ... - wards
+         -1 - new ward
+        """
+        which = self.entity_control.selected
+        if not isinstance( which, int):
+            return #none is selec ted
+        if not isinstance( self.main_map.eid_catalogue[which], Town ):
+            raise TypeError("A {} type object is selected instead of a town. How did this happen?".format(type(self.main_map.eid_catalogue[which])))
+
+        if index==(self.ui.set_ward_dd.count() - 1):
+            # add new ward
+            pass
+        elif index==0:
+            # all city
+            self.set_update_ward_info( which )
+        else:
+            # take the index, subtract 1. This gives the ward number! 
+            self.set_update_ward_info( which, index - 1)
 
     def set_update_selection(self, eID=None):
         """
         Updates the settlement menu gui with the proper information about it
         """
+        # set dropdown menu to default setup 
+        while self.ui.set_ward_dd.count()>3:
+            self.ui.set_ward_dd.removeItem( self.ui.set_ward_dd.count() -2 )
 
         if eID is not None:
             assert( isinstance( eID , int ))
-            if not isinstance( self.main_map.eid_catalogue[eID], Settlement):
-                raise TypeError("Something terribly wrong has happened. Trying to update Entity {} as if it were {}, but it is {}".format(eID), Settlement, type( self.main_map.eid_catalogue[eID]) )
+            if not isinstance( self.main_map.eid_catalogue[eID], Town):
+                raise TypeError("Something terribly wrong has happened. Trying to update Entity {} as if it were {}, but it is {}".format(eID, Town, type( self.main_map.eid_catalogue[eID]) ))
 
             self.ui.set_name_edit.setText( self.main_map.eid_catalogue[ eID ].name)
             self.ui.set_desc_edit.setText( self.main_map.eid_catalogue[ eID ].description )
+
+            self.ui.set_ward_dd.setCurrentIndex(0)
+            self.set_update_ward_info(eID)
+
+            for ward in self.main_map.eid_catalogue[eID].wards:
+                self.ui.set_ward_dd.insertItem(self.ui.set_ward_dd.count()-1, ward.name)
+
+        else:
+            # eID is None-type. So let's clear 
+            self.ui.set_name_edit.setText( "" )
+            self.ui.set_desc_edit.setText( "" )
+            self.set_clear_ward_info()
+            pass
     
     def set_ward_edit_button( self ):
         """
-        brings up the ward buton
+        Called when the 'ward edit' button is clicked 
         """
-        if self.entity_brush.selected is None:
+        if self.entity_control.selected is None:
+            print("nothing selected")
             return
-        if not isinstance( self.entity_brush.selected, Settlement):
+        if not isinstance( self.main_map.eid_catalogue[self.entity_control.selected], Town):
+            print("got entity type {}, expected {}".format(type(self.main_map.eid_catalogue[self.entity_control.selected]), Town) )
             return
         self.ward_accept = False
 
@@ -119,12 +181,19 @@ class editor_gui(QMainWindow):
         # last is for a new ward
         if (setting+1)==self.ui.set_ward_dd.count():
             setting = -1
-            new_ward = Settlement("New Ward", is_ward=True)
+            new_ward = Town("New Ward", is_ward=True)
             dialog = ward_dialog( self, new_ward, setting )
         else:
-            dialog = ward_dialog( self, self.main_map.eid_catalogue[ self.entity_brush.selected ], setting )
+            dialog = ward_dialog( self, self.main_map.eid_catalogue[ self.entity_control.selected ], setting )
         dialog.setAttribute( QtCore.Qt.WA_DeleteOnClose )
         dialog.exec_()
+
+        if setting==-1 and (new_ward is not None):
+            self.main_map.eid_catalogue[self.entity_control.selected].add_ward( new_ward )
+
+
+        #update! 
+        self.set_update_selection( self.entity_control.selected )
 
 
     def set_update_ward_info(self, eID, ward = None):
@@ -132,32 +201,48 @@ class editor_gui(QMainWindow):
         For the settlement page. Updates the ward section in the GUI with the specified ward.
         """
         assert( isinstance( eID, int))
-        assert( isinstance( ward, int))
         
         this_city = self.main_map.eid_catalogue[eID]
 
+        # if no ward is specified, update the ward info with the town's overall values 
         if ward is None:
             self.ui.set_name_view.setText( this_city.name )
-            self.ui.set_pop_disp.setText( this_city.population )
-            self.ui.set_weal.disp.setText( this_city.wealth)
+            self.ui.set_pop_disp.setText( str(this_city.population))
+            self.ui.set_weal_disp.setText( str(this_city.wealth) )
+        else:
+            assert( isinstance( ward, int))
+            # 0 - city center
+            # > 0 - some ward...
+            if ward==0:
+                self.ui.set_name_view.setText( "City Center")
+                self.ui.set_pop_disp.setText( str(this_city.partial_population ))
+                self.ui.set_weal_disp.setText( str(this_city.partial_wealth))
+            else:
+                self.ui.set_name_view.setText( this_city.wards[ward-1].name )
+                self.ui.set_pop_disp.setText( str(this_city.wards[ward-1].population ))
+                self.ui.set_weal_disp.setText( str(this_city.wards[ward-1].wealth))
+
 
 
     def set_clear_ward_info(self):
         self.ui.set_name_view.setText("")
         self.ui.set_pop_disp.setText("")
-        self.ui.set_weal.disp.setText("")
+        self.ui.set_weal_disp.setText("")
         self.ui.set_demo_view.setText("")
 
 
 
 
     def loc_update_name_text(self, eID):
+        """
+        Should be called when a new location is selected. Writes the name and description
+        """
         self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ eID ].name)
         self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ eID ].description)
 
     def loc_update_selection(self, HexID=None):
         """
-        Updates the location menu gui with the proper information for the specified Hex 
+        Updates the location menu gui with the proper information for the specified Hex. Adds the list of entities there
         """
         self.ui.status_label.setText("...")
         self.ui.loc_name_edit.setText( "" )
@@ -176,6 +261,9 @@ class editor_gui(QMainWindow):
 
 
     def loc_delete(self):
+        """
+        Called when the delete button is pressed in the locations tab
+        """
         if self.entity_control.selected is not None:
             loc_id = self.main_map.eid_catalogue[ self.entity_control.selected ].location
             self.main_map.remove_entity( self.entity_control.selected )
@@ -205,15 +293,27 @@ class editor_gui(QMainWindow):
         
         # select the new entity and update the name/description
         self.entity_control.select_entity( item.eID )
-        self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ item.eID ].name )
-        self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ item.eID ].description )
+        if isinstance( self.main_map.eid_catalogue[ item.eID ], Town):
+            self.ui.toolBox.setCurrentIndex( 1 )
+            self.set_update_selection( item.eID )
+        else:
+            self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ item.eID ].name )
+            self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ item.eID ].description )
 
 
     def new_location_button_toolbar(self):
+        """
+        Called by a GUI button. Drops any active tool, swaps to the entity control, changes to the proper toolBox page, and prepares to create a new Location
+        """
+        self.scene._active.drop()
         self.ui.toolBox.setCurrentIndex( 0 )
         self.scene._active = self.entity_control 
         self.entity_control.prep_new(0)
     def new_settlement_button_toolbar(self):
+        """
+        Called by a GUI button. Drops any active tool, swaps to the entity control, changes to the Settlement page, and prepares to create a new town. 
+        """
+        self.scene._active.drop()
         self.ui.toolBox.setCurrentIndex( 1 )
         self.scene._active = self.entity_control 
         self.entity_control.prep_new(1)
@@ -222,6 +322,19 @@ class editor_gui(QMainWindow):
     def new_county_button_toolbar(self):
         self.ui.toolBox.setCurrentIndex( 3 )
     
+    def entity_selector_toolbar(self):
+        """
+        Ensures that the entity brush is active. Drops whatever brush used to be selected and selects this one! 
+        """
+
+        self.ui.toolBox.setCurrentIndex( 0 )
+        self.scene._active.drop()
+        self.scene._active = self.entity_control
+
+    def county_selector_toolbar(self):
+        print("county sel click")
+    def hand_button_toolbar(self):
+        print("hand click")
 
     def go_away(self):
         # show the main menu and disappear 
@@ -274,9 +387,10 @@ class ward_dialog(QDialog):
         """
         which - which ward is being edited
         setting - specifies what exactly is being done. 
-                     -1 add new ward
+                     -1 the new town-like object 
                      0 whole city
                      1 city center 
+                     higher numbers for wards
                    
         """
         ## TODO
@@ -290,7 +404,7 @@ class ward_dialog(QDialog):
         self.ui.accept_reject.rejected.connect( self.reject )
         self.setting = setting
 
-        if setting==0 or setting==-1:
+        if setting==0 or setting==-1 or setting==1:
             self.editing_ward = which
         else:            
             self.editing_ward = which.wards[ setting -2 ]
@@ -311,56 +425,90 @@ class ward_dialog(QDialog):
         #currentIndexChanged.conect
         self.ui.pop_dropdown.currentIndexChanged.connect( self.set_population )
         self.ui.wealth_dropdown.currentIndexChanged.connect( self.set_wealth )
+        # 2 - order; 3 - war; 4 - spirit
 
         if setting==0:
             # restrict some parts that can't be edited for the whole
             self.ui.checkBox.setEnabled(False)
             self.ui.comboBox.setEnabled(False)
             self.ui.demo_edit.setEnabled(False)
+            self.ui.order_slider.setEnabled(False)
+            self.ui.war_slider.setEnabled(False)
+            self.ui.spirit_slider.setEnabled(False)
+        else:
+            # set the things
+            self.ui.demo_edit.setPlainText(self.editing_ward.get_demographics_as_str())
 
     def set_wealth(self, index):
         # writes the wealth after changing the dropdown menu
+        #  0 is keep at, 1 is set to, 2 is add to
         if index==0 or index==1:
             if self.setting==1:
-                self.ui.pop_edit.setText( str(self.editing_ward.partial_population) )
+                self.ui.wealth_edit.setText( str(self.editing_ward.partial_wealth) )
             else:
-                self.ui.pop_edit.setText( str(self.editing_ward.population) )
+                self.ui.wealth_edit.setText( str(self.editing_ward.wealth) )
         else:
-            self.ui.pop_edit.setText( "0" )
+            self.ui.wealth_edit.setText( "0" )
             
-    def set_poulation(self, index):
+    def set_population(self, index):
         # writes the population after changing the dropdown menu
+        #  0 is keep at, 1 is set to, 2 is add to
         if index==0 or index==1:
             if self.setting==1:
-                self.ui.wealth_edit.setText( str(self.editing_ward.partial_wealth ))
+                self.ui.pop_edit.setText( str(self.editing_ward.partial_population ))
             else:
-                self.ui.wealth_edit.setText( str( self.editing_ward.wealth ))
+                self.ui.pop_edit.setText( str( self.editing_ward.population ))
         else:
-            self.ui.wealth_edit.setText("0")
+            self.ui.pop_edit.setText("0")
 
     def accept(self):
-        self.parent.accept = True
-        which.name = self.ui.name_edit.text()
         #which.walled = walled_chck.state()  <-- not sure about this syntax
-        
-        if True: # should check the "allow to change" box!! 
-            
-
-        if self.ui.pop_dropdown.currentIndex()==0:
-            pass
-        elif self.ui.pop_dropdown.currentIndex()==1:
-            # set to
-            pass
+        if not self.setting==1:
+            self.editing_ward.name = self.ui.name_edit.text()
+       
+        if self.setting==0: 
+            passed_demo = None
         else:
-            # add
-            pass
+            try:
+                if self.ui.demo_edit.toPlainText()=="":
+                    passed_demo = None
+                else:
+                    passed_demo = parse_demographic( self.ui.demo_edit.toPlainText() )
+            except ValueError:
+                print("Error parsing demographic text block")
+                self.reject()
 
+        if self.setting==0:
+            which_ward = None
+        elif self.setting ==  -1:
+            which_ward = None
+        else:
+            which_ward = self.setting - 1
+
+        # how to change the population
+        if self.ui.pop_dropdown.currentIndex() == 0: # keep at
+            pass
+        elif self.ui.pop_dropdown.currentIndex() == 1:
+            self.editing_ward.set_population(int( self.ui.pop_edit.text() ), which_ward = which_ward)
+        else:
+            self.editing_ward.add_population(int( self.ui.pop_edit.text() ), which_ward = which_ward, demographics=passed_demo)
+        
+        if self.ui.wealth_dropdown.currentIndex() == 0:
+            pass
+        elif self.ui.wealth_dropdown.currentIndex() == 1:
+            self.editing_ward.set_wealth( int( self.ui.wealth_edit.text()), which_ward = which_ward)
+        else: 
+            self.editing_ward.add_wealth( int( self.ui.wealth_edit.text()), which_ward = which_ward)
+
+        if (not self.ui.checkBox.isChecked()) and (passed_demo is not None):
+            self.editing_ward.demographics = passed_demo
 
 
         super( ward_dialog, self).accept()
 
     def reject(self):
-        self.parent.accept = False
+        if self.setting==-1:
+            which = None
         super(ward_dialog, self).reject()
 
 def parse_demographic( text ):
@@ -423,10 +571,10 @@ def parse_demographic( text ):
     # normalize the built dictionary
     for key in new_dict:
         total = 0
-        for subkey in new_dict:
-            total += new_dict[key][subkey
+        for subkey in new_dict[key]:
+            total += new_dict[key][subkey]
         # divide each value by the sum of the values
-        for subkey in new_dict:
+        for subkey in new_dict[key]:
             new_dict[key][subkey]/= float(total)
 
     return( new_dict )

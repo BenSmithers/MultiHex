@@ -135,5 +135,5 @@ class Ui_Dialog(object):
         self.demo_dd_label.setText(_translate("Dialog", "Demographic:"))
         self.demo_edit.setPlainText(_translate("Dialog", "# represents population to be added, or the set population"))
         self.comboBox.setItemText(0, _translate("Dialog", "Racial"))
-        self.checkBox.setText(_translate("Dialog", "Allow To Change?"))
+        self.checkBox.setText(_translate("Dialog", "Added? (else Set To)"))
 

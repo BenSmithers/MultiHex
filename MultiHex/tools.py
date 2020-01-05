@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5 import QtGui, QtCore
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError
-from MultiHex.objects import Icons, Entity, Mobile, Settlement 
+from MultiHex.objects import Icons, Entity, Mobile, Settlement
 
 
 import os # used for some of the icons
@@ -182,9 +182,13 @@ class entity_brush(basic_tool):
     def __init__(self, parent):
         self.parent = parent
 
+        # list of drawn Qt Items. objects indexed with relevant eID
         self._drawn_entities = {}
 
         # are we in the process of placing a thingy
+        # -1 no
+        #  0 yes, entity
+        #  1 yes, Town
         self._placing = -1 
         
         # which menu is open
@@ -199,7 +203,7 @@ class entity_brush(basic_tool):
         self._selected_hex = None
         self._selected_hex_outline = None
 
-        # these are used for the 
+        # these are used for the ghosted prospective placement icon of a new entity
         self._ghosted_placement = None
         self._icon_size = 32 #int(self.parent.main_map._drawscale*2)
 
@@ -207,9 +211,10 @@ class entity_brush(basic_tool):
         self._loaded = False
         # where the assets are loaded
         self._all_icons = None
-
         # icon we are writing with
         self._icon = None 
+
+        self._settlement = Settlement
     
     @property
     def selected(self):
@@ -263,7 +268,7 @@ class entity_brush(basic_tool):
             self.load_assets()
 
         # this is the case when the user is placing a Location  ( 0 )
-        if self._placing == 0:
+        if self._placing in [0, 1]:
             if self._ghosted_placement is None:
                 raise Exception("This shouldn't happen")
             else:
@@ -281,9 +286,9 @@ class entity_brush(basic_tool):
         self._selected_hex = None
         self.update_wrt_new_hex()
 
-    def update_wrt_new_hex(self, eID = None):
+    def update_wrt_new_hex(self):
         """
-        Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
+        Called when a new hex is selected, OR this hex has changed (like new entities). Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
         """
         
         self._menu = self.parent.ui.toolBox.currentIndex()
@@ -292,14 +297,36 @@ class entity_brush(basic_tool):
             self.parent.scene.removeItem( self._selected_hex_outline )
             self._selected_hex_outline = None
 
+        self._selected_eid = None
+
         if self._menu == 0:
             # tell the gui to update the proper menu
             self.parent.loc_update_selection( self._selected_hex )
         elif self._menu==1:
+            # get eIDs at this hex
+            settlement_eid = None
+
+            if self._selected_hex in self.parent.main_map.eid_map:
+                eIDs_here = self.parent.main_map.eid_map[ self._selected_hex ]
+                for eID in eIDs_here:
+                    if isinstance( self.parent.main_map.eid_catalogue[eID] , self._settlement ):
+                        settlement_eid = eID
+            self._selected_eid = settlement_eid
+            self.parent.set_update_selection( settlement_eid )
+        else:
+            pass
+
+
+    def update_wrt_new_eid(self):
+        """
+        Called when a new /entity/ is selected. Chooses and updates the proper menu
+        """
+        self._menu = self.parent.ui.toolBox.currentIndex()
+
+        if self._menu == 0:
+            self.parent.loc_update_name_text( self._selected_eid )
+        elif self._menu==1:
             self.parent.set_update_selection( self._selected_eid )
-
-
-        self._selected_eid = eID
 
     def primary_mouse_released( self, event ):
         """
@@ -308,9 +335,11 @@ class entity_brush(basic_tool):
         place = Point( event.scenePos().x(), event.scenePos().y() ) 
         loc_id = self.parent.main_map.get_id_from_point( place )
         
-        self._selected_hex = loc_id 
+        if loc_id!=self._selected_hex:
+            self._selected_hex = loc_id 
+            self.update_wrt_new_hex()
 
-        self.update_wrt_new_hex()
+
 
         if self._placing in [ 0, 1 ]:
             # we are going to create 
@@ -321,12 +350,14 @@ class entity_brush(basic_tool):
             if self._placing == 0:
                 new_ent = Entity( "temp" , loc_id )
                 new_ent.icon = "location"
-            else:
-                new_ent = Settlement("temp", loc_id )
+                self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
+                self.parent.main_map.eid_catalogue[self._selected_eid].name = "Entity {}".format(self._selected_eid)
+            else: #placing is 1
+                new_ent = self._settlement("temp", loc_id )
                 new_ent.icon = "village"
-
-            self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
-            self.parent.main_map.eid_catalogue[self._selected_eid].name = "Entity {}".format(self._selected_eid)
+                self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
+                self.parent.main_map.eid_catalogue[self._selected_eid].name = "Town {}".format(self._selected_eid)
+            
             self.update_wrt_new_eid()
             self.redraw_entities_at_hex( loc_id )
 
@@ -338,16 +369,6 @@ class entity_brush(basic_tool):
         else:
             pass
 
-
-
-    def update_wrt_new_eid(self):
-        """
-        Called when a new /entity/ is selected. Chooses and updates the proper menu
-        """
-        if self._menu == 0:
-            self.parent.loc_update_name_text( self._selected_eid )
-        elif self._menu==1:
-            pass
 
 
     def load_assets(self):
@@ -387,8 +408,8 @@ class entity_brush(basic_tool):
                 print("Don't know how to draw a mob")
                 continue
 
-            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], Settlement)
-            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], Settlement )
+            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], self._settlement)
+            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], self._settlement )
             
             # if the chosen one is a settlement and this one isn't, skip
             if other_is_set and (not is_set):
@@ -429,8 +450,7 @@ class entity_brush(basic_tool):
 
 
     def drop(self):
-        self._selected_hex = None
-        self.update_wrt_new_hex()
+        self.deselect_hex()
        
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )

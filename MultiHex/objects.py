@@ -102,7 +102,7 @@ class Settlement(Entity):
         if not ( isinstance(new,int) or isinstance(new,float)):
             raise TypeError("Invalid type {} for order, expected {}".format(type(new), float ))
         self._order =  min( 1.0, max( 0.0, new))
-    def set_war(self, new)
+    def set_war(self, new):
         if not ( isinstance(new,int) or isinstance(new,float)):
             raise TypeError("Invalid type {} for war, expected {}".format(type(new), float ))
         self._war =  min( 1.0, max( 0.0, new))
@@ -111,27 +111,16 @@ class Settlement(Entity):
             raise TypeError("Invalid type {} for spirit, expected {}".format(type(new), float ))
         self._spirit =  min( 1.0, max( 0.0, new))
 
-    def get_demographics_as_str(self , ward, key):
+    def get_demographics_as_str(self):
         """
         Returns an entry in the demographics object formated in the ward-dialog style. Must specify a ward and the demographic
         """
-        if not isinstance(ward, int):
-            raise TypeError("Expected type {} for ward, but got {}".format( int, type(ward)))
-        if not isinstance(key, str):
-            raise TypeError("Expected type {} for key, but got {}".format( str, type(key)))
-    
+  
         out = ""
-        if ward == 0:
-            if key not in self.demographics:
-                raise KeyError("Demographic {} is not in demographics.".format(key))
-
+        for key in self.demographics:
+            out += "+{}\n".format(key)
             for subkey in self.demographics[key]:
-                out += "{}:{}".format(subkey, self.demographics[key][subkey])
-        else:
-            if key not in self.wards.demographics[ward-1]:
-                raise KeyError("Demographic {} is not in Ward {}'s demographics".fprmat(key,ward))
-            for subkey in self.wards.demographics[ward-1][key]:
-                out += "{}:{}".format(subkey, self.wards[ward-1].demographics[key][subkey])
+                out+= "{}:{}\n".format(subkey, self.demographics[key][subkey])
         return(out)
 
 
@@ -149,19 +138,19 @@ class Settlement(Entity):
         """
         return(self._population)
 
-    def set_wealth(self,new_wealth, ward=None):
+    def set_wealth(self,new_wealth, which_ward=None):
         diff = new_wealth - self.wealth
 
-        self.add_wealth( diff, ward )
+        self.add_wealth( diff, which_ward )
 
     def add_wealth( self, amount, which_ward = None):
         """
         Adds an amount of wealth to the settlement. If no ward is specified, it spreads the wealth according to populations 
         """
         if which_ward is None:
-            self._wealth += int(amount*float(self._population/self.population))
+            self._wealth += int(amount*float(self._population)/self.population)
             for ward in self.wards:
-                ward.add_wealth( int(amount*float(ward.population/self.population)))
+                ward.add_wealth( int(amount*float(ward.population)/self.population))
         else:
             if not isinstance( which_ward, int):
                 raise TypeError("Expected type {} for ward, got {}".format(int, type(which_ward)))
@@ -179,7 +168,7 @@ class Settlement(Entity):
         """
         total_wealth = self._wealth
         for ward in self.wards:
-            total_weatlth+= ward._wealth
+            total_wealth+= ward._wealth
         return(total_wealth)
 
     def add_ward( self, new_ward ):
@@ -230,7 +219,7 @@ class Settlement(Entity):
             for subkey in self.demographics[key]:
                 self.demographics[key][subkey] /= total
         
-    def add_population(self, to_add, ward=None, demographics = None):
+    def add_population(self, to_add, which_ward=None, demographics = None):
         """
         Adds population to the Settlement. If no ward is specified, it divides added population evently between the wards.  
 
@@ -263,7 +252,7 @@ class Settlement(Entity):
                     if self.demographics[key][subkey] < 0:
                         self.demographics[key][subkey] = 0.0 
 
-        if ward is None:
+        if which_ward is None:
             if len(self.wards)==0:                
                 self._population += to_add
                 assert( self._population >= 0 )
@@ -283,20 +272,20 @@ class Settlement(Entity):
                 if added!=to_add:
                     self._population += ( to_add - added )
         else:
-            if ward<0:
-                raise ValueError("Invalid ward no. {}".format(ward))
-            elif ward==0:
+            if which_ward<0:
+                raise ValueError("Invalid ward no. {}".format(which_ward))
+            elif which_ward==0:
                 self._population += to_add
             else:
-                ward -= 1
-                if ward>=(len(self.wards)):
-                    raise ValueError("No ward of number {}".format(ward))
+                which_ward -= 1
+                if which_ward>=(len(self.wards)):
+                    raise ValueError("No ward of number {}".format(which_ward))
                 else:
-                    self.wards[ward].add_population( to_add, demographics = demographics )
+                    self.wards[which_ward].add_population( to_add, demographics = demographics )
         
         self._norm_demographics()
 
-    def set_population(self, population, ward=None ):
+    def set_population(self, population, which_ward=None ):
         """
         Sets the population of the settlement to the given amount 
         """
@@ -304,7 +293,7 @@ class Settlement(Entity):
         assert( population >= 0 )
         
         to_add = population - self.population
-        self.add_population( to_add, ward )
+        self.add_population( to_add, which_ward=which_ward )
 
     @property
     def population(self):
