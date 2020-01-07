@@ -2,7 +2,7 @@ from MultiHex.core import Hex, Point, Region, Path
 from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.objects import Settlement
-from MultiHex.tools import basic_tool, hex_brush
+from MultiHex.tools import hex_brush, entity_brush
 
 from PyQt5 import QtGui
 
@@ -213,6 +213,11 @@ class Biome(Region):
 
 
 default_p = Point(0.0,0.0)
+
+class OEntity_Brush( entity_brush ):
+    def __init__(self, parent):
+        entity_brush.__init__(self, parent)
+        self._settlement = Town
 
 class OHex_Brush( hex_brush ):
     def __init__(self, parent):
