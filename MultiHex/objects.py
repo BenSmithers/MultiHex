@@ -13,6 +13,8 @@ import os
 
 from glob import glob
 
+from copy import deepcopy, copy
+
 class Icons:
     def __init__(self):
         self._art_dir = os.path.join(os.path.dirname(__file__), '..', 'Artwork')
@@ -84,7 +86,22 @@ class Settlement(Entity):
         self._is_ward = is_ward
 
         # this only describes the population directly contained by the _population attribute
-        self.demographics = { 'racial': { 'human': 1.00 } }
+        self._demographics = { 'racial': { 'human': 1.00 } }
+
+    @property
+    def demographics(self):
+        """
+        Returns a copy of this object's demographics! 
+        """
+        copy = deepcopy( self._demographics )
+        return( copy )
+
+    def set_demographics(self, new_demo):
+        if not self._valid_demo_structure( new_demo ):
+            raise TypeError("Improperly formatted demographics object!")
+        
+        self._demographics = new_demo
+        self._norm_demographics()
 
     @property 
     def order(self):
@@ -97,7 +114,8 @@ class Settlement(Entity):
     @property
     def spirit(self):
         copy = self._spirit
-        return(spirit)
+        return(copy)
+
     def set_order(self, new):
         if not ( isinstance(new,int) or isinstance(new,float)):
             raise TypeError("Invalid type {} for order, expected {}".format(type(new), float ))
@@ -117,10 +135,10 @@ class Settlement(Entity):
         """
   
         out = ""
-        for key in self.demographics:
+        for key in self._demographics:
             out += "+{}\n".format(key)
-            for subkey in self.demographics[key]:
-                out+= "{}:{}\n".format(subkey, self.demographics[key][subkey])
+            for subkey in self._demographics[key]:
+                out+= "{}:{:.4f}\n".format(subkey, self._demographics[key][subkey])
         return(out)
 
 
@@ -211,13 +229,13 @@ class Settlement(Entity):
         """
         Normalize the demographics dictionary! 
         """
-        for key in self.demographics:
+        for key in self._demographics:
             total = 0.
-            for subkey in self.demographics[key]:
-                total += self.demographics[key][subkey]
+            for subkey in self._demographics[key]:
+                total += self._demographics[key][subkey]
 
-            for subkey in self.demographics[key]:
-                self.demographics[key][subkey] /= total
+            for subkey in self._demographics[key]:
+                self._demographics[key][subkey] /= total
         
     def add_population(self, to_add, which_ward=None, demographics = None):
         """
@@ -231,26 +249,26 @@ class Settlement(Entity):
             if demographics is not None:
                 # populate the dictionaries such that the keys are symmetric  
                 for key in demographics:
-                    if key not in self.demographics:
-                        self.demographics[key] = {}
+                    if key not in self._demographics:
+                        self._demographics[key] = {}
                     for subkey in demographics[key]:
-                        if subkey not in self.demographics[key]:
-                            self.demographics[key][subkey] = 0.0
-                for key in self.demographics:
+                        if subkey not in self._demographics[key]:
+                            self._demographics[key][subkey] = 0.0
+                for key in self._demographics:
                     if key not in demographics:
                         demographics[key] = {}
-                    for subkey in self.demographics[key]:
+                    for subkey in self._demographics[key]:
                         if subkey not in demographics[key]:
                             demographics[key][subkey] = 0.0
 
         # update the demographics of the main part of town 
         if demographics is not None:
             # update the demographics
-            for key in self.demographics:
-                for subkey in self.demographics[key]:
-                    self.demographics[key][subkey] = (self.demographics[key][subkey]*self._population + demographics[key][subkey]*to_add)/( self._population + to_add )
-                    if self.demographics[key][subkey] < 0:
-                        self.demographics[key][subkey] = 0.0 
+            for key in self._demographics:
+                for subkey in self._demographics[key]:
+                    self._demographics[key][subkey] = (self._demographics[key][subkey]*self._population + demographics[key][subkey]*to_add)/( self._population + to_add )
+                    if self._demographics[key][subkey] < 0:
+                        self._demographics[key][subkey] = 0.0 
 
         if which_ward is None:
             if len(self.wards)==0:                
@@ -322,14 +340,14 @@ class Settlement(Entity):
             output += "City Center Demographics...\n"
         else:
             output += "Demographics are...\n"
-        for key in self.demographics:
+        for key in self._demographics:
             if self._is_ward:
                 output += "    "
             output += "{}:\n".format( key[0].upper()+key[1:] )
-            for subkey in self.demographics[key]:
+            for subkey in self._demographics[key]:
                 if self._is_ward:
                     output += "    "
-                output += "    {:.2f}% {}\n".format( 100*self.demographics[key][subkey], subkey[0].upper()+subkey[1:])
+                output += "    {:.2f}% {}\n".format( 100*self._demographics[key][subkey], subkey[0].upper()+subkey[1:])
         if len(self.wards)>0:
             output += "Contains Wards...\n"
             for ward in self.wards:
