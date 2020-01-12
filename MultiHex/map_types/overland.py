@@ -28,8 +28,13 @@ class Town( Settlement ):
         Settlement.__init__( self, name, location, is_ward )
 
         self.walled = False 
-        
-    
+       
+    def update_icon(self):
+        temp = self.size.lower() 
+
+        if temp!="ward":
+            self.icon = temp
+
     @property
     def size( self ):
         total_pop = self.population
@@ -38,7 +43,7 @@ class Town( Settlement ):
             return("Ward")
         
         if total_pop < 10:
-            return("Hamlet")
+            return("Village")
         elif total_pop < 150:
             return("Village") 
         elif total_pop < 1000:
