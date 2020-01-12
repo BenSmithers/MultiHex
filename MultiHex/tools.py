@@ -217,6 +217,11 @@ class entity_brush(basic_tool):
         self._settlement = Settlement
     
     @property
+    def selected_hex(self):
+        copy = self._selected_hex
+        return(copy)
+
+    @property
     def selected(self):
         copy = self._selected_eid
         return(copy)
