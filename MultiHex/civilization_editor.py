@@ -191,10 +191,11 @@ class editor_gui(QMainWindow):
         if setting==-1 and (new_ward is not None):
             self.main_map.eid_catalogue[self.entity_control.selected].add_ward( new_ward )
 
-
         #update! 
         self.set_update_selection( self.entity_control.selected )
 
+        # redraw the hex ( the icon may have changed )
+        self.entity_control.redraw_entities_at_hex( self.entity_control.selected_hex ) 
 
     def set_update_ward_info(self, eID, ward = None):
         """
@@ -209,6 +210,7 @@ class editor_gui(QMainWindow):
             self.ui.set_name_view.setText( this_city.name )
             self.ui.set_pop_disp.setText( str(this_city.population))
             self.ui.set_weal_disp.setText( str(this_city.wealth) )
+            self.ui.set_demo_view.setPlainText("A City")
         else:
             assert( isinstance( ward, int))
             # 0 - city center
@@ -217,10 +219,12 @@ class editor_gui(QMainWindow):
                 self.ui.set_name_view.setText( "City Center")
                 self.ui.set_pop_disp.setText( str(this_city.partial_population ))
                 self.ui.set_weal_disp.setText( str(this_city.partial_wealth))
+                self.ui.set_demo_view.setPlainText( this_city.get_demographics_as_str() )
             else:
                 self.ui.set_name_view.setText( this_city.wards[ward-1].name )
                 self.ui.set_pop_disp.setText( str(this_city.wards[ward-1].population ))
                 self.ui.set_weal_disp.setText( str(this_city.wards[ward-1].wealth))
+                self.ui.set_demo_view.setPlainText( this_city.wards[ward-1].get_demographics_as_str() )
 
 
 
@@ -393,9 +397,9 @@ class ward_dialog(QDialog):
                      higher numbers for wards
                    
         """
-        ## TODO
-        ## this part needs to be fixed so the 'whole city' and 'city center' parts actually only add to those specific parts
 
+        #for some reason, the accept function is called twice.... 
+        self._done = False
 
         super(ward_dialog, self).__init__(parent)
         self.ui = ward_ui()
@@ -422,6 +426,11 @@ class ward_dialog(QDialog):
             self.ui.wealth_value.setText( str( self.editing_ward.wealth ))
             self.ui.wealth_edit.setText(str( self.editing_ward.wealth ))
 
+        self.ui.walled_chck.setChecked( self.editing_ward.walled ) 
+        self.ui.order_slider.setValue(100*self.editing_ward.order)
+        self.ui.spirit_slider.setValue(100*self.editing_ward.spirit)
+        self.ui.war_slider.setValue(100*self.editing_ward.war)
+
         #currentIndexChanged.conect
         self.ui.pop_dropdown.currentIndexChanged.connect( self.set_population )
         self.ui.wealth_dropdown.currentIndexChanged.connect( self.set_wealth )
@@ -429,43 +438,75 @@ class ward_dialog(QDialog):
 
         if setting==0:
             # restrict some parts that can't be edited for the whole
-            self.ui.checkBox.setEnabled(False)
+            #self.ui.checkBox.setEnabled(False)
             self.ui.comboBox.setEnabled(False)
             self.ui.demo_edit.setEnabled(False)
             self.ui.order_slider.setEnabled(False)
             self.ui.war_slider.setEnabled(False)
             self.ui.spirit_slider.setEnabled(False)
+            self.ui.walled_chck.setEnabled(False)
         else:
             # set the things
-            self.ui.demo_edit.setPlainText(self.editing_ward.get_demographics_as_str())
+            new_text = "# Use \"+\" to start a new category\n# And write entries as \"<type>:<value>\"\n #Categories will be auto-normalized\n\n"+ self.editing_ward.get_demographics_as_str()
+            self.ui.demo_edit.setPlainText(new_text)
+
+        self.ui.wealth_edit.setEnabled(False)
+        self.ui.pop_edit.setEnabled(False)
+
 
     def set_wealth(self, index):
         # writes the wealth after changing the dropdown menu
         #  0 is keep at, 1 is set to, 2 is add to
-        if index==0 or index==1:
+        if index==0:
+            self.ui.wealth_edit.setText("")
+            self.ui.wealth_edit.setEnabled(False)
+        elif index==1:
+            self.ui.wealth_edit.setEnabled(True)
             if self.setting==1:
                 self.ui.wealth_edit.setText( str(self.editing_ward.partial_wealth) )
             else:
                 self.ui.wealth_edit.setText( str(self.editing_ward.wealth) )
         else:
+            self.ui.wealth_edit.setEnabled(True)
             self.ui.wealth_edit.setText( "0" )
             
     def set_population(self, index):
         # writes the population after changing the dropdown menu
         #  0 is keep at, 1 is set to, 2 is add to
-        if index==0 or index==1:
+        if index==0:
+            self.ui.pop_edit.setText("")
+            self.ui.pop_edit.setEnabled(False)
+        elif index==1:
+            self.ui.pop_edit.setEnabled(True)
             if self.setting==1:
                 self.ui.pop_edit.setText( str(self.editing_ward.partial_population ))
             else:
                 self.ui.pop_edit.setText( str( self.editing_ward.population ))
         else:
+            self.ui.pop_edit.setEnabled(True)
             self.ui.pop_edit.setText("0")
 
     def accept(self):
+        """
+        Called when the 'okay' option is selected. For some reason it gets called twice though... 
+        """
+
+        if self._done:
+            return
+        else:
+            self._done = True
+
         #which.walled = walled_chck.state()  <-- not sure about this syntax
+        self.editing_ward.walled = self.ui.walled_chck.isChecked()
         if not self.setting==1:
             self.editing_ward.name = self.ui.name_edit.text()
        
+        if self.setting!=0:
+            self.editing_ward.set_war( self.ui.war_slider.value()/100. )
+            self.editing_ward.set_order( self.ui.order_slider.value()/100. )
+            self.editing_ward.set_spirit( self.ui.spirit_slider.value()/100. )
+
+
         if self.setting==0: 
             passed_demo = None
         else:
@@ -473,6 +514,7 @@ class ward_dialog(QDialog):
                 if self.ui.demo_edit.toPlainText()=="":
                     passed_demo = None
                 else:
+                    self.ui.demo_edit.update()
                     passed_demo = parse_demographic( self.ui.demo_edit.toPlainText() )
             except ValueError:
                 print("Error parsing demographic text block")
@@ -486,7 +528,7 @@ class ward_dialog(QDialog):
             which_ward = self.setting - 1
 
         # how to change the population
-        if self.ui.pop_dropdown.currentIndex() == 0: # keep at
+        if self.ui.pop_dropdown.currentIndex() == 0: # keep 
             pass
         elif self.ui.pop_dropdown.currentIndex() == 1:
             self.editing_ward.set_population(int( self.ui.pop_edit.text() ), which_ward = which_ward)
@@ -500,10 +542,10 @@ class ward_dialog(QDialog):
         else: 
             self.editing_ward.add_wealth( int( self.ui.wealth_edit.text()), which_ward = which_ward)
 
-        if (not self.ui.checkBox.isChecked()) and (passed_demo is not None):
-            self.editing_ward.demographics = passed_demo
+        if (self.ui.comboBox.currentIndex()==0) and (passed_demo is not None):
+            self.editing_ward.set_demographics( passed_demo )
 
-
+        self.editing_ward.update_icon()
         super( ward_dialog, self).accept()
 
     def reject(self):
@@ -519,7 +561,10 @@ def parse_demographic( text ):
         key : value
     and it ignores whitespace. If it fails, it raises a ValueError 
     """
-    
+
+    # add an EOL character at the end
+    text = text + '\n'
+
     lines = []
     line = ""
     ignore = False
