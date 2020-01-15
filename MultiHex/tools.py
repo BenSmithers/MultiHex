@@ -1,12 +1,15 @@
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5 import QtGui, QtCore
 
-from MultiHex.core import Point, Region, RegionMergeError, RegionPopError
+from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
+# from MultiHex.map_types.overland import Road, River
 
 
 import os # used for some of the icons
 
+from math import sqrt
+rthree =  sqrt(3)
 
 class basic_tool:
     """
@@ -66,6 +69,8 @@ class basic_tool:
         Called when parent window is closing. Clears list of drawn items 
         """
         pass 
+    def __str__(self):
+        return("BasicTool of type {}".format(type(self)))
 
 class clicker_control(QGraphicsScene):
     """
@@ -147,18 +152,134 @@ class path_brush(basic_tool):
     """
     Basic tool implementation for drawing Path objects like rivers and roads
     """
-    def __init__(self, parent):
-        self._drawing = False
-        self._active_path = None
+    def __init__(self, parent, river_mode=False):
 
         self._drawn_rivers = []
+
+        self.parent = parent
+
+        # state variable! 
+        # state 0 - not doing anything
+        #       1 - preparing to draw a road or river. Showing the river/road icon
+        #       2 - currently adding to a road or river. 
+        self._state = 0
+
+        self._drawn_icon = None
+        self._river_mode = river_mode
+        self._creating = Path
+
+        # load in the appropriate icon! 
+        self._icon_size = 24
+        if self._river_mode:
+            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'river_icon.svg' )).scaledToWidth( self._icon_size )
+        else: # road mode
+            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
+
+        self._wip_path = None
+        self._wip_path_object = None
+
+        self._step_object = None
+
+        # for drawing
+        self.QBrush = QtGui.QBrush()
+        self.QPen   = QtGui.QPen()
+        self.QBrush.setStyle(0)
+        self.QPen.setStyle(1)
+
+    def prepare(self, setting):
+        assert( isinstance(setting, int))
+
+        self._state = setting
 
     def redraw_rivers(self):
         pass
 
     def mouse_moved( self, event ):
-        pass
+        if self._state==0:
+            # not doing anything. Make sure no icon is there
+            if self._drawn_icon is not None:
+                self.parent.scene.removeItem( self._drawn_icon )
+                self._drawn_icon = None
+
+            if self._step_object is not None:
+                self.parent.scene.removeItem( self._step_object )
+                self._step_object = None
+
+        elif self._state==1:
+            # we are placing a new river/road. If it hasn't been drawn, draw the hex
+            if self._drawn_icon is None:
+                self._drawn_icon = self.parent.scene.addPixmap( self._icon )
+                self._drawn_icon.setZValue(20)
+
+            if self._river_mode:
+                where = self.parent.main_map.get_vert_from_point(Point(event.scenePos().x(),event.scenePos().y() ))
+                
+            else:
+                where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( Point(event.scenePos().x(),event.scenePos().y() )))
+                
+
+            self._drawn_icon.setX( where.x ) #-(self._icon_size)/2 )
+            self._drawn_icon.setY( where.y ) #-(self._icon_size)/2 )
+        elif self._state==2:
+            if self._drawn_icon is not None:
+                self.parent.scene.removeItem( self._drawn_icon )
+                self._drawn_icon = None
+
+            if self._river_mode:
+                step_size = self.parent.main_map.drawscale
+            else:
+                step_size = rthree*self.parent.main_map.drawscale
+
+            small_step = Point( event.scenePos().x(), event.scenePos().y()) - self._wip_path.end()
+            small_step.normalize()
+            small_step = small_step * step_size
+
+            if self._step_object is not None:
+                self.parent.scene.removeItem( self._step_object )
+            
+            self._step_object = None
+
+        else:
+            raise NotImplementedError("{} Reached unexpected state {}".format(self, self._state))
     # update the position of the river icon
+
+    def primary_mouse_released(self, event):
+        if self._state==0:
+            pass
+        elif self._state==1:
+            # get the location and make a new path
+
+
+            if self._river_mode:
+                where = self.parent.main_map.get_vert_from_point(Point(event.scenePos().x(),event.scenePos().y() ))
+
+            else:
+                where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( Point(event.scenePos().x(),event.scenePos().y() )))
+            
+            self._wip_path = self._creating(where)
+            self._state = 2
+
+            self.QPen.setWidth( 2 +  self._wip_path.width)
+            self.QPen.setColor( QtGui.QColor( self._wip_path.color[0],self._wip_path.color[1], self._wip_path.color[2]))
+
+        elif self._state==2:
+            pass
+        else:
+            raise NotImplementedError("Reached unexpected state {}".format(self._state))
+
+    def secondary_mouse_released(self, event):
+        if self._state==0:
+            pass
+        elif self._state==1:
+            self._state = 0
+        elif self._state==2:
+            # finish up I guess
+            pass
+        else:
+            raise NotImplementedError("Reached unexpected state {}".format(self._state))
+
+    def draw_path(self):
+        pass
         
 class QEntityItem(QtGui.QStandardItem):
     """
@@ -448,7 +569,7 @@ class entity_brush(basic_tool):
 
         if eID in self.parent.main_map.eid_catalogue:
             self._drawn_entities[eID] = self.parent.scene.addPixmap( getattr( self._all_icons, self.parent.main_map.eid_catalogue[ eID ].icon ))
-            self._drawn_entities[eID].setZValue(2)
+            self._drawn_entities[eID].setZValue(5)
             location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
             self._drawn_entities[eID].setX( location.x - self._all_icons.shift)
             self._drawn_entities[eID].setY( location.y - self._all_icons.shift)
@@ -615,7 +736,7 @@ class hex_brush(basic_tool):
 
             self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
             self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
-            self.drawn_hexes[hex_id].setZValue(1)
+            self.drawn_hexes[hex_id].setZValue(-1)
 
         except KeyError: #happens if told to redraw a hex that isn't there 
             #print("key error")
@@ -642,7 +763,7 @@ class hex_brush(basic_tool):
             if this_id in self.parent.main_map.catalogue:
                 # draw a new hex, and select its id 
                 self._selected_out = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self.parent.main_map.catalogue[this_id]._vertices)), pen = self.QPen, brush=self.QBrush )
-                self._selected_out.setZValue(4)
+                self._selected_out.setZValue(10)
                 self._selected_id = this_id
                 
 
@@ -978,7 +1099,7 @@ class region_brush(basic_tool):
             path = path.subtracted( enc_path )
         
         self._drawn_regions[reg_id] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush)
-        self._drawn_regions[reg_id].setZValue(5)
+        self._drawn_regions[reg_id].setZValue(9)
 
 
     def redraw_region_text( self, rid ):

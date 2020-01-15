@@ -5,7 +5,7 @@ from MultiHex.guis.civ_gui import editor_gui_window
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
-from MultiHex.tools import clicker_control, basic_tool, region_brush, QEntityItem
+from MultiHex.tools import clicker_control, basic_tool, region_brush, QEntityItem, path_brush
 from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush
 
 # need these to define all the interfaces between the canvas and the user
@@ -47,6 +47,7 @@ class editor_gui(QMainWindow):
         self.scene = clicker_control( self.ui.graphicsView, self )
         self.entity_control = OEntity_Brush(self)
         self.writer_control = OHex_Brush(self)
+        self.path_control = path_brush(self, river_mode=False)
         self.biome_control = region_brush(self, 'biome')
 
         self.scene._active = self.entity_control
@@ -323,6 +324,10 @@ class editor_gui(QMainWindow):
         self.entity_control.prep_new(1)
     def new_road_button_toolbar(self):
         self.ui.toolBox.setCurrentIndex( 2 )
+        self.scene._active.drop()
+        self.scene._active = self.path_control
+        self.path_control.prepare(1)
+
     def new_county_button_toolbar(self):
         self.ui.toolBox.setCurrentIndex( 3 )
     
