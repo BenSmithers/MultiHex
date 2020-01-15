@@ -2,7 +2,7 @@ from MultiHex.core import Hex, Point, Region, Path
 from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.objects import Settlement
-from MultiHex.tools import hex_brush, entity_brush
+from MultiHex.tools import hex_brush, entity_brush, path_brush
 
 from PyQt5 import QtGui
 
@@ -218,6 +218,16 @@ class Biome(Region):
 
 
 default_p = Point(0.0,0.0)
+
+class River_Brush( path_brush ):
+    def __init__(self, parent):
+        path_brush.__init__(self,parent, True)
+        self._creating = River
+
+class Road_Brush( path_brush ):
+    def __init__(self, parent):
+        path_brush.__init__(self,parent, False)
+        self._creating = Road
 
 class OEntity_Brush( entity_brush ):
     def __init__(self, parent):
