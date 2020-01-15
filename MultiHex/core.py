@@ -15,8 +15,6 @@ b.smithers.actual@gmail.com
 Core objects for MultiHex
 
 Objects:
-    basic tool      - interface for clicker control
-    clicker control - interface between GUIs and tools 
     Point           - 2D vector with associated operators
     HexMap          - base upon which all the maps are built
         construct_id 
@@ -58,6 +56,13 @@ class Point:
         
         self._acalculated   = False
         self._angle         = 0.0
+
+    def normalize(self):
+        self._x /= self.magnitude
+        self._y /= self.magnitude
+
+        self._magnitude = 1.0
+
 
     def __add__(self, obj):
         """
@@ -819,6 +824,34 @@ class Hexmap:
         else:
             return( construct_id(base_idx_2, base_idy_2, False ))
     
+    def get_vert_from_point(self, point):
+        """
+        Returns the closest vertex to the specified point
+
+        @arg point - object of type Point
+        """
+        if not isinstance(point, Point):
+            raise TypeError("Expected type {}, got {}. Ya dun goofed.".format(Point, type(point)))
+
+        loc_id = self.get_id_from_point( point )
+        here = self.get_point_from_id( loc_id )
+
+        temp_hex = Hex( here, self.drawscale )
+        verts = temp_hex.vertices
+        
+        which = 0
+        dist = (verts[0]- point)**2
+
+        for iter in range(len(verts)-1):
+            this_dist = (verts[iter]-point)**2
+
+            if this_dist<dist:
+                which = iter
+                dist = this_dist
+
+        return( verts[which] )
+
+
     def get_point_from_id(self, id):
         """
         Returns the UNTRANSFORMED center of the hex corresponding to the given ID
@@ -1343,6 +1376,9 @@ class Path:
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
+
+        self.name = ""
+
     def end(self, offset=0):
         """
         Returns the a copy of the endPoint of this Path. Note: the endpoint is the last point added
