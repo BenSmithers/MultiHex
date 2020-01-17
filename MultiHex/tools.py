@@ -152,9 +152,7 @@ class path_brush(basic_tool):
     """
     Basic tool implementation for drawing Path objects like rivers and roads
     """
-    def __init__(self, parent, river_mode=False):
-
-        self._drawn_rivers = []
+    def __init__(self, parent, vertex_mode=False):
 
         self.parent = parent
 
@@ -165,12 +163,14 @@ class path_brush(basic_tool):
         self._state = 0
 
         self._drawn_icon = None
-        self._river_mode = river_mode
+        self._vertex_mode = vertex_mode
         self._creating = Path
+
+        self._path_key = "generic"
 
         # load in the appropriate icon! 
         self._icon_size = 24
-        if self._river_mode:
+        if self._vertex_mode:
             self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'river_icon.svg' )).scaledToWidth( self._icon_size )
         else: # road mode
             self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
@@ -185,6 +185,8 @@ class path_brush(basic_tool):
         self.QPen   = QtGui.QPen()
         self.QBrush.setStyle(0)
         self.QPen.setStyle(1)
+
+        self._drawn_paths = { }
 
     def prepare(self, setting):
         assert( isinstance(setting, int))
@@ -211,7 +213,7 @@ class path_brush(basic_tool):
                 self._drawn_icon = self.parent.scene.addPixmap( self._icon )
                 self._drawn_icon.setZValue(20)
 
-            if self._river_mode:
+            if self._vertex_mode:
                 where = self.parent.main_map.get_vert_from_point(Point(event.scenePos().x(),event.scenePos().y() ))
                 
             else:
@@ -221,11 +223,14 @@ class path_brush(basic_tool):
             self._drawn_icon.setX( where.x ) #-(self._icon_size)/2 )
             self._drawn_icon.setY( where.y ) #-(self._icon_size)/2 )
         elif self._state==2:
-            if self._drawn_icon is not None:
-                self.parent.scene.removeItem( self._drawn_icon )
-                self._drawn_icon = None
+            if self._drawn_icon is None:
+                self._drawn_icon = self.parent.scene.addPixmap( self._icon )
+                self._drawn_icon.setZValue(20)
 
-            if self._river_mode:
+            self._drawn_icon.setX( event.scenePos().x() )
+            self._drawn_icon.setY( event.scenePos().y() )
+
+            if self._vertex_mode:
                 step_size = self.parent.main_map.drawscale
             else:
                 step_size = rthree*self.parent.main_map.drawscale
@@ -233,11 +238,21 @@ class path_brush(basic_tool):
             small_step = Point( event.scenePos().x(), event.scenePos().y()) - self._wip_path.end()
             small_step.normalize()
             small_step = small_step * step_size
+            small_step = small_step + self._wip_path.end()
+
+            if self._vertex_mode:
+                where = self.parent.main_map.get_vert_from_point(small_step)
+            else:
+                where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( small_step ))
+
 
             if self._step_object is not None:
                 self.parent.scene.removeItem( self._step_object )
             
-            self._step_object = None
+            path = QtGui.QPainterPath()
+            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ self._wip_path.end(), where])) )
+            self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+            
 
         else:
             raise NotImplementedError("{} Reached unexpected state {}".format(self, self._state))
@@ -250,7 +265,7 @@ class path_brush(basic_tool):
             # get the location and make a new path
 
 
-            if self._river_mode:
+            if self._vertex_mode:
                 where = self.parent.main_map.get_vert_from_point(Point(event.scenePos().x(),event.scenePos().y() ))
 
             else:
@@ -260,10 +275,35 @@ class path_brush(basic_tool):
             self._state = 2
 
             self.QPen.setWidth( 2 +  self._wip_path.width)
-            self.QPen.setColor( QtGui.QColor( self._wip_path.color[0],self._wip_path.color[1], self._wip_path.color[2]))
+            self.QPen.setColor( QtGui.QColor( 235, 100, 100))
 
         elif self._state==2:
-            pass
+
+            if self._vertex_mode:
+                step_size = self.parent.main_map.drawscale
+            else:
+                step_size = rthree*self.parent.main_map.drawscale
+
+            small_step = Point( event.scenePos().x(), event.scenePos().y()) - self._wip_path.end()
+            small_step.normalize()
+            small_step = small_step * step_size
+            small_step = small_step + self._wip_path.end()
+
+            if self._vertex_mode:
+                where = self.parent.main_map.get_vert_from_point(small_step)
+            else:
+                where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( small_step ))
+
+            self._wip_path.add_to_end( where )
+
+            if self._wip_path_object is not None:
+                self.parent.scene.removeItem( self._wip_path_object )
+                self._wip_path_object = None
+            path = QtGui.QPainterPath()
+            self.QPen.setColor( QtGui.QColor( 235, 100, 100))
+            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self._wip_path.vertices )))
+            self._wip_path_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
@@ -274,13 +314,58 @@ class path_brush(basic_tool):
             self._state = 0
         elif self._state==2:
             # finish up I guess
-            pass
+            # clear out the erased one
+
+            if self._wip_path_object is not None:
+                self.parent.scene.removeItem( self._wip_path_object )
+                self._wip_path_object = None
+
+
+            pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
+            self._wip_path = None
+            self.draw_path( pID )
+
+            self._state = 0
+
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
-    def draw_path(self):
-        pass
+    def draw_path( self, pID ):
+
+        if pID in self._drawn_paths:
+            self.parent.scene.removeItem( self._drawn_paths[pID])
+            del self._drawn_paths[pID]
+
+        this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+
+        path = QtGui.QPainterPath()
+        self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
+        path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_path.vertices )))
+        self._drawn_paths[pID] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+    
+    def drop(self):
+        self._wip_path = None 
+
+        # remove the WIP river drawing
+        if self._wip_path_object is not None:
+            self.parent.scene.removeItem( self._wip_path_object )
+        self._wip_path_object = None
+
+        # remove the 'next step' segment at the end of the river 
+        if self._step_object is not None:
+            self.parent.scene.removeItem( self._step_object )
+        self._step_object = None
+
+        # remove the icon, if it's drawn 
+        if self._drawn_icon is not None:
+            self.parent.scene.removeItem( self._drawn_icon )
+        self._drawn_icon = None 
         
+    def clear(self):
+        for pID in self._drawn_paths:
+            self.parent.scene.removeItem( self._drawn_paths[pID])
+            del self._drawn_paths 
+
 class QEntityItem(QtGui.QStandardItem):
     """
     Item object to be used with the entity lists in the GUI. These things are the same, but also carry around an eID attribute.

@@ -224,10 +224,14 @@ class River_Brush( path_brush ):
         path_brush.__init__(self,parent, True)
         self._creating = River
 
+        self._path_key = "rivers"
+
 class Road_Brush( path_brush ):
     def __init__(self, parent):
         path_brush.__init__(self,parent, False)
         self._creating = Road
+
+        self._path_key = "roads"
 
 class OEntity_Brush( entity_brush ):
     def __init__(self, parent):
@@ -263,9 +267,9 @@ class OHex_Brush( hex_brush ):
             self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
             self._river_drawn[-1].setZValue(2)
 
-        for river in self.parent.main_map.paths['rivers']:
-            assert( isinstance( river, River) )
-            draw_river( river )
+        for pID in self.parent.main_map.path_catalog['rivers']:
+            assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
+            draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
 
     def update_selection(self):
         self.set_sliders( self._selected_id )
