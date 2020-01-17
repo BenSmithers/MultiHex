@@ -281,7 +281,7 @@ class Hexmap:
         self.eid_catalogue = {} # eID -> Entity obj
         self.eid_map = {} # hex_id -> [ list of eIDs ]
 
-        self.paths = {}
+        self.path_catalog = {}
 
         # overal scaling factor 
         self._drawscale = 15.0
@@ -300,6 +300,35 @@ class Hexmap:
     def drawscale(self):
         copy = self._drawscale
         return( copy )
+
+    def register_new_path( self, target_path , layer):
+        if not isinstance( target_path, Path):
+            raise TypeError("{} not of type {}, it's a {}!".format(target_path, Path, type(target_path)))
+
+        new_pID = 0
+        if layer not in self.path_catalog:
+            self.path_catalog[layer] = {}
+            print("Note! '{}' not in catalog. Adding... ".format(layer))
+
+        while new_pID in self.path_catalog[layer]:
+            new_pID += 1
+
+        self.path_catalog[layer][ new_pID ]  = target_path 
+
+        return( new_pID )
+
+    def unregister_path( self, pID, layer):
+        if not type(pID)==int:
+            raise Type("Expected {} for rivid, got {}".format(int, type(pID)))
+        
+        if layer not in self.path_catalog:
+            raise ValueError("{} is not a layer in the path catalog".format( layer))
+
+        if pID not in self.path_catalog[layer]:
+            raise ValueError("pID {} not in Path catalog".format(pID))
+
+        self.path_catalog[layer][pID] = None
+
 
     def register_new_entity( self, target_entity):
         """
@@ -1373,6 +1402,7 @@ class Path:
             raise TypeError("Expected type {} for arg 'start', got {}".format(Point, type(start)))
         self._vertices      = [ Point( start.x, start.y ) ]
 
+        self.width          = 1.0
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
