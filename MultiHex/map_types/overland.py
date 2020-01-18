@@ -65,6 +65,8 @@ class Road(Path):
 
         self.quality = 1.50 
 
+        self.z_value = 3
+
 class River(Path):
     """
     Implements `Path`
@@ -79,6 +81,8 @@ class River(Path):
         self.tributaries = None
 
         self._max_len = 20
+        
+        self.z_value = 2
 
     def join_with( self, other ):
         """
@@ -226,12 +230,14 @@ class River_Brush( path_brush ):
 
         self._path_key = "rivers"
 
+        
 class Road_Brush( path_brush ):
     def __init__(self, parent):
         path_brush.__init__(self,parent, False)
         self._creating = Road
 
         self._path_key = "roads"
+
 
 class OEntity_Brush( entity_brush ):
     def __init__(self, parent):
