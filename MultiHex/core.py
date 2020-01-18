@@ -193,6 +193,7 @@ class Hex:
         self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
         self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
 
+
     @property
     def center(self):
         return( Point( self._center.x, self._center.y) )
@@ -327,7 +328,7 @@ class Hexmap:
         if pID not in self.path_catalog[layer]:
             raise ValueError("pID {} not in Path catalog".format(pID))
 
-        self.path_catalog[layer][pID] = None
+        del self.path_catalog[layer][pID] 
 
 
     def register_new_entity( self, target_entity):
@@ -1406,6 +1407,7 @@ class Path:
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
+        self.z_level       = 2
 
         self.name = ""
 
@@ -1501,9 +1503,6 @@ class Path:
         else:
             # if the difference between this step and the precalculated step is >1%, raise an exception! 
             if (( end - self.end() ).magnitude - self._step)/self._step  > 0.01:
-                print("Step of {}".format( (end-self.end()).magnitude ))
-                print("Expected {}".format(self._step))
-                print("From {} to {}".format(self.end(), end))
                 raise ValueError("Paths must have consistently spaced entries")
 
         self._vertices.append( end )
@@ -1514,16 +1513,16 @@ class Path:
         
         @param start    - object of type Point 
         """
-        if not isinstance( end, Point):
-            raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(end )))
+        if not isinstance( start, Point):
+            raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(start )))
 
-        if not _step_calc:
+        if not self._step_calc:
             # get the magnitude between the last point and the one we're adding, that's the step size 
-            self._step = ( end - self._vertices[0] ).magnitude 
+            self._step = ( start - self.start() ).magnitude 
             self._step_calc = True 
         else:
             # if the difference between this step and the precalculated step is big, raise an exception! 
-            if (( end - self._vertices[0] ).magnitude - self._step)/self._step  > 0.01:
+            if (( start - self.start() ).magnitude - self._step)/self._step  > 0.01:
                 raise ValueError("Paths must have consistently spaced entries")
 
 
