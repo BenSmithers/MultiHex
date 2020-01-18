@@ -71,7 +71,7 @@ class editor_gui(QMainWindow):
         self.ui.road_button_3.clicked.connect( self.new_road_button_toolbar )
         self.ui.count_button_4.clicked.connect( self.new_county_button_toolbar )
 
-        # location tab buttons and things
+        # location tab buttons 
         self.ui.loc_list_entry = QtGui.QStandardItemModel()
         self.ui.loc_list_view.setModel( self.ui.loc_list_entry )
         self.ui.loc_save.clicked.connect( self.loc_save_entity )
@@ -79,10 +79,15 @@ class editor_gui(QMainWindow):
         self.ui.loc_deselect.clicked.connect( self.entity_control.deselect_hex )
         self.ui.loc_list_view.clicked[QtCore.QModelIndex].connect(self.loc_list_item_clicked)
         
-        # settlement tab buttons and things
+        # settlement tab buttons 
         self.ui.set_ward_dd.currentIndexChanged.connect( self.set_dropdown_activate )
         self.ui.set_button_apply.clicked.connect( self.set_button_apply )
         self.ui.set_edit_button.clicked.connect( self.set_ward_edit_button )
+
+        # road tab buttons
+        self.ui.road_list_entry = QtGui.QStandardItemModel()
+        self.ui.roads_list.setModel( self.ui.road_list_entry )
+        self.ui.roads_list.clicked[QtCore.QModelIndex].connect( self.road_item_clicked )
 
         # page number can be accessed from
         # ui.toolBox.currentIndex() -> number
@@ -94,20 +99,44 @@ class editor_gui(QMainWindow):
     
         self.ward_accept = False
 
-    def road_item_clicked( self ):
-        pass
+    def road_item_clicked( self , index=None):
+        item = self.ui.road_list_entry.itemFromIndex(index)
+        pID = item.eID
+
+        if pID is not None:
+            the_path = self.main_map.path_catalog['roads'][pID]
+
+            self.ui.road_name_edit.setText(the_path.name)
+            self.ui.road_qual_edit.setValue( the_path.quality )
+
+            self.path_control.select_pid( pID )
+        else:
+            self.ui.road_name_edit.setText('')
+            self.ui.road_qual_edit.setValue( 0.0 )
 
     def road_ps_button(self):
-        pass
+        self.path_control.pop_selected_start()
 
     def road_pe_button(self):
-        pass
+        self.path_control.pop_selected_end()
     
     def road_add_start(self):
-        pass
+        self.path_control.prepare( 4 )
 
-    def raod_add_end(self):
-        pass
+    def road_add_end(self):
+        self.path_control.prepare( 3 )
+
+    def road_delete(self):
+        self.path_control.delete_selected()
+
+    def road_update_list( self ):
+        self.ui.road_list_entry.clear()
+        
+        if not( 'roads' in self.main_map.path_catalog ):
+            return
+
+        for pID in self.main_map.path_catalog['roads']:
+            self.ui.road_list_entry.appendRow( QEntityItem(self.main_map.path_catalog['roads'][pID].name , pID))
 
     def set_button_apply(self):
 

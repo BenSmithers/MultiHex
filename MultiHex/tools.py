@@ -159,7 +159,8 @@ class path_brush(basic_tool):
         # state variable! 
         # state 0 - not doing anything
         #       1 - preparing to draw a road or river. Showing the river/road icon
-        #       2 - currently adding to a road or river. 
+        #       2 - currently adding to a new road or river. 
+        #       3 - adding to end existing path
         self._state = 0
 
         self._drawn_icon = None
@@ -175,6 +176,9 @@ class path_brush(basic_tool):
         else: # road mode
             self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
 
+        self._selected_pid = None
+        self._selected_color = QtGui.QColor( 255, 100, 100 )
+
         self._wip_path = None
         self._wip_path_object = None
 
@@ -188,13 +192,45 @@ class path_brush(basic_tool):
 
         self._drawn_paths = { }
 
+    def select_pid(self, pID ):
+        if not isinstance(pID, int):
+            raise TypeError("Expected type {}, got {}".format( int, type(pID)))
+
+        self._selected_pid = pID
+        self.draw_path( pID )
+
+    def pop_selected_start(self):
+        if self._selected_pid is not None:
+            if self._selected_pid in self.parent.main_map.path_catalog[self._path_key]:
+                self.parent.main_map.path_catalog[self._path_key][self._selected_pid].trim_at(1, False )
+
+                if len( self.parent.main_map.path_catalog[self._path_key][self._selected_pid].vertices)==1:
+                    self.delete_selected()
+                else:
+                    self.draw_path( self._selected_pid )
+
+    def pop_selected_end(self):
+        if self._selected_pid is not None:
+            if self._selected_pid in self.parent.main_map.path_catalog[self._path_key]:
+                self.parent.main_map.path_catalog[self._path_key][self._selected_pid].trim_at( -1, True )
+                
+                if len( self.parent.main_map.path_catalog[self._path_key][self._selected_pid].vertices)==1:
+                    self.delete_selected()
+                else:
+                    self.draw_path( self._selected_pid )
+    
+    def delete_selected( self ):
+        try:
+            self.parent.main_map.unregister_path( self._selected_pid )
+            self.draw_path( self._selected_pid )
+        except ValueError:
+            pass
+
     def prepare(self, setting):
         assert( isinstance(setting, int))
 
         self._state = setting
 
-    def redraw_rivers(self):
-        pass
 
     def mouse_moved( self, event ):
         if self._state==0:
@@ -222,7 +258,7 @@ class path_brush(basic_tool):
 
             self._drawn_icon.setX( where.x ) #-(self._icon_size)/2 )
             self._drawn_icon.setY( where.y ) #-(self._icon_size)/2 )
-        elif self._state==2:
+        elif self._state==2 or self._state==3 or self._state==4:
             if self._drawn_icon is None:
                 self._drawn_icon = self.parent.scene.addPixmap( self._icon )
                 self._drawn_icon.setZValue(20)
@@ -235,10 +271,25 @@ class path_brush(basic_tool):
             else:
                 step_size = rthree*self.parent.main_map.drawscale
 
-            small_step = Point( event.scenePos().x(), event.scenePos().y()) - self._wip_path.end()
+            if self._state ==2:
+                from_point = self._wip_path.end()
+            elif self._state==3:
+                try:
+                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
+                except KeyError:
+                    self._state = 0
+                    self._selected_pid = None
+            else: #state is 4
+                try:
+                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
+                except KeyError:
+                    self._state = 0
+                    self._selected_pid = None
+
+            small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
             small_step.normalize()
             small_step = small_step * step_size
-            small_step = small_step + self._wip_path.end()
+            small_step = small_step + from_point
 
             if self._vertex_mode:
                 where = self.parent.main_map.get_vert_from_point(small_step)
@@ -250,9 +301,9 @@ class path_brush(basic_tool):
                 self.parent.scene.removeItem( self._step_object )
             
             path = QtGui.QPainterPath()
-            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ self._wip_path.end(), where])) )
+            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ from_point, where])) )
             self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
-            
+                 
 
         else:
             raise NotImplementedError("{} Reached unexpected state {}".format(self, self._state))
@@ -275,39 +326,63 @@ class path_brush(basic_tool):
             self._state = 2
 
             self.QPen.setWidth( 2 +  self._wip_path.width)
-            self.QPen.setColor( QtGui.QColor( 235, 100, 100))
+            self.QPen.setColor( self._selected_color )
 
-        elif self._state==2:
+        elif self._state==2 or self._state==3 or self._state==4:
 
             if self._vertex_mode:
                 step_size = self.parent.main_map.drawscale
             else:
                 step_size = rthree*self.parent.main_map.drawscale
 
-            small_step = Point( event.scenePos().x(), event.scenePos().y()) - self._wip_path.end()
+            if self._state ==2:
+                from_point = self._wip_path.end()
+            elif self._state==3:
+                try:
+                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
+                except KeyError:
+                    self._state = 0
+                    self._selected_pid = None
+            else: #state is 4
+                try:
+                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
+                except KeyError:
+                    self._state = 0
+                    self._selected_pid = None
+
+            small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
             small_step.normalize()
             small_step = small_step * step_size
-            small_step = small_step + self._wip_path.end()
+            small_step = small_step + from_point
 
             if self._vertex_mode:
                 where = self.parent.main_map.get_vert_from_point(small_step)
             else:
                 where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( small_step ))
 
-            self._wip_path.add_to_end( where )
+            if self._state==2:
+                self._wip_path.add_to_end( where )
+                if self._wip_path_object is not None:
+                    self.parent.scene.removeItem( self._wip_path_object )
+                    self._wip_path_object = None
+                path = QtGui.QPainterPath()
+                self.QPen.setColor(self._selected_color)
+                path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self._wip_path.vertices )))
+                self._wip_path_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
 
-            if self._wip_path_object is not None:
-                self.parent.scene.removeItem( self._wip_path_object )
-                self._wip_path_object = None
-            path = QtGui.QPainterPath()
-            self.QPen.setColor( QtGui.QColor( 235, 100, 100))
-            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self._wip_path.vertices )))
-            self._wip_path_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+            elif self._state==3:
+                self.parent.main_map.path_catalog[self._path_key][self._selected_pid].add_to_end( where )
+                self.draw_path( self._selected_pid)
+            else: #state is 4
+                self.parent.main_map.path_catalog[self._path_key][self._selected_pid].add_to_start( where )
+                self.draw_path( self._selected_pid)
+
 
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
     def secondary_mouse_released(self, event):
+        self.parent.road_update_list()
         if self._state==0:
             pass
         elif self._state==1:
@@ -322,28 +397,43 @@ class path_brush(basic_tool):
 
 
             pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
+            self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
             self._wip_path = None
             self.draw_path( pID )
 
+            self._state = 0
+        elif self._state==3 or self._state==4:
+            self.draw_path( self._selected_pid )
+            self._selected_pid = None
             self._state = 0
 
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
     def draw_path( self, pID ):
+        """
+        Re-draws the path with given PathID. If no such path is found, it instead just erases any associated map item
+        """
 
         if pID in self._drawn_paths:
             self.parent.scene.removeItem( self._drawn_paths[pID])
             del self._drawn_paths[pID]
 
-        this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+        try:
+            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+        except KeyError:
+            return
 
         path = QtGui.QPainterPath()
-        self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
+        if pID==self._selected_pid:
+            self.QPen.setColor(self._selected_color)
+        else:
+            self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
         path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_path.vertices )))
         self._drawn_paths[pID] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
     
     def drop(self):
+        self._state = 0
         self._wip_path = None 
 
         # remove the WIP river drawing
