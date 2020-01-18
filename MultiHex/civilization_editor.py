@@ -88,6 +88,12 @@ class editor_gui(QMainWindow):
         self.ui.road_list_entry = QtGui.QStandardItemModel()
         self.ui.roads_list.setModel( self.ui.road_list_entry )
         self.ui.roads_list.clicked[QtCore.QModelIndex].connect( self.road_item_clicked )
+        self.ui.road_start_pop.clicked.connect( self.road_ps_button )
+        self.ui.road_end_pop.clicked.connect( self.road_pe_button )
+        self.ui.road_end_add.clicked.connect( self.road_add_end )
+        self.ui.road_start_add.clicked.connect( self.road_add_start )
+        self.ui.delete_road.clicked.connect( self.road_delete )
+        self.ui.road_apply_but.clicked.connect( self.road_apply )
 
         # page number can be accessed from
         # ui.toolBox.currentIndex() -> number
@@ -114,15 +120,23 @@ class editor_gui(QMainWindow):
             self.ui.road_name_edit.setText('')
             self.ui.road_qual_edit.setValue( 0.0 )
 
+    def road_apply(self):
+        if self.path_control.selected_pid is not None:
+            self.main_map.path_catalog['roads'][self.path_control.selected_pid].name = self.ui.road_name_edit.text()
+            self.main_map.path_catalog['roads'][self.path_control.selected_pid].quality = self.ui.road_qual_edit.value()
+
+            # update the list to reflect the new name! 
+            self.road_update_list()
+
     def road_ps_button(self):
         self.path_control.pop_selected_start()
 
     def road_pe_button(self):
         self.path_control.pop_selected_end()
-    
+   
+    # these two just tell the path control to enter a specific state relating to adding to the end of a 
     def road_add_start(self):
         self.path_control.prepare( 4 )
-
     def road_add_end(self):
         self.path_control.prepare( 3 )
 

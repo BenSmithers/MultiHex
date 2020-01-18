@@ -191,13 +191,24 @@ class path_brush(basic_tool):
         self.QPen.setStyle(1)
 
         self._drawn_paths = { }
+    
+    @property
+    def selected_pid(self):
+        copy = self._selected_pid
+        return(copy)
 
-    def select_pid(self, pID ):
-        if not isinstance(pID, int):
-            raise TypeError("Expected type {}, got {}".format( int, type(pID)))
+    def select_pid(self, pID = None ):
+        if pID is not None:
+            if not isinstance(pID, int):
+                raise TypeError("Expected type {}, got {}".format( int, type(pID)))
+
+        previous = self._selected_pid
+
 
         self._selected_pid = pID
         self.draw_path( pID )
+
+        self.draw_path( previous )
 
     def pop_selected_start(self):
         if self._selected_pid is not None:
@@ -206,8 +217,8 @@ class path_brush(basic_tool):
 
                 if len( self.parent.main_map.path_catalog[self._path_key][self._selected_pid].vertices)==1:
                     self.delete_selected()
-                else:
-                    self.draw_path( self._selected_pid )
+        
+            self.draw_path( self._selected_pid )
 
     def pop_selected_end(self):
         if self._selected_pid is not None:
@@ -216,15 +227,17 @@ class path_brush(basic_tool):
                 
                 if len( self.parent.main_map.path_catalog[self._path_key][self._selected_pid].vertices)==1:
                     self.delete_selected()
-                else:
-                    self.draw_path( self._selected_pid )
+            
+            self.draw_path( self._selected_pid )
     
     def delete_selected( self ):
         try:
-            self.parent.main_map.unregister_path( self._selected_pid )
-            self.draw_path( self._selected_pid )
+            self.parent.main_map.unregister_path( self._selected_pid , self._path_key )
         except ValueError:
             pass
+
+        self.select_pid( None )
+        self.parent.road_update_list()
 
     def prepare(self, setting):
         assert( isinstance(setting, int))
@@ -278,14 +291,18 @@ class path_brush(basic_tool):
                     from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
                 except KeyError:
                     self._state = 0
-                    self._selected_pid = None
+                    self.select_pid( None )
+                    return
             else: #state is 4
                 try:
                     from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
                 except KeyError:
                     self._state = 0
-                    self._selected_pid = None
-
+                    self.select_pid( None )
+                    return
+    
+            # draw a segment of length 'step size' from the end of the active Path in the direction of the cursor 
+            #   sorta slow since the 'normalize' method does a sqrt :( 
             small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
             small_step.normalize()
             small_step = small_step * step_size
@@ -311,7 +328,8 @@ class path_brush(basic_tool):
 
     def primary_mouse_released(self, event):
         if self._state==0:
-            pass
+            # clicked on the map in a do-nothing state. Deselect any selected hex 
+            self.select_pid( None )
         elif self._state==1:
             # get the location and make a new path
 
@@ -342,13 +360,14 @@ class path_brush(basic_tool):
                     from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
                 except KeyError:
                     self._state = 0
-                    self._selected_pid = None
+                    self.select_pid( None )
             else: #state is 4
                 try:
                     from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
                 except KeyError:
                     self._state = 0
-                    self._selected_pid = None
+                    self.select_pid( None )
+            
 
             small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
             small_step.normalize()
@@ -369,6 +388,9 @@ class path_brush(basic_tool):
                 self.QPen.setColor(self._selected_color)
                 path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self._wip_path.vertices )))
                 self._wip_path_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+                # draw the WIP Path ontop of the Path layer (2-4) 
+                self._wip_path_object.setZValue( 4 )
+
 
             elif self._state==3:
                 self.parent.main_map.path_catalog[self._path_key][self._selected_pid].add_to_end( where )
@@ -382,7 +404,7 @@ class path_brush(basic_tool):
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
     def secondary_mouse_released(self, event):
-        self.parent.road_update_list()
+
         if self._state==0:
             pass
         elif self._state==1:
@@ -404,16 +426,23 @@ class path_brush(basic_tool):
             self._state = 0
         elif self._state==3 or self._state==4:
             self.draw_path( self._selected_pid )
-            self._selected_pid = None
+            self.select_pid(None )
             self._state = 0
 
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
+        self.parent.road_update_list()
+
     def draw_path( self, pID ):
         """
         Re-draws the path with given PathID. If no such path is found, it instead just erases any associated map item
         """
+
+        if pID is None:
+            return
+        else:
+            assert(isinstance(pID, int ))
 
         if pID in self._drawn_paths:
             self.parent.scene.removeItem( self._drawn_paths[pID])
@@ -431,7 +460,8 @@ class path_brush(basic_tool):
             self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
         path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_path.vertices )))
         self._drawn_paths[pID] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
-    
+        self._drawn_paths[pID].setZValue( this_path.z_level )
+
     def drop(self):
         self._state = 0
         self._wip_path = None 
