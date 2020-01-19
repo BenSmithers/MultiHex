@@ -1046,12 +1046,20 @@ class region_brush(basic_tool):
         self.QBrush.setStyle(6)
         self.QPen.setWidth(3)
 
-
         self.r_layer = layer
 
         self._outline_obj = None
         self._drawn_regions = {} # map from rid to drawn region
         self._drawn_names = {}
+
+        self.draw_borders = False
+
+        self._type = Region
+
+        self.selector_mode = False
+
+        self.small_font = False
+        self.default_name = "Region"
 
     def _set_color(self, color):
         """
@@ -1091,24 +1099,39 @@ class region_brush(basic_tool):
         
         if this_id not in self.parent.main_map.id_map[self.r_layer]:
             self.selected_rid = None
-            self.parent.ui.RegEdit.setText("")
         else:
             if self.parent.main_map.id_map[self.r_layer][this_id]!=self.selected_rid:
-
                 self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
-                self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
+                
 
     def primary_mouse_held(self, event):
         self.primary_mouse_released( event )
 
     def primary_mouse_released(self, event):
         """
-        Right click 
+        Draws or Erases, depending on the mode 
         """
-        if self._writing:
-            self.reg_add(event)
+        if self.r_layer not in self.parent.main_map.rid_catalogue:
+            self.parent.main_map.rid_catalogue[self.r_layer] = {}
+        if self.r_layer not in self.parent.main_map.id_map:
+            self.parent.main_map.id_map[self.r_layer] = {}
+
+        if self.selector_mode:
+            here = Point( event.scenePos().x(), event.scenePos().y())
+            this_id = self.parent.main_map.get_id_from_point( here )
+
+            if this_id not in self.parent.main_map.id_map[self.r_layer]:
+                self.selected_rid = None
+            else:
+                self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
+                    
+
         else:
-            self.reg_remove(event)
+            if self._writing:
+                self.reg_add(event)
+            else:
+                self.reg_remove(event)
+
     def toggle_mode(self, force=None):
         """
         Switches brush sizes, the region remover only works with brush size 1, so... force the brush size back to 1. 
@@ -1128,6 +1151,12 @@ class region_brush(basic_tool):
         While moving it continuously removes and redraws the outline - reimplimentation of the 'move' function in the hex brush
         """
         # get center, 
+        if self.selector_mode: 
+            if self._outline_obj is not None:
+                self.parent.scene.removeItem( self._outline_obj )
+                self._outline_obj = None
+            return
+
         place = Point( event.scenePos().x(), event.scenePos().y())
         center_id = self.parent.main_map.get_id_from_point( place )
         
@@ -1186,11 +1215,12 @@ class region_brush(basic_tool):
             # if the hex here is not mapped to a registered region, 
             if (loc_id not in self.parent.main_map.id_map[self.r_layer]):
                 # make a new region here, set it to the active region, and draw it
-                new_reg = Region( loc_id, self.parent.main_map )
+                new_reg = self._type( loc_id, self.parent.main_map )
                                 
                 # get the newely created rid, set it to active 
                 self.selected_rid = self.parent.main_map.register_new_region( new_reg, self.r_layer )
-                
+                new_reg.name = self.default_name +" "+ str( self.selected_rid )
+
                 # self.parent.main_map.id_map( loc_id )
                 
                 if self._brush_size == 2:
@@ -1224,7 +1254,7 @@ class region_brush(basic_tool):
                 # ...
                 if loc_id not in self.parent.main_map.id_map[self.r_layer]:
                     # create and register a region
-                    temp_region = Region( loc_id , self.parent.main_map )
+                    temp_region = self._type( loc_id , self.parent.main_map )
                     new_rid = self.parent.main_map.register_new_region( temp_region, self.r_layer )
 
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
@@ -1276,7 +1306,8 @@ class region_brush(basic_tool):
         """
 
         self.redraw_region_text( reg_id )
-        return()
+        if not self.draw_borders:
+            return()
 
         #self.QBrush.setStyle(6)
         self.QBrush.setStyle(1)
@@ -1334,23 +1365,32 @@ class region_brush(basic_tool):
         drop.setOffset(1)
         center, extent = reg_obj.get_center_size()
         font = QtGui.QFont("Fantasy")
-        font_size = mult_factor*max( 12, int(extent.magnitude / len(reg_obj.name)))
-        font.setPointSize( font_size )
+        if self.small_font:
+            new_color= QtGui.QColor( 50, 50, 50)
+            font_size = 10
+        else:
+            new_color= QtGui.QColor( 250, 250, 250)
+            font_size = mult_factor*max( 12, int(extent.magnitude / len(reg_obj.name)))
 
+        font.setPointSize( font_size )
         self._drawn_names[rid] = self.parent.scene.addText( dname, font )
         self._drawn_names[rid].setPos( center.x - 0.5*extent.x, center.y )
-        #new_color = QtGui.QColor( 0.5*(255+reg_obj.color[0]), 0.5*(255+reg_obj.color[1]), 0.5*(255+reg_obj.color[0]))
-        new_color= QtGui.QColor( 250, 250, 250)
-        self._drawn_names[rid].setDefaultTextColor( new_color )
-        self._drawn_names[rid].setGraphicsEffect( drop )
-        self._drawn_names[rid].setZValue(15)
+
+        if not self.small_font:
+            self._drawn_names[rid].setDefaultTextColor( new_color )
+            self._drawn_names[rid].setGraphicsEffect( drop )
+            self._drawn_names[rid].setZValue(15)
+        else:
+            self._drawn_names[rid].setZValue(14)
     
     def drop(self):
         """
         Removes the selection outline for the tool. Called while switching to another tool. 
         """
+        self.selected_rid = None
         if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
+            self._outline_obj = None
 
     def clear(self):
         self._drawn_names = {}

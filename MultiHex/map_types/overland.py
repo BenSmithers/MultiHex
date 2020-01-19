@@ -2,7 +2,7 @@ from MultiHex.core import Hex, Point, Region, Path
 from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.objects import Settlement
-from MultiHex.tools import hex_brush, entity_brush, path_brush
+from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush
 
 from PyQt5 import QtGui
 
@@ -141,6 +141,36 @@ class County(Region):
     def __init__(self, hex_id, parent):
         Region.__init__(self, hex_id, parent)
 
+        self._order     = 0.0
+        self._war       = 0.0
+        self._spirit    = 0.0
+
+    @property 
+    def order(self):
+        copy = self._order
+        return(copy)
+    @property 
+    def war(self):
+        copy = self._war
+        return(copy)
+    @property
+    def spirit(self):
+        copy = self._spirit
+        return(copy)
+
+    def set_order(self, new):
+        if not ( isinstance(new,int) or isinstance(new,float)):
+            raise TypeError("Invalid type {} for order, expected {}".format(type(new), float ))
+        self._order =  min( 1.0, max( 0.0, new))
+    def set_war(self, new):
+        if not ( isinstance(new,int) or isinstance(new,float)):
+            raise TypeError("Invalid type {} for war, expected {}".format(type(new), float ))
+        self._war =  min( 1.0, max( 0.0, new))
+    def set_spirit(self,new):
+        if not ( isinstance(new,int) or isinstance(new,float)):
+            raise TypeError("Invalid type {} for spirit, expected {}".format(type(new), float ))
+        self._spirit =  min( 1.0, max( 0.0, new))
+
     @property
     def wealth( self ):
         this_wealth = 0
@@ -229,6 +259,48 @@ class River_Brush( path_brush ):
         self._creating = River
 
         self._path_key = "rivers"
+
+class Biome_Brush( region_brush):
+    def __inti__(self, parent):
+        region_brush.__init__(self, parent, 'biome')
+
+        self.draw_borders = False
+        self._type = Biome
+
+    def secondary_mouse_released(self, event):
+        region_brush.secondary_mouse_released(self, event)
+
+        if self.selected_rid is None:
+            self.parent.ui.RegEdit.setText("")
+        else:
+            self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
+
+
+class County_Brush( region_brush ):
+    def __init__(self, parent):
+        region_brush.__init__(self, parent, 'county')
+
+        self.draw_borders = True
+        self.selector_mode = True
+        self._type = County
+
+        self.default_name = "County"
+
+    def primary_mouse_released(self, event):
+        region_brush.primary_mouse_released( self, event )
+
+        self.parent.county_update_with_selected()
+
+    def secondary_mouse_released(self, event):
+        if self.selected_rid is not None:
+            if self.selector_mode:
+                self.selector_mode = False
+            else:
+                self.selector_mode = True
+        else:
+            self.selected_rid = None
+            self.selector_mode = True
+
 
         
 class Road_Brush( path_brush ):

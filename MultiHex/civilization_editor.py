@@ -6,7 +6,7 @@ from MultiHex.guis.civ_gui import editor_gui_window
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import clicker_control, basic_tool, region_brush, QEntityItem
-from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush
+from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -49,6 +49,9 @@ class editor_gui(QMainWindow):
         self.writer_control = OHex_Brush(self)
         self.path_control = Road_Brush(self)
         self.biome_control = region_brush(self, 'biome')
+        self.biome_control.small_font = True
+        self.county_control = County_Brush( self )
+        self.county_control.small_font = False
 
         self.scene._active = self.entity_control
 
@@ -94,6 +97,11 @@ class editor_gui(QMainWindow):
         self.ui.road_start_add.clicked.connect( self.road_add_start )
         self.ui.delete_road.clicked.connect( self.road_delete )
         self.ui.road_apply_but.clicked.connect( self.road_apply )
+
+        # county tab buttons
+        self.ui.county_list_entry = QtGui.QStandardItemModel()
+        self.ui.count_city_list.setModel( self.ui.county_list_entry)
+        self.ui.pushButton.clicked.connect( self.county_apply )
 
         # page number can be accessed from
         # ui.toolBox.currentIndex() -> number
@@ -387,7 +395,10 @@ class editor_gui(QMainWindow):
 
     def new_county_button_toolbar(self):
         self.ui.toolBox.setCurrentIndex( 3 )
-    
+        self.scene._active.drop()
+        self.scene._active = self.county_control 
+        self.county_control.selector_mode = False
+
     def entity_selector_toolbar(self):
         """
         Ensures that the entity brush is active. Drops whatever brush used to be selected and selects this one! 
@@ -398,7 +409,68 @@ class editor_gui(QMainWindow):
         self.scene._active = self.entity_control
 
     def county_selector_toolbar(self):
-        print("county sel click")
+        self.ui.toolBox.setCurrentIndex(3)
+        self.scene._active.drop()
+        self.scene._active = self.county_control
+        self.county_control.selector_mode = True
+
+    def county_update_with_selected(self):
+        this_rid = self.county_control.selected_rid
+        self.ui.county_list_entry.clear()
+
+        if this_rid is None:
+            self.ui.count_name_edit.setText( '')
+            self.ui.count_pop_disp.setText( '')
+            self.ui.count_weal_disp.setText( '' )
+            self.ui.label_13.setText( '' )
+
+            # update and disable sliders
+            self.ui.horizontalSlider.setValue(0)
+            self.ui.horizontalSlider_2.setValue(0)
+            self.ui.horizontalSlider_3.setValue(0)
+            self.ui.horizontalSlider.setEnabled(False)
+            self.ui.horizontalSlider_2.setEnabled(False)
+            self.ui.horizontalSlider_3.setEnabled(False)
+
+        else:
+            this_county = self.main_map.rid_catalogue[ 'county' ][this_rid]
+        
+            self.ui.count_name_edit.setText( this_county.name )
+            self.ui.count_pop_disp.setText( str(this_county.population ))
+            self.ui.count_weal_disp.setText( str(this_county.wealth ))
+            if this_county.population==0:
+                self.ui.label_13.setText( "NaN" )
+            else:
+                self.ui.label_13.setText( '{:06.2f}'.format(float(this_county.wealth)/this_county.population) )
+
+            self.ui.horizontalSlider.setEnabled(True)
+            self.ui.horizontalSlider_2.setEnabled(True)
+            self.ui.horizontalSlider_3.setEnabled(True)
+            self.ui.horizontalSlider.setValue(  this_county.order*100. )
+            self.ui.horizontalSlider_2.setValue(this_county.war*100. )
+            self.ui.horizontalSlider_3.setValue(this_county.spirit*100. )
+            
+
+            for eID in self.main_map.rid_catalogue['county'][this_rid].eIDs:
+                if isinstance( self.main_map.eid_catalogue[eID], Town):
+                    self.ui.county_list_entry.appendRow( QEntityItem(self.main_map.eid_catalogue[eID].name , eID))\
+                        
+            self.county_control.redraw_region( this_rid )
+
+    def county_apply(self):
+        this_rid = self.county_control.selected_rid
+
+        if this_rid is None:
+            return
+        else:
+            this_county = self.main_map.rid_catalogue[ 'county' ][this_rid]
+            
+            this_county.name = self.ui.count_name_edit.text()
+            this_county.set_order(float(self.ui.horizontalSlider.value())/100. )
+            this_county.set_war(float(self.ui.horizontalSlider_2.value())/100.)
+            this_county.set_spirit(float(self.ui.horizontalSlider_3.value())/100. )
+
+
     def hand_button_toolbar(self):
         print("hand click")
 
