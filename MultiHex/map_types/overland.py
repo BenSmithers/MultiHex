@@ -1,8 +1,8 @@
 from MultiHex.core import Hex, Point, Region, Path
 from MultiHex.core import RegionMergeError, RegionPopError
 
-from MultiHex.objects import Settlement
-from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush
+from MultiHex.objects import Settlement, Government
+from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool
 
 from PyQt5 import QtGui
 
@@ -19,6 +19,8 @@ Entries:
     hex_brush       - basic tool, makes hexes
     OHex            - Hex implementation for land hexes
 """
+
+default_p = Point(0.0,0.0)
 
 class Town( Settlement ):
     """
@@ -133,43 +135,39 @@ class River(Path):
         return(0)
 
 
-class County(Region):
+class County(Region, Government):
     """
     Implements the Region class for Counties. 
     """
 
     def __init__(self, hex_id, parent):
         Region.__init__(self, hex_id, parent)
+        Government.__init__(self) 
 
-        self._order     = 0.0
-        self._war       = 0.0
-        self._spirit    = 0.0
-
-    @property 
-    def order(self):
-        copy = self._order
-        return(copy)
-    @property 
-    def war(self):
-        copy = self._war
-        return(copy)
     @property
-    def spirit(self):
-        copy = self._spirit
-        return(copy)
+    def tension(self):
+        these_ids = len(self.eIDs)
+        if these_ids==0:
+            return(0)
+        else:
+            towns = list(filter( (lambda x:  isinstance(self.parent.main_map.eid_catalogue[x], Town)), these_ids))
+            
+            avg_ord = self.order/( 1+len(towns))
+            avg_war = self.war/( 1+len(towns))
+            avg_spi = self_spi/( 1+len(towns))
+            
+            for town in towns:
+                avg_ord += (town.population/self.population)*ward.order/(1+len(towns))
+                avg_war += (town.population/self.population)*ward.war/(1+len(towns))
+                avg_spi += (town.population/self.population)*ward.spirit/(1+len(towns))
 
-    def set_order(self, new):
-        if not ( isinstance(new,int) or isinstance(new,float)):
-            raise TypeError("Invalid type {} for order, expected {}".format(type(new), float ))
-        self._order =  min( 1.0, max( 0.0, new))
-    def set_war(self, new):
-        if not ( isinstance(new,int) or isinstance(new,float)):
-            raise TypeError("Invalid type {} for war, expected {}".format(type(new), float ))
-        self._war =  min( 1.0, max( 0.0, new))
-    def set_spirit(self,new):
-        if not ( isinstance(new,int) or isinstance(new,float)):
-            raise TypeError("Invalid type {} for spirit, expected {}".format(type(new), float ))
-        self._spirit =  min( 1.0, max( 0.0, new))
+            wip = ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2
+            for town in towns:
+                (avg_ord - town.order)**2 + (avg_war - town.war)**2 + (avg_spi - town.spirit)**2
+
+            wip = sqrt(wip)
+            return(wip)
+
 
     @property
     def wealth( self ):
@@ -200,15 +198,39 @@ class County(Region):
                 pop += self.parent.eid_catalogue[eID].population 
         return( pop )
 
-class Kingdom( County ):
+class Nation( Government ):
     """
-    A Collection of Counties. One County serves as the seat of the Kingdom, and that's this one. 
+    A Collection of Counties. One County serves as the seat of the Nation, and that's this one. 
     """
-    def __init__(self, hex_id, parent):
-        County.__init__(self, hex_id, parent)
+    def __init__(self, former_county):
+        assert( isinstance( former_county, County))
+        Government.__init__(self)
 
-        self.counties = []
-   
+        self.counties = [former_county]
+
+    @property
+    def tension(self):
+
+        if len(self.counties)==0:
+            return(0)
+        else:
+            # get averages! 
+            avg_ord = self.order/(1+len(self.counties))
+            avg_war = self.war/(1+len(self.counties))
+            avg_spi = self.spirit/(1+len(self.counties))
+
+            for count in self.counties:
+                avg_ord += count.order/(1+len(self.counties))
+                avg_war += count.war/(1+len(self.counties))
+                avg_spi += count.spirit/(1+len(self.counties))
+
+            wip = (self.population/self.subjects)*( ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2)
+            for count in self.counties:
+                wip += (self.population/self.subjects)*((avg_ord - count.order)**2 + (avg_war - count.war)**2 + (avg_spi - count.spirit)**2)
+
+            wip = sqrt(wip)
+            return( wip )
+
     @property
     def subjects( self ):
         pop = self.population
@@ -251,7 +273,6 @@ class Biome(Region):
 
 
 
-default_p = Point(0.0,0.0)
 
 class River_Brush( path_brush ):
     def __init__(self, parent):
@@ -301,6 +322,15 @@ class County_Brush( region_brush ):
             self.selected_rid = None
             self.selector_mode = True
 
+class Nation_Brush( basic_tool ):
+    def __init__(self, parent):
+        self.parent = parent
+
+        self._state = 0
+        # 0 - 
+
+    def primary_mouse_released( self ):
+        pass
 
         
 class Road_Brush( path_brush ):

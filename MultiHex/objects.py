@@ -64,44 +64,15 @@ class Entity:
         copy = self._location
         return( copy )
 
-
-class Settlement(Entity):
+class Government():
     """
-    Generic implementation for settlements of people. Can be applied for space stations, planets, towns, or anything really. Maintains a total population and its demographics. 
-
-    Settlements can be divided into `wards` to represent sub-sections of the 
+    A Generic implementation of 'government.' Intended to not be used on its own, but as a parent class to other objects. 
     """
-    def __init__(self, name, location=None, is_ward=False):
-        Entity.__init__(self, name, location)
-
-        # these values are assigned to the city-center 
-        self._population = 1
-        self._wealth = 1
+    def __init__(self):
 
         self._order = 1.0
         self._war   = 1.0
         self._spirit= 1.0
-
-        self.wards = [ ]
-        self._is_ward = is_ward
-
-        # this only describes the population directly contained by the _population attribute
-        self._demographics = { 'racial': { 'human': 1.00 } }
-
-    @property
-    def demographics(self):
-        """
-        Returns a copy of this object's demographics! 
-        """
-        copy = deepcopy( self._demographics )
-        return( copy )
-
-    def set_demographics(self, new_demo):
-        if not self._valid_demo_structure( new_demo ):
-            raise TypeError("Improperly formatted demographics object!")
-        
-        self._demographics = new_demo
-        self._norm_demographics()
 
     @property 
     def order(self):
@@ -128,6 +99,67 @@ class Settlement(Entity):
         if not ( isinstance(new,int) or isinstance(new,float)):
             raise TypeError("Invalid type {} for spirit, expected {}".format(type(new), float ))
         self._spirit =  min( 1.0, max( 0.0, new))
+
+class Settlement(Entity, Government):
+    """
+    Generic implementation for settlements of people. Can be applied for space stations, planets, towns, or anything really. Maintains a total population and its demographics. 
+
+    Settlements can be divided into `wards` to represent sub-sections of the 
+    """
+    def __init__(self, name, location=None, is_ward=False):
+        Entity.__init__(self, name, location)
+        Government.__init__(self)
+
+        # these values are assigned to the city-center 
+        self._population = 1
+        self._wealth = 1
+
+        self.wards = [ ]
+        self._is_ward = is_ward
+
+        # this only describes the population directly contained by the _population attribute
+        self._demographics = { 'racial': { 'human': 1.00 } }
+
+    @property
+    def tension(self):
+
+        if len(self.wards)==0:
+            return(0)
+        else:
+            # get averages! 
+            avg_ord = (self.partial_population/self.population)*self.order/(1+len(self.wards))
+            avg_war = (self.partial_population/self.population)*self.war/(1+len(self.wards))
+            avg_spi = (self.partial_population/self.population)*self.spirit/(1+len(self.wards))
+
+            for ward in wards:
+                avg_ord += (ward.population/self.population)*ward.order/(1+len(self.wards))
+                avg_war += (ward.population/self.population)*ward.war/(1+len(self.wards))
+                avg_spi += (ward.population/self.population)*ward.spirit/(1+len(self.wards))
+
+            wip = (self.partial_population/self.population)*( ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2)
+            for ward in wards:
+                wip += (ward.population/self.population)*((avg_ord - ward.order)**2 + (avg_war - ward.war)**2 + (avg_spi - ward.spirit)**2)
+
+            wip = sqrt(wip)
+            return( wip )
+
+
+    @property
+    def demographics(self):
+        """
+        Returns a copy of this object's demographics! 
+        """
+        copy = deepcopy( self._demographics )
+        return( copy )
+
+    def set_demographics(self, new_demo):
+        if not self._valid_demo_structure( new_demo ):
+            raise TypeError("Improperly formatted demographics object!")
+        
+        self._demographics = new_demo
+        self._norm_demographics()
+
+
 
     def get_demographics_as_str(self):
         """
