@@ -307,6 +307,8 @@ class County_Brush( region_brush ):
 
         self.default_name = "County"
 
+        self.in_nation = None
+
     def primary_mouse_released(self, event):
         region_brush.primary_mouse_released( self, event )
 
@@ -327,11 +329,42 @@ class Nation_Brush( basic_tool ):
         self.parent = parent
 
         self._state = 0
-        # 0 - 
+        # 0 - neutral
+        # 1 - creating a new nation 
+        # 3 - adding to an existing nation
+        # 4 - removing some county from its nation 
 
-    def primary_mouse_released( self ):
+    def primary_mouse_released( self, event ):
+        if self._state == 0:
+            # not really doing anything
+            pass
+        elif self._state == 1:
+            where = Point( event.scenePos().x(), event.scenePos().y() )
+            loc_id = self.parent.main_map.get_id_from_point( where )
+            
+            if 'County' not in self.parent.main_map.id_map:
+                return
+            
+            try:        
+                this_county = self.parent.main_map.id_map['County'][loc_id]
+            except KeyError:
+                return
+
+            # create the new nation with this county as a base
+
+            new_nation = Nation(this_county)
+
+    def secondary_mouse_released(self, event):
+        if self._state = 0:
+            # select the kingdom at the mouse ! 
+            pass
+        elif self._state==1:
+            # cancel 
+            self._state = 0
+
+
+    def mouse_moved( self, event ):
         pass
-
         
 class Road_Brush( path_brush ):
     def __init__(self, parent):

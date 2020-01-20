@@ -68,11 +68,11 @@ class Government():
     """
     A Generic implementation of 'government.' Intended to not be used on its own, but as a parent class to other objects. 
     """
-    def __init__(self):
+    def __init__(self, order = 0.0, war = 0.0, spirit = 0.0):
 
-        self._order = 1.0
-        self._war   = 1.0
-        self._spirit= 1.0
+        self._order = order
+        self._war   = war
+        self._spirit= spirit
 
     @property 
     def order(self):
