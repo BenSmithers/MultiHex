@@ -1,4 +1,4 @@
-from MultiHex.core import Hex, Point, Region, Path
+from MultiHex.core import Hex, Point, Region, Path, Hexmap
 from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.objects import Settlement, Government
@@ -144,6 +144,8 @@ class County(Region, Government):
         Region.__init__(self, hex_id, parent)
         Government.__init__(self) 
 
+        self.nation = None
+
     @property
     def tension(self):
         these_ids = len(self.eIDs)
@@ -202,11 +204,19 @@ class Nation( Government ):
     """
     A Collection of Counties. One County serves as the seat of the Nation, and that's this one. 
     """
-    def __init__(self, former_county):
-        assert( isinstance( former_county, County))
+    def __init__(self, parent, rID):
+        assert( isinstance( rID, int))
+        assert( isinstance( parent, Hexmap))
         Government.__init__(self)
+        
+        if not rID in parent.rid_catalogue['county']:
+            raise ValueError("County must be a registered in Hexmap.")
 
-        self.counties = [former_county]
+        self.parent = parent
+        self.counties = [rID]
+        self.color = self.parent.rid_catalogue['county'][rID].color
+        self.parent.rid_catalogue['county'][rID].nation = self
+        self.name = "Nation of " + self.parent.rid_catalogue['county'][rID].name
 
     @property
     def tension(self):
@@ -220,47 +230,65 @@ class Nation( Government ):
             avg_spi = self.spirit/(1+len(self.counties))
 
             for count in self.counties:
-                avg_ord += count.order/(1+len(self.counties))
-                avg_war += count.war/(1+len(self.counties))
-                avg_spi += count.spirit/(1+len(self.counties))
+                avg_ord += self.parent.rid_catalogue['county'][count].order/(1+len(self.counties))
+                avg_war += self.parent.rid_catalogue['county'][count].war/(1+len(self.counties))
+                avg_spi += self.parent.rid_catalogue['county'][count].spirit/(1+len(self.counties))
 
-            wip = (self.population/self.subjects)*( ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2)
+            wip = 0
             for count in self.counties:
-                wip += (self.population/self.subjects)*((avg_ord - count.order)**2 + (avg_war - count.war)**2 + (avg_spi - count.spirit)**2)
+                wip += (self.parent.rid_catalogue['county'][count].population/self.subjects)*((avg_ord - self.parent.rid_catalogue['county'][count].order)**2 + (avg_war - self.parent.rid_catalogue['county'][count].war)**2 + (avg_spi - self.parent.rid_catalogue['county'][count].spirit)**2)
 
             wip = sqrt(wip)
             return( wip )
 
     @property
     def subjects( self ):
-        pop = self.population
+        pop = 0
         for county in self.counties:
-            pop += county.population
+            pop += self.parent.rid_catalogue['county'][county].population
         return( pop )
     
     @property
     def total_wealth( self ):
-        wea = self.wealth
+        wea = 0
         for county in self.counties:
-            wea += county.wealth
+            wea += self.parent.rid_catalogue['county'][county].wealth
         return(wea)
 
     
-    def add_county( self, other ):
-        if not isinstance( other, County):
-            raise TypeError("Expected arg of type {}, received {}".format(County, type(other)))
+    def add_county( self, rID ):
+        if not isinstance( other, int):
+            raise TypeError("Expected arg of type {}, received {}".format(int, type(other)))
+        if not rID in self.parent.rid_catalogue['county']:
+            raise ValueError("No registered county of rID {}".format(rID))
         
-        other.color = self.color 
-        self.counties.append( other )
+        if rID in self.counties:
+            return
 
-    def remove_county( self, county_index ):
+        allowed = False
+        for county in self.counties:
+            allowed = ( rID in self.parent.get_region_neighbors( county, 'county' ) )
+            if allowed:
+                break
+        if not allowed:
+            raise ValueError("Unable to add County {} to Nation. They share no border")
+        
+        self.parent.rid_catalogue['county'][rID].color = self.color 
+        self.parent.rid_catalogue['county'][rID].nation = self
+        self.counties.append( rID )
+
+    def remove_county( self, rID ):
         if not isinstance( county_index , int):
             raise TypeError("Expected arg of type {}, received {}".format(int, type(county_index)))
-        if county_index>=len(self.counties):
-            raise ValueError("Cannot remove county of index {}. Only have {} counties".format(county_index, len(self.counties) ))
+        if rID not in self.counties:
+            raise ValueError("County {} not in this Nation".format(rID))
 
-        self.counties[county_index].set_color( 5 )
-        self.counties.pop( county_index )
+        if rID not in self.counties:
+            return
+
+        self.parent.rid_catalogue['county'][rID].set_color( rID )
+        self.counties.pop( self.counties.index(rID) )
+        self.parent.rid_catalogue['county'][rID].nation = None
 
 class Biome(Region):
     """
@@ -329,42 +357,95 @@ class Nation_Brush( basic_tool ):
         self.parent = parent
 
         self._state = 0
+        self._selected = None
         # 0 - neutral
         # 1 - creating a new nation 
-        # 3 - adding to an existing nation
-        # 4 - removing some county from its nation 
+        # 2 - adding to an existing nation
+        # 3 - removing some county from its nation 
+
+    @property 
+    def selected(self):
+        return( self._selected )
+
+    def select(self, nation):
+        if nation is not None:
+            assert(isinstance( nation, Nation))
+
+        self._selected = nation
+
+    def set_state(self, state):
+        assert( isinstance(state, int))
+        if state in [0,1,2,3]:
+            self._state = state
 
     def primary_mouse_released( self, event ):
+        where = Point( event.scenePos().x(), event.scenePos().y() )
+        loc_id = self.parent.main_map.get_id_from_point( where )
+        try:        
+            this_county = self.parent.main_map.id_map['County'][loc_id]
+        except KeyError:
+            return
+            
+        if 'County' not in self.parent.main_map.id_map:
+            return
+
         if self._state == 0:
-            # not really doing anything
-            pass
-        elif self._state == 1:
+            # In a waiting state. If we're in state 0, select the nation under the cursor 
             where = Point( event.scenePos().x(), event.scenePos().y() )
             loc_id = self.parent.main_map.get_id_from_point( where )
-            
-            if 'County' not in self.parent.main_map.id_map:
-                return
-            
             try:        
                 this_county = self.parent.main_map.id_map['County'][loc_id]
             except KeyError:
                 return
 
+            if this_county.nation is not None:
+                self.select(this_county.nation)
+                self.parent.nation_update_gui()
+
+        elif self._state == 1:
             # create the new nation with this county as a base
 
-            new_nation = Nation(this_county)
+            # no registering needed. A nation exists as a nebulous connection between its counties. Once the last such connection is severed, the nation disappears 
+            #   .... and is collected by the Python garbage collector 
+            new_nation = Nation(self.parent.main_map, this_county)
+            self._state = 0
+        elif self._state == 2:
+            # adding to selected nation
+            if self._selected is None:
+                self._state = 0 
+                return
+            else:
+                self._selected.add_county( this_county )
+                self.parent.nation_update_gui()
+        elif self._state == 3:
+            if self._selected is None:
+                self._state = 0
+                return
+            else:
+                self._selected.remove_county( this_county )
+                self.parent.nation_update_gui()
 
     def secondary_mouse_released(self, event):
-        if self._state = 0:
+        if self._state == 0:
             # select the kingdom at the mouse ! 
             pass
+
         elif self._state==1:
             # cancel 
+            self._state = 0
+        elif self._state==2:
+            self._state = 0
+        elif self._state ==3:
             self._state = 0
 
 
     def mouse_moved( self, event ):
         pass
+
+    def drop( self ):
+        self._state = 0
+    def clear(self):
+        self._state = 0
         
 class Road_Brush( path_brush ):
     def __init__(self, parent):

@@ -301,6 +301,50 @@ class Hexmap:
     def drawscale(self):
         copy = self._drawscale
         return( copy )
+    
+    def get_region_neighbors( self, rID, layer):
+        if layer not in self.rid_catalogue:
+            raise ValueError("Layer {} not in catalog.".format(layer))
+        if not isinstance(rID, int):
+            raise TypeError("Invalid rID of type {}".format(type(rID)))
+        if rID not in self.rid_catalogue[layer]:
+            raise ValueError("Region {} not in catalog.".format(rID))
+
+        this_region = self.rid_catalogue[ layer ][rID]
+        if not this_region.known_neighbors:
+            # if this region's neighbors are unknown, let's find them! 
+            
+            neighbor_rids = [ ]
+            vertices = this_region.vertices
+            # go around the perimeter
+            for iter in range(len(vertices)):
+                inside_id, outside_id = self.get_ids_beside_edge( vertices[iter], vertices[(iter+1) %len(vertices)])
+            
+                try:
+                    new_rid = self.id_map[outside_id]
+                    if outside_id not in neighbor_rids:
+                        neighbor_rids.append( outside_id )
+                except KeyError:
+                    continue
+
+            for enclave in this_region.enclaves:
+                # enclave is a list of points
+                for iter in range(len(enclave)):
+                    inside_id, outside_id = self.get_ids_beside_edge( enclave[iter], enclave[(iter+1) %len(enclave)])
+                    try:
+                        new_rid = self.id_map[outside_id]
+                        if outside_id not in neighbor_rids:
+                            neighbor_rids.append( outside_id )
+                    except KeyError:
+                        continue
+
+            # Failing this assertion would imply that there's an issue with the way we look for hexes _outside_ this Region
+            assert( rID not in neighbor_rids )
+            this_region.neighbors = neighbor_rids
+            this_region.known_neighbors = True
+
+        return( this_region.neighbors )
+
 
     def register_new_path( self, target_path , layer):
         if not isinstance( target_path, Path):
@@ -1004,6 +1048,9 @@ class Region:
         # may throw KeyError! That's okay, should be handled downstream 
         self.perimeter = self.parent.catalogue[hex_id].vertices
          
+        self.known_neighbors = False
+        self.neighbors = []
+
     def get_center_size(self):
         """
         Calculates and returns an approximate size of the region. 
@@ -1063,6 +1110,7 @@ class Region:
         
         temp_region = Region( hex_id , self.parent )
         self.merge_with_region( temp_region )
+        self.known_neighbors = False 
 
     def merge_with_region( self, other_region ):
         """
@@ -1071,6 +1119,7 @@ class Region:
         @param other_region     - region to merge with this one
         """
         #TODO: prepare a write up of this algorithm 
+
 
         if not isinstance( other_region, Region):
             raise TypeError("Arg `other_region` is of type {}, expected {}".format(type(other_region), Region))
@@ -1171,7 +1220,8 @@ class Region:
         # these are just added on in
         self.enclaves   += other_region.enclaves 
         self.ids        += other_region.ids
-    
+        self.known_neighbors = False 
+
     def cut_region_from_self( self, other_region):
         # the order these hexes are popped is suuuper important.
         # As is, this will lead to unexpected behavior!! 
@@ -1179,6 +1229,7 @@ class Region:
             if ID in self.ids:
                 self.pop_hexid_from_self( ID )
 
+        self.known_neighbors = False 
         
     def pop_hexid_from_self( self, hex_id ):
         """
@@ -1189,6 +1240,8 @@ class Region:
 
         #TODO: Case where removing a hex splits the region into 2-3 smaller regions 
         #           + such cases are distringuished by their perimeters having more than 1 border with the pop hex
+
+        
 
         if len(self.ids)==1:
             if self.ids[0]==hex_id:
@@ -1343,6 +1396,7 @@ class Region:
 
         
         self.ids.pop( which )
+        self.known_neighbors = False 
 
 def _glom( original, new, start_index):
     """

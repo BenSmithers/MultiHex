@@ -6,7 +6,7 @@ from MultiHex.guis.civ_gui import editor_gui_window
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import clicker_control, basic_tool, region_brush, QEntityItem
-from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush
+from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -52,6 +52,7 @@ class editor_gui(QMainWindow):
         self.biome_control.small_font = True
         self.county_control = County_Brush( self )
         self.county_control.small_font = False
+        self.nation_control = Nation_Brush(self)
 
         self.scene._active = self.entity_control
 
@@ -102,6 +103,14 @@ class editor_gui(QMainWindow):
         self.ui.county_list_entry = QtGui.QStandardItemModel()
         self.ui.count_city_list.setModel( self.ui.county_list_entry)
         self.ui.pushButton.clicked.connect( self.county_apply )
+        self.ui.count_king_button.clicked.connect( self.county_kingdom_button )
+
+        # Nation List Buttons
+        self.ui.nation_list_entry = QtGui.QStandardItemModel()
+        self.ui.listWidget.setModel( self.ui.nation_list_entry )
+        self.ui.king_apply.clicked.connect( self.nation_apply_button )
+        self.ui.king_count_new_but.clicked.connect(self.nation_add_to)
+        self.ui.king_count_rem_but.clicked.connect(self.nation_remove_from)
 
         # page number can be accessed from
         # ui.toolBox.currentIndex() -> number
@@ -450,10 +459,14 @@ class editor_gui(QMainWindow):
             self.ui.horizontalSlider_2.setValue(this_county.war*100. )
             self.ui.horizontalSlider_3.setValue(this_county.spirit*100. )
             
+            if this_county.nation is None:
+                self.ui.count_king_button.setText("Create New Kingdom")
+            else:
+                self.ui.count_king_button.setText("Edit Kingdom")
 
             for eID in self.main_map.rid_catalogue['county'][this_rid].eIDs:
                 if isinstance( self.main_map.eid_catalogue[eID], Town):
-                    self.ui.county_list_entry.appendRow( QEntityItem(self.main_map.eid_catalogue[eID].name , eID))\
+                    self.ui.county_list_entry.appendRow( QEntityItem(self.main_map.eid_catalogue[eID].name , eID))
                         
             self.county_control.redraw_region( this_rid )
 
@@ -469,6 +482,64 @@ class editor_gui(QMainWindow):
             this_county.set_order(float(self.ui.horizontalSlider.value())/100. )
             this_county.set_war(float(self.ui.horizontalSlider_2.value())/100.)
             this_county.set_spirit(float(self.ui.horizontalSlider_3.value())/100. )
+
+            self.county_update_with_selected()
+
+    def county_kingdom_button(self):
+        this_rid = self.county_control.selected_rid
+
+        if this_rid is None:
+            pass
+        else:
+            this_county = self.main_map.rid_catalogue['county'][this_rid]
+            if this_county.nation is None:
+                new_nation = Nation(self.main_map, this_rid)
+                self.nation_control.select( new_nation )
+            else:
+                self.nation_control.select( this_county.nation )
+            
+            self.nation_update_gui()
+
+            self.scene._active.drop()
+            self.scene._active = self.nation_control
+            self.ui.toolBox.setCurrentIndex(4)
+
+    def nation_update_gui(self):
+        self.ui.toolBox.setCurrentIndex(4)
+        self.ui.nation_list_entry.clear()
+        this_nation = self.nation_control.selected
+
+        if this_nation is None:
+            self.ui.king_name_edit.setText("")
+            self.ui.king_subj_disp.setText("")
+            self.ui.king_weal_disp.setText("")
+            self.ui.king_gdg_disp.setText("")
+        else:
+            self.ui.king_name_edit.setText( this_nation.name )
+            self.ui.king_subj_disp.setText( str(this_nation.subjects) )
+            self.ui.king_weal_disp.setText( str(this_nation.total_wealth) )
+            if this_nation.subjects==0:
+                self.ui.king_gdg_disp.setText( "NaN" )
+            else:
+                self.ui.king_gdg_disp.setText( '{:06.2f}'.format(float(this_nation.total_wealth)/this_nation.subjects) )
+            for rID in self.nation_control.selected.counties:
+                self.ui.nation_list_entry.appendRow( QEntityItem(self.main_map.rid_catalogue['county'][rID].name, rID ))
+
+    def nation_add_to(self):
+        if self.nation_control.selected is not None:
+            self.nation_control.set_state(2)
+
+    def nation_remove_from(self):
+        if self.nation_control.selected is not None:
+            self.nation_control.set_state(3)
+
+    def nation_apply_button(self):
+        this_nation = self.nation_control.selected
+
+        if this_nation is None:
+            pass
+        else:
+            this_nation.name = self.ui.name_edit.text()
 
 
     def hand_button_toolbar(self):
