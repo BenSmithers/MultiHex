@@ -540,6 +540,9 @@ class entity_brush(basic_tool):
         # icon we are writing with
         self._icon = None 
 
+        self.draw_entities = True
+        self.draw_settlements = True
+
         self._settlement = Settlement
     
     @property
@@ -1053,6 +1056,7 @@ class region_brush(basic_tool):
         self._drawn_names = {}
 
         self.draw_borders = False
+        self.draw_names = True 
 
         self._type = Region
 
@@ -1306,8 +1310,7 @@ class region_brush(basic_tool):
         """
 
         self.redraw_region_text( reg_id )
-        if not self.draw_borders:
-            return()
+
 
         #self.QBrush.setStyle(6)
         self.QBrush.setStyle(1)
@@ -1316,6 +1319,10 @@ class region_brush(basic_tool):
 
         if reg_id in self._drawn_regions:
             self.parent.scene.removeItem( self._drawn_regions[ reg_id ] )
+            self._drawn_regions[reg_id] = None
+
+        if not self.draw_borders:
+            return()
         
         try:
             reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
@@ -1346,6 +1353,13 @@ class region_brush(basic_tool):
         """
         reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
 
+        if rid in self._drawn_names:
+            self.parent.scene.removeItem( self._drawn_names[ rid ] )
+            self._drawn_names[ rid ] = None 
+
+        if not self.draw_names:
+            return
+
         if reg_obj.name=="":
             return
 
@@ -1358,8 +1372,7 @@ class region_brush(basic_tool):
         else:
             dname = " ".join(dname)
 
-        if rid in self._drawn_names:
-            self.parent.scene.removeItem( self._drawn_names[ rid ] )
+
         
         drop = QGraphicsDropShadowEffect()
         drop.setOffset(1)

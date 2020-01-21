@@ -64,7 +64,13 @@ class editor_gui(QMainWindow):
         self.ui.actionQuit.triggered.connect( self.go_away )
         self.ui.actionSave.triggered.connect( self.save_map )
         self.ui.actionSave_As.triggered.connect( self.save_as)
-        
+        self.ui.actionBiome_Borders.triggered.connect( self.action_biome_bord )
+        self.ui.actionCounty_Borders.triggered.connect(self.action_county_bord )
+        self.ui.actionBiome_Names.triggered.connect( self.action_biome_names )
+        self.ui.actionCounty_Names.triggered.connect( self.action_county_names )
+        self.ui.actionTowns.triggered.connect( self.action_towns )
+        self.ui.actionLocations.triggered.connect( self.action_towns )
+
         #toolbar buttons
         self.ui.ent_select_button_0.clicked.connect(  self.entity_selector_toolbar)
         self.ui.count_sel_button_1.clicked.connect( self.county_selector_toolbar )
@@ -122,6 +128,36 @@ class editor_gui(QMainWindow):
         self.main_map = Hexmap()
     
         self.ward_accept = False
+
+    def action_biome_names(self):
+        state = self.ui.actionBiome_Names.isChecked()
+        self.biome_control.draw_names = state
+        self._redraw_biomes()
+
+    def action_biome_bord(self):
+        state = self.ui.actionBiome_Borders.isChecked()
+        self.biome_control.draw_borders = state
+        self._redraw_biomes()
+
+    def action_county_bord(self):
+        state = self.ui.actionCounty_Borders.isChecked()
+        self.county_control.draw_borders = state
+        self._redraw_counties()
+        
+    def action_county_names(self):
+        state = self.ui.actionCounty_Names.isChecked()
+        self.county_control.draw_names = state
+        self._redraw_counties()
+
+    def action_towns(self):
+        state = self.ui.actionTowns.isChecked()
+        self.entity_control.draw_settlements = state
+        self._redraw_entities()
+
+    def action_locations(self):
+        state = self.ui.actionLocations.isChecked()
+        self.entity_control.draw_entities = state
+        self._redraw_entities()
 
     def road_item_clicked( self , index=None):
         item = self.ui.road_list_entry.itemFromIndex(index)
@@ -603,17 +639,33 @@ class editor_gui(QMainWindow):
         self.file_name = file_name 
         
         print("redrawing")
+        self._redraw_hexes()
+        self._redraw_biomes()
+
+        # draw all the counties and roads and crap
+        self.writer_control.redraw_rivers()
+        self._redraw_entities()
+        self._redraw_roads()
+        self._redraw_counties()
+
+    def _redraw_hexes(self):
         for ID in self.main_map.catalogue: 
             self.writer_control.redraw_hex( ID )
-
+    def _redraw_biomes(self):
         if 'biome' in self.main_map.rid_catalogue :
             for rid in self.main_map.rid_catalogue['biome']:
                 self.biome_control.redraw_region( rid )
-            
-        self.writer_control.redraw_rivers()
-        
+    def _redraw_entities(self):
         for hexID in self.main_map.eid_map:
             self.entity_control.redraw_entities_at_hex( hexID )
+    def _redraw_roads(self):
+        if self.path_control._path_key in self.main_map.path_catalog:
+            for pID in self.main_map.path_catalog[self.path_catalog._path_key]:
+                self.path_control.draw_path( pID )
+    def _redraw_counties(self):
+        if 'county' in self.main_map.rid_catalogue :
+            for rid in self.main_map.rid_catalogue['county']:
+                self.county_control.redraw_region( rid )
 
 class ward_dialog(QDialog):
     def __init__(self,parent, which, setting):
