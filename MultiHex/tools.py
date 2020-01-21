@@ -8,7 +8,7 @@ from MultiHex.objects import Icons, Entity, Mobile, Settlement
 
 import os # used for some of the icons
 
-from math import sqrt
+from math import sqrt, pi
 rthree =  sqrt(3)
 
 class basic_tool:
@@ -1365,19 +1365,17 @@ class region_brush(basic_tool):
         drop.setOffset(1)
         center, extent = reg_obj.get_center_size()
         font = QtGui.QFont("Fantasy")
+        new_color= QtGui.QColor( 250, 250, 250)
         if self.small_font:
-            new_color= QtGui.QColor( 50, 50, 50)
             font_size = 10
         else:
-            new_color= QtGui.QColor( 250, 250, 250)
             font_size = mult_factor*max( 12, int(extent.magnitude / len(reg_obj.name)))
 
         font.setPointSize( font_size )
         self._drawn_names[rid] = self.parent.scene.addText( dname, font )
         self._drawn_names[rid].setPos( center.x - 0.5*extent.x, center.y )
-
+        self._drawn_names[rid].setDefaultTextColor( new_color )
         if not self.small_font:
-            self._drawn_names[rid].setDefaultTextColor( new_color )
             self._drawn_names[rid].setGraphicsEffect( drop )
             self._drawn_names[rid].setZValue(15)
         else:
@@ -1391,6 +1389,7 @@ class region_brush(basic_tool):
         if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
+
 
     def clear(self):
         self._drawn_names = {}

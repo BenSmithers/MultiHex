@@ -303,6 +303,9 @@ class Hexmap:
         return( copy )
     
     def get_region_neighbors( self, rID, layer):
+        """
+        Returns the Region IDs of those regions neighboring the provided Region with ID `rID`
+        """
         if layer not in self.rid_catalogue:
             raise ValueError("Layer {} not in catalog.".format(layer))
         if not isinstance(rID, int):
@@ -315,15 +318,15 @@ class Hexmap:
             # if this region's neighbors are unknown, let's find them! 
             
             neighbor_rids = [ ]
-            vertices = this_region.vertices
+            vertices = this_region.perimeter
             # go around the perimeter
             for iter in range(len(vertices)):
                 inside_id, outside_id = self.get_ids_beside_edge( vertices[iter], vertices[(iter+1) %len(vertices)])
             
                 try:
-                    new_rid = self.id_map[outside_id]
-                    if outside_id not in neighbor_rids:
-                        neighbor_rids.append( outside_id )
+                    new_rid = self.id_map[layer][outside_id]
+                    if new_rid not in neighbor_rids:
+                        neighbor_rids.append( new_rid )
                 except KeyError:
                     continue
 
@@ -332,9 +335,9 @@ class Hexmap:
                 for iter in range(len(enclave)):
                     inside_id, outside_id = self.get_ids_beside_edge( enclave[iter], enclave[(iter+1) %len(enclave)])
                     try:
-                        new_rid = self.id_map[outside_id]
-                        if outside_id not in neighbor_rids:
-                            neighbor_rids.append( outside_id )
+                        new_rid = self.id_map[layer][outside_id]
+                        if new_rid not in neighbor_rids:
+                            neighbor_rids.append( new_rid )
                     except KeyError:
                         continue
 

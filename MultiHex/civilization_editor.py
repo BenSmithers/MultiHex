@@ -111,6 +111,7 @@ class editor_gui(QMainWindow):
         self.ui.king_apply.clicked.connect( self.nation_apply_button )
         self.ui.king_count_new_but.clicked.connect(self.nation_add_to)
         self.ui.king_count_rem_but.clicked.connect(self.nation_remove_from)
+        self.ui.king_dissolve_but.clicked.connect(self.nation_dissolve)
 
         # page number can be accessed from
         # ui.toolBox.currentIndex() -> number
@@ -525,13 +526,33 @@ class editor_gui(QMainWindow):
             for rID in self.nation_control.selected.counties:
                 self.ui.nation_list_entry.appendRow( QEntityItem(self.main_map.rid_catalogue['county'][rID].name, rID ))
 
+        self.update_state()
+
+    def update_state(self):
+        
+        the_state =self.nation_control._state
+        if the_state == 0:
+            self.ui.king_state.setText('...')
+        elif the_state==1:
+            self.ui.king_state.setText('Creating Kingdom')
+        elif the_state==2:
+            self.ui.king_state.setText('Adding to Kingdom')
+        elif the_state==3:
+            self.ui.king_state.setText('Removing From Kingdom')
+
     def nation_add_to(self):
+        self.scene._active.drop()
+        self.scene._active = self.nation_control
         if self.nation_control.selected is not None:
             self.nation_control.set_state(2)
+        self.update_state()
 
     def nation_remove_from(self):
+        self.scene._active.drop()
+        self.scene._active = self.nation_control
         if self.nation_control.selected is not None:
             self.nation_control.set_state(3)
+        self.update_state()
 
     def nation_apply_button(self):
         this_nation = self.nation_control.selected
@@ -541,6 +562,8 @@ class editor_gui(QMainWindow):
         else:
             this_nation.name = self.ui.name_edit.text()
 
+    def nation_dissolve(self):
+        pass
 
     def hand_button_toolbar(self):
         print("hand click")
@@ -553,6 +576,7 @@ class editor_gui(QMainWindow):
         self.entity_control.clear()
         self.writer_control.clear()
         self.biome_control.clear()
+        self.county_control.clear()
 
         self.scene._held = None
 
