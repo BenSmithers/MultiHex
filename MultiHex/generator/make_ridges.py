@@ -108,8 +108,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     # choose a direction the ridgeline will preferably go, and spread around that direction
 
     direction = 360*rnd.random()
-    sigma       = config['sigma']
-    avg_range   = config['avg_range']
+    sigma       = config['sigma']  # 40.0
+    avg_range   = config['avg_range']  # 18.0
 
 
     # build the neighbor function
@@ -122,8 +122,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 #    angles = [ 90., -90., 30., -30., 150., -150.]
     angles = [150., 90., 30., -30., -90., -150]
     neighbor_weights = [ distribution( angle ) for angle in angles]
-
-    # calculate CDF of neighbor weights 
+    print("DEBUG: Neighbor weights for ridges {}: ".format(neighbor_weights))
     neighbor_cdf = [0. for weight in neighbor_weights]
     for index in range(len(neighbor_weights)):
         if index == 0:
@@ -131,9 +130,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         else:
             neighbor_cdf[index] = neighbor_cdf[index - 1] + neighbor_weights[index]
 
-
-    #print("Using neighbor weights {}".format(neighbor_weights))
-    #print("and neighbor cdf {}".format(neighbor_cdf))
+    print("and neighbor cdf {}".format(neighbor_cdf))
 
     while len(ids_to_propagate)!=0:
         if rnd.random()>(1.-(1./avg_range)):

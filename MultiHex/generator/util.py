@@ -42,8 +42,7 @@ def angle_difference( theta_1, theta_2 ):
 # neighbors  = [ 90, 270, 30, 330, 150, 210 ]
 def get_distribution( direction, variance=20. ):
     normalization = 0
-#    variance = 20.
-    angles = [ 90, -90, 30, -30, 150, -150 ]
+    angles = [150, 90, 30, -30, -90, -150]
 
     # calculate normalization
     for angle in angles:
