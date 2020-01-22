@@ -730,21 +730,30 @@ class entity_brush(basic_tool):
             if eID in self._drawn_entities:
                 self.parent.scene.removeItem( self._drawn_entities[eID])
                 del self._drawn_entities[eID]
+
+        if not self.draw_entities:
+            return
         
         which_eID = None
         for eID in eIDs:
+            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], self._settlement)
+            
+            if is_set and (not self.draw_settlements):
+                continue
+
             if which_eID is None:
                 which_eID = eID 
                 continue
             
+            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], self._settlement )
+
             is_mob = isinstance( self.parent.main_map.eid_catalogue[eID], Mobile )
             if is_mob:
                 print("Don't know how to draw a mob")
                 continue
 
-            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], self._settlement)
-            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], self._settlement )
             
+
             # if the chosen one is a settlement and this one isn't, skip
             if other_is_set and (not is_set):
                 continue
@@ -756,6 +765,9 @@ class entity_brush(basic_tool):
                 # choose the one with the higher population
                 if self.main_map.eid_catalogue[eID].population > self.main_map.eid_catalogue[which_eID].population:
                     which_eID = eID
+
+        if which_eID is None:
+            return
 
         self.draw_entity( which_eID )    
 
@@ -932,6 +944,7 @@ class hex_brush(basic_tool):
             # if this hex has been drawn, redraw it! 
             if hex_id in self.drawn_hexes:
                 self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
+                del self.drawn_hexes[hex_id]
 
             # get the pen ready (does the outlines)
             # may raise key error 
@@ -1319,7 +1332,7 @@ class region_brush(basic_tool):
 
         if reg_id in self._drawn_regions:
             self.parent.scene.removeItem( self._drawn_regions[ reg_id ] )
-            self._drawn_regions[reg_id] = None
+            del self._drawn_regions[reg_id]
 
         if not self.draw_borders:
             return()
@@ -1355,7 +1368,7 @@ class region_brush(basic_tool):
 
         if rid in self._drawn_names:
             self.parent.scene.removeItem( self._drawn_names[ rid ] )
-            self._drawn_names[ rid ] = None 
+            del self._drawn_names[ rid ]
 
         if not self.draw_names:
             return
