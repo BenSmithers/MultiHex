@@ -148,8 +148,8 @@ class editor_gui(QMainWindow):
         for ID in self.main_map.catalogue: 
             self.writer_control.redraw_hex( ID )
 
-        if 'biome' in self.main_map.rid_catalogue :
-            for rid in self.main_map.rid_catalogue['biome']:
+        if self.region_control.r_layer in self.main_map.rid_catalogue :
+            for rid in self.main_map.rid_catalogue[self.region_control.r_layer]:
                 self.region_control.redraw_region( rid )
             
         self.writer_control.redraw_rivers()
