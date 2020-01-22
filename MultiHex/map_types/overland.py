@@ -1,8 +1,8 @@
-from MultiHex.core import Hex, Point, Region, Path
+from MultiHex.core import Hex, Point, Region, Path, Hexmap
 from MultiHex.core import RegionMergeError, RegionPopError
 
-from MultiHex.objects import Settlement
-from MultiHex.tools import basic_tool, hex_brush
+from MultiHex.objects import Settlement, Government
+from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool
 
 from PyQt5 import QtGui
 
@@ -20,6 +20,8 @@ Entries:
     OHex            - Hex implementation for land hexes
 """
 
+default_p = Point(0.0,0.0)
+
 class Town( Settlement ):
     """
     Implements settlements for overland medieval towns! 
@@ -28,9 +30,12 @@ class Town( Settlement ):
         Settlement.__init__( self, name, location, is_ward )
 
         self.walled = False 
-        
-        # gold! 
-        self.wealth = 1
+       
+    def update_icon(self):
+        temp = self.size.lower() 
+
+        if temp!="ward":
+            self.icon = temp
 
     @property
     def size( self ):
@@ -40,7 +45,7 @@ class Town( Settlement ):
             return("Ward")
         
         if total_pop < 10:
-            return("Hamlet")
+            return("Village")
         elif total_pop < 150:
             return("Village") 
         elif total_pop < 1000:
@@ -62,6 +67,8 @@ class Road(Path):
 
         self.quality = 1.50 
 
+        self.z_value = 3
+
 class River(Path):
     """
     Implements `Path`
@@ -76,6 +83,8 @@ class River(Path):
         self.tributaries = None
 
         self._max_len = 20
+        
+        self.z_value = 2
 
     def join_with( self, other ):
         """
@@ -126,13 +135,41 @@ class River(Path):
         return(0)
 
 
-class County(Region):
+class County(Region, Government):
     """
     Implements the Region class for Counties. 
     """
 
     def __init__(self, hex_id, parent):
         Region.__init__(self, hex_id, parent)
+        Government.__init__(self) 
+
+        self.nation = None
+
+    @property
+    def tension(self):
+        these_ids = len(self.eIDs)
+        if these_ids==0:
+            return(0)
+        else:
+            towns = list(filter( (lambda x:  isinstance(self.parent.main_map.eid_catalogue[x], Town)), these_ids))
+            
+            avg_ord = self.order/( 1+len(towns))
+            avg_war = self.war/( 1+len(towns))
+            avg_spi = self_spi/( 1+len(towns))
+            
+            for town in towns:
+                avg_ord += (town.population/self.population)*ward.order/(1+len(towns))
+                avg_war += (town.population/self.population)*ward.war/(1+len(towns))
+                avg_spi += (town.population/self.population)*ward.spirit/(1+len(towns))
+
+            wip = ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2
+            for town in towns:
+                (avg_ord - town.order)**2 + (avg_war - town.war)**2 + (avg_spi - town.spirit)**2
+
+            wip = sqrt(wip)
+            return(wip)
+
 
     @property
     def wealth( self ):
@@ -163,45 +200,104 @@ class County(Region):
                 pop += self.parent.eid_catalogue[eID].population 
         return( pop )
 
-class Kingdom( County ):
+class Nation( Government ):
     """
-    A Collection of Counties. One County serves as the seat of the Kingdom, and that's this one. 
+    A Collection of Counties. One County serves as the seat of the Nation, and that's this one. 
     """
-    def __init__(self, hex_id, parent):
-        County.__init__(self, hex_id, parent)
+    def __init__(self, parent, rID):
+        """
+        Must be constructed with a parent Hexmap and the rID of the first constituent County 
+        """
+        assert( isinstance( rID, int))
+        assert( isinstance( parent, Hexmap))
+        Government.__init__(self)
+        
+        self._county_key = 'county'
 
-        self.counties = []
-   
+        if not rID in parent.rid_catalogue[self._county_key]:
+            raise ValueError("County must be a registered in Hexmap.")
+
+        self.parent = parent
+        self.counties = [rID]
+        self.color = self.parent.rid_catalogue[self._county_key][rID].color
+        self.parent.rid_catalogue[self._county_key][rID].nation = self
+        self.name = "Kingdom of " + self.parent.rid_catalogue[self._county_key][rID].name
+
+    @property
+    def tension(self):
+
+        if len(self.counties)==0:
+            return(0)
+        else:
+            # get averages! 
+            avg_ord = self.order/(1+len(self.counties))
+            avg_war = self.war/(1+len(self.counties))
+            avg_spi = self.spirit/(1+len(self.counties))
+
+            for count in self.counties:
+                avg_ord += self.parent.rid_catalogue[self._county_key][count].order/(1+len(self.counties))
+                avg_war += self.parent.rid_catalogue[self._county_key][count].war/(1+len(self.counties))
+                avg_spi += self.parent.rid_catalogue[self._county_key][count].spirit/(1+len(self.counties))
+
+            wip = 0
+            for count in self.counties:
+                wip += (self.parent.rid_catalogue[self._county_key][count].population/self.subjects)*((avg_ord - self.parent.rid_catalogue[self._county_key][count].order)**2 + (avg_war - self.parent.rid_catalogue[self._county_key][count].war)**2 + (avg_spi - self.parent.rid_catalogue[self._county_key][count].spirit)**2)
+
+            wip = sqrt(wip)
+            return( wip )
+
     @property
     def subjects( self ):
-        pop = self.population
+        pop = 0
         for county in self.counties:
-            pop += county.population
+            pop += self.parent.rid_catalogue[self._county_key][county].population
         return( pop )
     
     @property
     def total_wealth( self ):
-        wea = self.wealth
+        wea = 0
         for county in self.counties:
-            wea += county.wealth
+            wea += self.parent.rid_catalogue[self._county_key][county].wealth
         return(wea)
 
     
-    def add_county( self, other ):
-        if not isinstance( other, County):
-            raise TypeError("Expected arg of type {}, received {}".format(County, type(other)))
+    def add_county( self, rID ):
+        if not isinstance( rID, int):
+            raise TypeError("Expected arg of type {}, received {}".format(int, type(rID)))
+        if not rID in self.parent.rid_catalogue[self._county_key]:
+            raise ValueError("No registered county of rID {}".format(rID))
         
-        other.color = self.color 
-        self.counties.append( other )
+        if rID in self.counties:
+            return
 
-    def remove_county( self, county_index ):
-        if not isinstance( county_index , int):
-            raise TypeError("Expected arg of type {}, received {}".format(int, type(county_index)))
-        if county_index>=len(self.counties):
-            raise ValueError("Cannot remove county of index {}. Only have {} counties".format(county_index, len(self.counties) ))
+        # if it's already part of another Nation, remove it from that nation
+        if self.parent.rid_catalogue[self._county_key][rID].nation is not None:
+            self.remove_county( rID )
 
-        self.counties[county_index].set_color( 5 )
-        self.counties.pop( county_index )
+        allowed = False
+        for county in self.counties:
+            allowed = ( rID in self.parent.get_region_neighbors( county, self._county_key) )
+            if allowed:
+                break
+        if not allowed:
+            raise ValueError("Unable to add County {} to Nation. They share no border".format(rID))
+        
+        self.parent.rid_catalogue[self._county_key][rID].color = self.color 
+        self.parent.rid_catalogue[self._county_key][rID].nation = self
+        self.counties.append( rID )
+
+    def remove_county( self, rID ):
+        if not isinstance( rID , int):
+            raise TypeError("Expected arg of type {}, received {}".format(int, type(rID)))
+        if rID not in self.counties:
+            raise ValueError("County {} not in this Nation".format(rID))
+
+        if rID not in self.counties:
+            return
+
+        self.parent.rid_catalogue[self._county_key][rID].set_color( rID )
+        self.parent.rid_catalogue[self._county_key][rID].nation = None
+        self.counties.pop( self.counties.index(rID) )
 
 class Biome(Region):
     """
@@ -214,7 +310,175 @@ class Biome(Region):
 
 
 
-default_p = Point(0.0,0.0)
+
+class River_Brush( path_brush ):
+    def __init__(self, parent):
+        path_brush.__init__(self,parent, True)
+        self._creating = River
+
+        self._path_key = "rivers"
+
+class Biome_Brush( region_brush):
+    def __inti__(self, parent):
+        region_brush.__init__(self, parent, 'biome')
+
+        self.draw_borders = False
+        self._type = Biome
+
+    def secondary_mouse_released(self, event):
+        region_brush.secondary_mouse_released(self, event)
+
+        if self.selected_rid is None:
+            self.parent.ui.RegEdit.setText("")
+        else:
+            self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
+
+
+class County_Brush( region_brush ):
+    def __init__(self, parent):
+        region_brush.__init__(self, parent, 'county')
+
+        self.draw_borders = True
+        self.selector_mode = True
+        self._type = County
+
+        self.default_name = "County"
+
+        self.in_nation = None
+
+    def primary_mouse_released(self, event):
+        region_brush.primary_mouse_released( self, event )
+
+        self.parent.county_update_with_selected()
+
+    def secondary_mouse_released(self, event):
+        if self.selected_rid is not None:
+            if self.selector_mode:
+                self.selector_mode = False
+            else:
+                self.selector_mode = True
+        else:
+            self.selected_rid = None
+            self.selector_mode = True
+
+class Nation_Brush( basic_tool ):
+    def __init__(self, parent):
+        self.parent = parent
+
+        self._county_key = 'county'
+
+        self._state = 0
+        self._selected = None
+        # 0 - neutral
+        # 1 - creating a new nation 
+        # 2 - adding to an existing nation
+        # 3 - removing some county from its nation 
+
+    @property 
+    def selected(self):
+        return( self._selected )
+
+    def select(self, nation):
+        if nation is not None:
+            assert(isinstance( nation, Nation))
+
+        self._selected = nation
+
+    def set_state(self, state):
+        assert( isinstance(state, int))
+        if state in [0,1,2,3]:
+            self._state = state
+        else:
+            raise NotImplementedError("Unrecognized state {}".format(state))
+
+        self.parent.update_state()
+
+    def primary_mouse_released( self, event ):
+        where = Point( event.scenePos().x(), event.scenePos().y() )
+        loc_id = self.parent.main_map.get_id_from_point( where )
+        try:        
+            this_county_rid = self.parent.main_map.id_map[self._county_key][loc_id]
+        except KeyError:
+            return
+            
+        if self._county_key not in self.parent.main_map.id_map:
+            return
+
+        if self._state == 0:
+            # In a waiting state. If we're in state 0, select the nation under the cursor 
+            where = Point( event.scenePos().x(), event.scenePos().y() )
+            loc_id = self.parent.main_map.get_id_from_point( where )
+            try:        
+                this_county_rid = self.parent.main_map.id_map[self._county_key][loc_id]
+            except KeyError:
+                return
+
+            if self.parent.main_map.rid_catalogue[self._county_key][this_county_rid].nation is not None:
+                self.select(self.parent.main_map.rid_catalogue[self._county_key][this_county_rid].nation)
+                self.parent.nation_update_gui()
+
+        elif self._state == 1:
+            # create the new nation with this county as a base
+
+            # no registering needed. A nation exists as a nebulous connection between its counties. Once the last such connection is severed, the nation disappears 
+            #   .... and is collected by the Python garbage collector 
+            new_nation = Nation(self.parent.main_map, this_county_rid)
+            self._state = 0
+        elif self._state == 2:
+            # adding to selected nation
+            if self._selected is None:
+                self.set_state( 0 )
+                print("nothing was selected")
+                return
+            else:
+                self._selected.add_county( this_county_rid )
+                self.parent.nation_update_gui()
+                
+        elif self._state == 3:
+            if self._selected is None:
+                self.set_state( 0 )
+                print("nothing was selected")
+                return
+            else:
+                self._selected.remove_county( this_county_rid )
+                self.parent.nation_update_gui()
+
+        self.parent.county_control.redraw_region(this_county_rid)
+
+    def secondary_mouse_released(self, event):
+        if self._state == 0:
+            # select the kingdom at the mouse ! 
+            pass
+
+        elif self._state==1:
+            # cancel 
+            self.set_state( 0 )
+        elif self._state==2:
+            self.set_state( 0 )
+        elif self._state ==3:
+            self.set_state( 0 )
+
+
+    def mouse_moved( self, event ):
+        pass
+
+    def drop( self ):
+        self._state = 0
+    def clear(self):
+        self._state = 0
+        
+class Road_Brush( path_brush ):
+    def __init__(self, parent):
+        path_brush.__init__(self,parent, False)
+        self._creating = Road
+
+        self._path_key = "roads"
+
+
+class OEntity_Brush( entity_brush ):
+    def __init__(self, parent):
+        entity_brush.__init__(self, parent)
+        self._settlement = Town
 
 class OHex_Brush( hex_brush ):
     def __init__(self, parent):
@@ -245,9 +509,9 @@ class OHex_Brush( hex_brush ):
             self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
             self._river_drawn[-1].setZValue(2)
 
-        for river in self.parent.main_map.paths['rivers']:
-            assert( isinstance( river, River) )
-            draw_river( river )
+        for pID in self.parent.main_map.path_catalog['rivers']:
+            assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
+            draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
 
     def update_selection(self):
         self.set_sliders( self._selected_id )

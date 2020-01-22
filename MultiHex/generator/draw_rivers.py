@@ -120,9 +120,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             
             # need to make sure this isn't on another river
             try_again = False
-            for river in main_map.paths['rivers']:
+            for pID in main_map.path_catalog['rivers']:
                 # recursively check a river and its vertices... this is super expensive, so we wait until the very end
-                if point_on_river( this_hex.vertices[start_point] , river ):
+                if point_on_river( this_hex.vertices[start_point] , main_map.path_catalog['rivers'][pID] ):
                     try_again = True
                     break
             # if it is, let's try again
@@ -193,9 +193,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 
                 # before setting the river border bools, we should see if we're about to hit the end of another river...
                 bad = False
-                for river in main_map.paths['rivers']:
+                for pID in main_map.path_catalog['rivers']:
                     # check if the new point is the source of this river 
-                    if point_hits_source( verts[which_index], river ):
+                    if point_hits_source( verts[which_index], main_map.path_catalog['rivers'][pID] ):
                         bad = True
                         break
                 if bad:
@@ -265,12 +265,13 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 # search through the other rivers, find the one with my end on it
                 # fortunately, this river hasn't been registered yet
                 error_code = 1 
-                for river in range(len(main_map.paths['rivers'])):
+                for pID in main_map.path_catalog['rivers']:
                     # recursively tries to join rivers with their tributaries 
                     # Codes:
                     #   0 - merged
                     #   1 - couldn't merge 
-                    error_code = main_map.paths['rivers'][river].join_with( new_river )
+                    
+                    error_code = main_map.path_catalog['rivers'][pID].join_with( new_river )
                     if error_code == 0:
                         break
                     # if it's 1, continue 
@@ -285,17 +286,17 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         else:
             return( None )
 
-    main_map.paths['rivers'] = []
     print("Making Rivers",end='')
+    main_map.path_catalog['rivers'] = {}
     
     counter = 0
-    while len(main_map.paths['rivers'])<n_rivers:
+    while len(main_map.path_catalog['rivers'].keys())<n_rivers:
         if counter%3==0:
             print('.',end='')
         this_riv = make_river()
         if this_riv is not None:
             set_banks( this_riv )
-            main_map.paths['rivers'].append( this_riv )
+            main_map.register_new_path( this_riv , 'rivers')
             counter += 1
 
     save_map( main_map, sim )

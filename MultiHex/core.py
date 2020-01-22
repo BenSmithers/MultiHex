@@ -15,16 +15,12 @@ b.smithers.actual@gmail.com
 Core objects for MultiHex
 
 Objects:
-    basic tool      - interface for clicker control
-    clicker control - interface between GUIs and tools 
     Point           - 2D vector with associated operators
     HexMap          - base upon which all the maps are built
         construct_id 
         deconstruct_id 
     Region          - A perimeter, lists of IDs associated with it, and means to modify this
         glom
-    Entity          - static entity on a Hex
-    Mobile          - a mobile object that travels between hexes
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
@@ -50,9 +46,9 @@ class Point:
         if not is_number(why):
             raise TypeError("Expected type {} for arg 'why', received {}".format(float, type(why)))
 
-        # do the thing
-        self.x = ex
-        self.y = why
+        # protected vector components
+        self._x = ex
+        self._y = why
         
         # use the bool so that we only have to calculate the magnitude once 
         self._mcalculated   = False
@@ -60,6 +56,13 @@ class Point:
         
         self._acalculated   = False
         self._angle         = 0.0
+
+    def normalize(self):
+        self._x /= self.magnitude
+        self._y /= self.magnitude
+
+        self._magnitude = 1.0
+
 
     def __add__(self, obj):
         """
@@ -104,6 +107,18 @@ class Point:
         else:
             # returns a scalar! 
             return( self.x**obj + self.y**obj )
+
+    # functions used to access vector components
+
+    @property
+    def x(self):
+        copy = self._x
+        return( copy )
+
+    @property
+    def y(self):
+        copy = self._y
+        return( copy )
 
     @property
     def magnitude(cls):
@@ -178,6 +193,7 @@ class Hex:
         self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
         self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
 
+
     @property
     def center(self):
         return( Point( self._center.x, self._center.y) )
@@ -237,7 +253,6 @@ class Hexmap:
     Methods:
     @ remove_hex            - unregister hex from catalogue
     @ register_hex          - register a hex in the catalogue
-    @ set_active_hex        - sets hex to "active"
     @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
     @ get_neighbor_outline      - retursn list of points to outline cursor 
     @ points_to_draw        - takes list of map-Points, prepares flattened list of draw coordinates 
@@ -267,7 +282,7 @@ class Hexmap:
         self.eid_catalogue = {} # eID -> Entity obj
         self.eid_map = {} # hex_id -> [ list of eIDs ]
 
-        self.paths = {}
+        self.path_catalog = {}
 
         # overal scaling factor 
         self._drawscale = 15.0
@@ -282,6 +297,87 @@ class Hexmap:
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
 
+    @property 
+    def drawscale(self):
+        copy = self._drawscale
+        return( copy )
+    
+    def get_region_neighbors( self, rID, layer):
+        """
+        Returns the Region IDs of those regions neighboring the provided Region with ID `rID`
+        """
+        if layer not in self.rid_catalogue:
+            raise ValueError("Layer {} not in catalog.".format(layer))
+        if not isinstance(rID, int):
+            raise TypeError("Invalid rID of type {}".format(type(rID)))
+        if rID not in self.rid_catalogue[layer]:
+            raise ValueError("Region {} not in catalog.".format(rID))
+
+        this_region = self.rid_catalogue[ layer ][rID]
+        if not this_region.known_neighbors:
+            # if this region's neighbors are unknown, let's find them! 
+            
+            neighbor_rids = [ ]
+            vertices = this_region.perimeter
+            # go around the perimeter
+            for iter in range(len(vertices)):
+                inside_id, outside_id = self.get_ids_beside_edge( vertices[iter], vertices[(iter+1) %len(vertices)])
+            
+                try:
+                    new_rid = self.id_map[layer][outside_id]
+                    if new_rid not in neighbor_rids:
+                        neighbor_rids.append( new_rid )
+                except KeyError:
+                    continue
+
+            for enclave in this_region.enclaves:
+                # enclave is a list of points
+                for iter in range(len(enclave)):
+                    inside_id, outside_id = self.get_ids_beside_edge( enclave[iter], enclave[(iter+1) %len(enclave)])
+                    try:
+                        new_rid = self.id_map[layer][outside_id]
+                        if new_rid not in neighbor_rids:
+                            neighbor_rids.append( new_rid )
+                    except KeyError:
+                        continue
+
+            # Failing this assertion would imply that there's an issue with the way we look for hexes _outside_ this Region
+            assert( rID not in neighbor_rids )
+            this_region.neighbors = neighbor_rids
+            this_region.known_neighbors = True
+
+        return( this_region.neighbors )
+
+
+    def register_new_path( self, target_path , layer):
+        if not isinstance( target_path, Path):
+            raise TypeError("{} not of type {}, it's a {}!".format(target_path, Path, type(target_path)))
+
+        new_pID = 0
+        if layer not in self.path_catalog:
+            self.path_catalog[layer] = {}
+            print("Note! '{}' not in catalog. Adding... ".format(layer))
+
+        while new_pID in self.path_catalog[layer]:
+            new_pID += 1
+
+        self.path_catalog[layer][ new_pID ]  = target_path 
+
+        return( new_pID )
+
+    def unregister_path( self, pID, layer):
+        if not type(pID)==int:
+            raise Type("Expected {} for rivid, got {}".format(int, type(pID)))
+        
+        if layer not in self.path_catalog:
+            raise ValueError("{} is not a layer in the path catalog".format( layer))
+
+        if pID not in self.path_catalog[layer]:
+            raise ValueError("pID {} not in Path catalog".format(pID))
+
+        del self.path_catalog[layer][pID] 
+
+
     def register_new_entity( self, target_entity):
         """
         Registers a new entity with the Entity catalogue and map
@@ -291,7 +387,7 @@ class Hexmap:
         if not isinstance( target_entity, Entity):
             raise TypeError("Cannot register non-Entity of type {}".format( type(target_entity)) )
        
-        if (target_entity.location is not None) and (target_entity.location not in self.id_catalogue):
+        if (target_entity.location is not None) and (target_entity.location not in self.catalogue):
             # -1 represents 'outside' the map! 
             target_entity.set_location = -1 
 
@@ -531,7 +627,7 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
-        assert( target_hex._radius == self._drawscale )
+        assert( target_hex._radius == self.drawscale )
         if not isinstance(target_hex, Hex):
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
@@ -560,6 +656,8 @@ class Hexmap:
 
 
     def set_active_hex(self, id):
+        # totally deprecated... I think 
+
         if self._active_id is not None:
             self.catalogue[self._active_id].outline = '#ddd'
         
@@ -614,16 +712,16 @@ class Hexmap:
         perimeter_points = []
         
         if size==1:
-            perimeter_points +=[ center + Point( -0.5, 0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point(  0.5, 0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point(  1.0, 0.0)*self._drawscale]
-            perimeter_points +=[ center + Point(  0.5,-0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point( -0.5,-0.5*rthree)*self._drawscale]
-            perimeter_points +=[ center + Point( -1.0, 0.0)*self._drawscale]
+            perimeter_points +=[ center + Point( -0.5, 0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point(  0.5, 0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point(  1.0, 0.0)*self.drawscale]
+            perimeter_points +=[ center + Point(  0.5,-0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point( -0.5,-0.5*rthree)*self.drawscale]
+            perimeter_points +=[ center + Point( -1.0, 0.0)*self.drawscale]
             return(perimeter_points)
         else:
             # these are shifts to the three unique vertices on the Northern Hexes' outer perimeter
-            vector_shift = [ Point(self._drawscale, self._drawscale*rthree),Point(self._drawscale*0.5, 3*rthree*0.5*self._drawscale) , Point(-self._drawscale*0.5, 3*rthree*0.5*self._drawscale)] 
+            vector_shift = [ Point(self.drawscale, self.drawscale*rthree),Point(self.drawscale*0.5, 3*rthree*0.5*self.drawscale) , Point(-self.drawscale*0.5, 3*rthree*0.5*self.drawscale)] 
             perimeter_points += vector_shift 
             # now we will rotate these over 5 multiples of -60 degrees  (clockwise rotation)
             
@@ -665,10 +763,10 @@ class Hexmap:
         
         if v_type is None:
             print("this shouldn't be called either")
-            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
-            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
 
             if l_up==l_down:
                 v_type = 2
@@ -681,13 +779,13 @@ class Hexmap:
         assert( type(v_type) == int)
 
         if v_type==1:
-            neighbors = [   vertex + (Point(-1.0,  0.0       )*self._drawscale), 
-                            vertex + (Point( 0.5,  0.5*rthree)*self._drawscale), 
-                            vertex + (Point( 0.5, -0.5*rthree)*self._drawscale) ]
+            neighbors = [   vertex + (Point(-1.0,  0.0       )*self.drawscale), 
+                            vertex + (Point( 0.5,  0.5*rthree)*self.drawscale), 
+                            vertex + (Point( 0.5, -0.5*rthree)*self.drawscale) ]
         elif v_type==2:
-            neighbors = [   vertex + (Point( 1.0,  0.0       )*self._drawscale), 
-                            vertex + (Point(-0.5,  0.5*rthree)*self._drawscale), 
-                            vertex + (Point(-0.5, -0.5*rthree)*self._drawscale) ]
+            neighbors = [   vertex + (Point( 1.0,  0.0       )*self.drawscale), 
+                            vertex + (Point(-0.5,  0.5*rthree)*self.drawscale), 
+                            vertex + (Point(-0.5, -0.5*rthree)*self.drawscale) ]
 
         else:
             raise ValueError("Unrecognized vertex type {}".format(v_type))
@@ -715,10 +813,10 @@ class Hexmap:
         if v_type is None:
             print("this shouldn't be called")
             # deduce the vertex type
-            l_up    = self.get_id_from_point( place+Point( -0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            l_down  = self.get_id_from_point( place+Point( -0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
-            r_up    = self.get_id_from_point( place+Point(  0.25*self._drawscale,   rthree*0.25*self._drawscale ))
-            r_down  = self.get_id_from_point( place+Point(  0.25*self._drawscale,-1*rthree*0.25*self._drawscale ))
+            l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            r_up    = self.get_id_from_point( place+Point(  0.25*self.drawscale,   rthree*0.25*self.drawscale ))
+            r_down  = self.get_id_from_point( place+Point(  0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
 
             if l_up==l_down:
                 v_type = 2
@@ -731,13 +829,13 @@ class Hexmap:
         
         assert(type(v_type)==int)
         if v_type==1:
-            return([    self.get_id_from_point( place + Point(1.0 ,  0.0       )*self._drawscale ), 
-                        self.get_id_from_point( place + Point(-0.5,  0.5*rthree)*self._drawscale ),
-                        self.get_id_from_point( place + Point(-0.5, -0.5*rthree)*self._drawscale ) ])
+            return([    self.get_id_from_point( place + Point(1.0 ,  0.0       )*self.drawscale ), 
+                        self.get_id_from_point( place + Point(-0.5,  0.5*rthree)*self.drawscale ),
+                        self.get_id_from_point( place + Point(-0.5, -0.5*rthree)*self.drawscale ) ])
         elif v_type==2:
-            return([    self.get_id_from_point( place + Point(-1.0 , 0.0       )*self._drawscale ), 
-                        self.get_id_from_point( place + Point( 0.5,  0.5*rthree)*self._drawscale ),
-                        self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self._drawscale ) ])
+            return([    self.get_id_from_point( place + Point(-1.0 , 0.0       )*self.drawscale ), 
+                        self.get_id_from_point( place + Point( 0.5,  0.5*rthree)*self.drawscale ),
+                        self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self.drawscale ) ])
 
         else:
             raise ValueError("Invalid Vertex type value: {}".format(v_type))
@@ -760,13 +858,13 @@ class Hexmap:
 
         # verify that this edge is the right length (drawscale)
         diff = end - start 
-        if (diff.magnitude - self._drawscale)/self._drawscale > 0.01:
-            raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self._drawscale))
+        if (diff.magnitude - self.drawscale)/self.drawscale > 0.01:
+            raise ValueError("Edge length is {}, expected {}".format( diff.magnitude, self.drawscale))
         # displacement vector from 'end' object. 
         #       points towards CW hex
          
-        diag_cw  = start + diff*0.5 + Point( diff.y, -diff.x)*0.5*rthree*self._drawscale/diff.magnitude
-        diag_ccw = start + diff*0.5 + Point(-diff.y,  diff.x)*0.5*rthree*self._drawscale/diff.magnitude
+        diag_cw  = start + diff*0.5 + Point( diff.y, -diff.x)*0.5*rthree*self.drawscale/diff.magnitude
+        diag_ccw = start + diff*0.5 + Point(-diff.y,  diff.x)*0.5*rthree*self.drawscale/diff.magnitude
         return( self.get_id_from_point( diag_cw ) , self.get_id_from_point( diag_ccw ) )
 
 
@@ -781,29 +879,56 @@ class Hexmap:
         # keep a copy of the untranslated point! 
         og_point = Point( point.x, point.y )
                 
-        base_idy = int(floor((point.y/( rthree*self._drawscale)) + 0.5) )
-        base_idx = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
+        base_idy = int(floor((point.y/( rthree*self.drawscale)) + 0.5) )
+        base_idx = int(floor((point.x/(3.*self.drawscale)) + (1./3.)))
          
         # this could be the point 
-        candidate_point =Point(base_idx*3*self._drawscale, base_idy*rthree*self._drawscale )
+        candidate_point =Point(base_idx*3*self.drawscale, base_idy*rthree*self.drawscale )
 
          # the secondary grid is shifted over a bit, so let's do the same again... 
-        point.x -= 1.5*self._drawscale
-        point.y -= rthree*self._drawscale*0.5
+        point -= Point( 1.5*self.drawscale, rthree*self.drawscale*0.5)
 
         # recalculate these
-        base_idy_2 = int(floor((point.y/( rthree*self._drawscale)) + 0.5))
-        base_idx_2 = int(floor((point.x/(3.*self._drawscale)) + (1./3.)))
+        base_idy_2 = int(floor((point.y/( rthree*self.drawscale)) + 0.5))
+        base_idx_2 = int(floor((point.x/(3.*self.drawscale)) + (1./3.)))
         
         # this is in the off-grid
-        candidate_point_2 =Point(base_idx_2*3*self._drawscale, base_idy_2*rthree*self._drawscale )
-        candidate_point_2 += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
+        candidate_point_2 =Point(base_idx_2*3*self.drawscale, base_idy_2*rthree*self.drawscale )
+        candidate_point_2 += Point( 1.5*self.drawscale, rthree*self.drawscale*0.5)
         
         if (og_point - candidate_point)**2 < (og_point - candidate_point_2)**2:
             return( construct_id(base_idx, base_idy, True ))
         else:
             return( construct_id(base_idx_2, base_idy_2, False ))
     
+    def get_vert_from_point(self, point):
+        """
+        Returns the closest vertex to the specified point
+
+        @arg point - object of type Point
+        """
+        if not isinstance(point, Point):
+            raise TypeError("Expected type {}, got {}. Ya dun goofed.".format(Point, type(point)))
+
+        loc_id = self.get_id_from_point( point )
+        here = self.get_point_from_id( loc_id )
+
+        temp_hex = Hex( here, self.drawscale )
+        verts = temp_hex.vertices
+        
+        which = 0
+        dist = (verts[0]- point)**2
+
+        for iter in range(len(verts)-1):
+            this_dist = (verts[iter]-point)**2
+
+            if this_dist<dist:
+                which = iter
+                dist = this_dist
+
+        return( verts[which] )
+
+
     def get_point_from_id(self, id):
         """
         Returns the UNTRANSFORMED center of the hex corresponding to the given ID
@@ -812,10 +937,10 @@ class Hexmap:
         x_id, y_id, on_primary_grid = deconstruct_id(id)
         
         # build the poin
-        built_point = Point( x_id*3*self._drawscale, y_id*rthree*self._drawscale )
+        built_point = Point( x_id*3*self.drawscale, y_id*rthree*self.drawscale )
         if not on_primary_grid:
             # transform it if it's on the shifted grid
-            built_point += Point( 1.5*self._drawscale, rthree*self._drawscale*0.5)
+            built_point += Point( 1.5*self.drawscale, rthree*self.drawscale*0.5)
         
         #built_point -= self.draw_relative_to
 
@@ -926,6 +1051,9 @@ class Region:
         # may throw KeyError! That's okay, should be handled downstream 
         self.perimeter = self.parent.catalogue[hex_id].vertices
          
+        self.known_neighbors = False
+        self.neighbors = []
+
     def get_center_size(self):
         """
         Calculates and returns an approximate size of the region. 
@@ -985,6 +1113,7 @@ class Region:
         
         temp_region = Region( hex_id , self.parent )
         self.merge_with_region( temp_region )
+        self.known_neighbors = False 
 
     def merge_with_region( self, other_region ):
         """
@@ -993,6 +1122,7 @@ class Region:
         @param other_region     - region to merge with this one
         """
         #TODO: prepare a write up of this algorithm 
+
 
         if not isinstance( other_region, Region):
             raise TypeError("Arg `other_region` is of type {}, expected {}".format(type(other_region), Region))
@@ -1027,7 +1157,7 @@ class Region:
                     if on_border:
                         start_indices.append( (point+start_index)%len(self.perimeter)) 
                         on_border = False
-            loops = [glom( self.perimeter, other_region.perimeter, ind ) for ind in start_indices]
+            loops = [_glom( self.perimeter, other_region.perimeter, ind ) for ind in start_indices]
             max_x = None
             which = None
             # the perimeter loop will, of course, have a greater extent in every direction. So we just find the loop which goes the furthest in x and know that's the perimeter
@@ -1046,7 +1176,7 @@ class Region:
                 print("Loops: {}".format(loops))
                 print("self.perimeter: {}".format(self.perimeter))
                 print("other one: {}".format(other_region.perimeter))
-                raise TypeError("Some bullshit has happened. Tell Ben because this shouldn't happen.")
+                raise TypeError("Some bad stuff has happened.")
             self.perimeter = which
             for loop in loops:
                 if loop!=which:
@@ -1084,7 +1214,7 @@ class Region:
 
                 # that old enclave is split into multiple new enclaves (or even just one)
                 self.enclaves.pop( self.enclaves.index( enclave ) )
-                self.enclaves += [ glom( enclave, other_region.perimeter, index) for index in start_indices ] 
+                self.enclaves += [ _glom( enclave, other_region.perimeter, index) for index in start_indices ] 
             if not found_enclave:
                 # the target region doesn't border an enclave and it doesn't border the perimeter.
                 # we can't merge these
@@ -1093,7 +1223,8 @@ class Region:
         # these are just added on in
         self.enclaves   += other_region.enclaves 
         self.ids        += other_region.ids
-    
+        self.known_neighbors = False 
+
     def cut_region_from_self( self, other_region):
         # the order these hexes are popped is suuuper important.
         # As is, this will lead to unexpected behavior!! 
@@ -1101,6 +1232,7 @@ class Region:
             if ID in self.ids:
                 self.pop_hexid_from_self( ID )
 
+        self.known_neighbors = False 
         
     def pop_hexid_from_self( self, hex_id ):
         """
@@ -1111,6 +1243,8 @@ class Region:
 
         #TODO: Case where removing a hex splits the region into 2-3 smaller regions 
         #           + such cases are distringuished by their perimeters having more than 1 border with the pop hex
+
+        
 
         if len(self.ids)==1:
             if self.ids[0]==hex_id:
@@ -1265,8 +1399,9 @@ class Region:
 
         
         self.ids.pop( which )
+        self.known_neighbors = False 
 
-def glom( original, new, start_index):
+def _glom( original, new, start_index):
     """
     Partially gloms two perimeters together.
 
@@ -1325,9 +1460,14 @@ class Path:
             raise TypeError("Expected type {} for arg 'start', got {}".format(Point, type(start)))
         self._vertices      = [ Point( start.x, start.y ) ]
 
+        self.width          = 1.0
         self.color          = (0.0, 0.0, 0.0)
         self._step_calc     = False
         self._step          = None 
+        self.z_level       = 2
+
+        self.name = ""
+
     def end(self, offset=0):
         """
         Returns the a copy of the endPoint of this Path. Note: the endpoint is the last point added
@@ -1420,9 +1560,6 @@ class Path:
         else:
             # if the difference between this step and the precalculated step is >1%, raise an exception! 
             if (( end - self.end() ).magnitude - self._step)/self._step  > 0.01:
-                print("Step of {}".format( (end-self.end()).magnitude ))
-                print("Expected {}".format(self._step))
-                print("From {} to {}".format(self.end(), end))
                 raise ValueError("Paths must have consistently spaced entries")
 
         self._vertices.append( end )
@@ -1433,16 +1570,16 @@ class Path:
         
         @param start    - object of type Point 
         """
-        if not isinstance( end, Point):
-            raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(end )))
+        if not isinstance( start, Point):
+            raise TypeError("Expected type {} for arg 'end', got {}".format( Point, type(start )))
 
-        if not _step_calc:
+        if not self._step_calc:
             # get the magnitude between the last point and the one we're adding, that's the step size 
-            self._step = ( end - self._vertices[0] ).magnitude 
+            self._step = ( start - self.start() ).magnitude 
             self._step_calc = True 
         else:
             # if the difference between this step and the precalculated step is big, raise an exception! 
-            if (( end - self._vertices[0] ).magnitude - self._step)/self._step  > 0.01:
+            if (( start - self.start() ).magnitude - self._step)/self._step  > 0.01:
                 raise ValueError("Paths must have consistently spaced entries")
 
 
