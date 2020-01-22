@@ -13,3 +13,7 @@ Python_v/~$Plans.docx
 
 # vim swap files
 *.swp
+
+# visual studio project file
+*.pyproj
+*.sln

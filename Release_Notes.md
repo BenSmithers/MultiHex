@@ -1,3 +1,25 @@
+## January XX 2020
+
+### Additions
+
+* Added the Civilization Editor GUI
+
+* Added Entities: objects which can be placed on a HexMap
+
+* Added Settlements
+
+* Added Roads
+
+* Added brushes for adding roads, settlements, and entities on a map
+
+### Fixes and Changes
+
+* Fixed issues with adding Points to the start of a path 
+
+* Refined the layering and established protocols for future layering 
+
+* Fixed the Path datastructure, and implemented a 'Path ID' system similar to the 
+
 ## December 18 2019
 
 ### Additions

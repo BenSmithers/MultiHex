@@ -1,14 +1,14 @@
 ## #!/usr/bin/python3.6m
 
 from MultiHex.core import Hexmap, save_map, load_map
-from MultiHex.tools import clicker_control, region_brush
-from MultiHex.map_types.overland import OHex_Brush
+from MultiHex.tools import clicker_control
+from MultiHex.map_types.overland import OHex_Brush, Biome_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
 
-from MultiHex.guis.map_editor_gui import editor_gui_window
+from MultiHex.guis.terrain_editor_gui import editor_gui_window
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
@@ -46,7 +46,7 @@ class editor_gui(QMainWindow):
         self.scene = clicker_control( self.ui.graphicsView, self )
         # start with the hex as the currently used tool
         self.writer_control = OHex_Brush(self)
-        self.region_control = region_brush(self, 'biome')
+        self.region_control = Biome_Brush(self, parent)
        
         
         self.scene._active = self.writer_control
@@ -96,13 +96,10 @@ class editor_gui(QMainWindow):
         # need to clear the canvas too!
         self.hide()
         
-        self.region_control._drawn_names = {}
-        self.region_control._drawn_regions = {}
-        self.region_control._outline_obj = None
+        self.region_control.clear()
         self.selected_rid = None
 
-        self.writer_control.drawn_hexes = {}
-        self.writer_control._outline_obj = None
+        self.writer_control.clear()
         self.scene._held = None
 
     def set_region_name(self):

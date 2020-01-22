@@ -4,7 +4,8 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDialog, QApplication, QWidget
 
 from MultiHex.guis.main_menu import Ui_MainWindow as main_menu
-from MultiHex.map_paint import editor_gui
+from MultiHex.terrain_editor import editor_gui
+from MultiHex.civilization_editor import editor_gui as civ_gui
 from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
 
 from MultiHex.ridge_editor import ridge_gui
@@ -29,6 +30,7 @@ class main_gui(QMainWindow):
         # because of that it's important that these two clean themselves up when told to hide 
         self.editor_ui = editor_gui(self)
         self.ridge_ui  = ridge_gui(self)
+        self.civ_ui    = civ_gui(self)
 
         # connecting buttons 
         self.ui.pushButton_2.clicked.connect( QtCore.QCoreApplication.instance().quit )
@@ -36,7 +38,7 @@ class main_gui(QMainWindow):
         self.ui.pushButton_3.clicked.connect( self.new )
         self.ui.pushButton_4.clicked.connect( self.editor )
         self.ui.civEdit.clicked.connect(self.civ_edit)
-        self.ui.civEdit.setEnabled(False)
+        #self.ui.civEdit.setEnabled(False)
         self.ui.pushButton.setEnabled(False)
 
         self.new_name   = os.path.join(os.path.dirname(__file__), "saves", "generated.hexmap")
@@ -60,8 +62,12 @@ class main_gui(QMainWindow):
         """
         filename = QFileDialog.getOpenFileName( None, 'Edit Regions', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
         if filename!='':
+            self.hide()
             print("Loading {}".format(filename))
-        
+        else:
+            return()
+        self.civ_ui.prep_map(filename)
+        self.civ_ui.show()
 
     def editor(self):
         """
