@@ -558,6 +558,14 @@ class editor_gui(QMainWindow):
             self.ui.king_subj_disp.setText("")
             self.ui.king_weal_disp.setText("")
             self.ui.king_gdg_disp.setText("")
+
+            self.ui.king_war_sld.setValue(0)
+            self.ui.king_war_sld.setEnabled(False)
+            self.ui.king_order_sld.setValue(0)
+            self.ui.king_order_sld.setEnabled(False)
+            self.ui.king_spirit_sld.setValue(0)
+            self.ui.king_spirit_sld.setEnabled(False)
+
         else:
             self.ui.king_name_edit.setText( this_nation.name )
             self.ui.king_subj_disp.setText( str(this_nation.subjects) )
@@ -568,6 +576,13 @@ class editor_gui(QMainWindow):
                 self.ui.king_gdg_disp.setText( '{:06.2f}'.format(float(this_nation.total_wealth)/this_nation.subjects) )
             for rID in self.nation_control.selected.counties:
                 self.ui.nation_list_entry.appendRow( QEntityItem(self.main_map.rid_catalogue['county'][rID].name, rID ))
+
+            self.ui.king_war_sld.setEnabled(True)
+            self.ui.king_order_sld.setEnabled(True)
+            self.ui.king_spirit_sld.setEnabled(True)
+            self.ui.king_war_sld.setValue(this_nation.war*100)
+            self.ui.king_order_sld.setValue(this_nation.order*100)
+            self.ui.king_spirit_sld.setValue(this_nation.spirit*100)
 
         self.update_state()
 
@@ -603,7 +618,10 @@ class editor_gui(QMainWindow):
         if this_nation is None:
             pass
         else:
-            this_nation.name = self.ui.name_edit.text()
+            this_nation.name = self.ui.king_name_edit.text()
+            this_nation.set_war( float(self.ui.king_war_sld.value())/100 )
+            this_nation.set_order( float(self.ui.king_order_sld.value())/100 )
+            this_nation.set_spirit( float(self.ui.king_spirit_sld.value())/100 )
 
     def nation_dissolve(self):
         pass
