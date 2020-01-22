@@ -2,6 +2,7 @@
 
 # civilization gui
 from MultiHex.guis.civ_gui import editor_gui_window
+from MultiHex.guis.about_gui import Ui_Dialog as about_MHX
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
@@ -69,7 +70,8 @@ class editor_gui(QMainWindow):
         self.ui.actionBiome_Names.triggered.connect( self.action_biome_names )
         self.ui.actionCounty_Names.triggered.connect( self.action_county_names )
         self.ui.actionTowns.triggered.connect( self.action_towns )
-        self.ui.actionLocations.triggered.connect( self.action_towns )
+        self.ui.actionLocations.triggered.connect( self.action_locations )
+        self.ui.actionAbout_MultiHex.triggered.connect( self.actionAbout )
 
         #toolbar buttons
         self.ui.ent_select_button_0.clicked.connect(  self.entity_selector_toolbar)
@@ -158,6 +160,11 @@ class editor_gui(QMainWindow):
         state = self.ui.actionLocations.isChecked()
         self.entity_control.draw_entities = state
         self._redraw_entities()
+
+    def actionAbout(self):
+        dialog = about_dialog( self )
+        dialog.setAttribute( QtCore.Qt.WA_DeleteOnClose )
+        dialog.exec_()
 
     def road_item_clicked( self , index=None):
         item = self.ui.road_list_entry.itemFromIndex(index)
@@ -638,15 +645,22 @@ class editor_gui(QMainWindow):
         self.main_map = load_map( file_name )
         self.file_name = file_name 
         
-        print("redrawing")
+        print("Drawing hexes...",end='')
         self._redraw_hexes()
+        print(" done")
+        print("Drawing bimoes...",end='')
         self._redraw_biomes()
+        print(" done")
 
         # draw all the counties and roads and crap
+        print("Drawing rivers...",end='')
         self.writer_control.redraw_rivers()
+        print(" done")
+        print("Drawing everything else...",end='')
         self._redraw_entities()
         self._redraw_roads()
         self._redraw_counties()
+        print(" done")
 
     def _redraw_hexes(self):
         for ID in self.main_map.catalogue: 
@@ -666,6 +680,12 @@ class editor_gui(QMainWindow):
         if 'county' in self.main_map.rid_catalogue :
             for rid in self.main_map.rid_catalogue['county']:
                 self.county_control.redraw_region( rid )
+
+class about_dialog(QDialog):
+    def __init__(self, parent):
+        super(about_dialog, self).__init__(parent)
+        self.ui = about_MHX()
+        self.ui.setupUi(self)
 
 class ward_dialog(QDialog):
     def __init__(self,parent, which, setting):
