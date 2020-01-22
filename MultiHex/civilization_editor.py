@@ -112,10 +112,12 @@ class editor_gui(QMainWindow):
         self.ui.count_city_list.setModel( self.ui.county_list_entry)
         self.ui.pushButton.clicked.connect( self.county_apply )
         self.ui.count_king_button.clicked.connect( self.county_kingdom_button )
+        self.ui.count_city_list.clicked[QtCore.QModelIndex].connect(self.county_list_item_clicked)
 
         # Nation List Buttons
         self.ui.nation_list_entry = QtGui.QStandardItemModel()
         self.ui.listWidget.setModel( self.ui.nation_list_entry )
+        self.ui.listWidget.clicked[QtCore.QModelIndex].connect(self.nation_list_item_clicked)
         self.ui.king_apply.clicked.connect( self.nation_apply_button )
         self.ui.king_count_new_but.clicked.connect(self.nation_add_to)
         self.ui.king_count_rem_but.clicked.connect(self.nation_remove_from)
@@ -529,6 +531,15 @@ class editor_gui(QMainWindow):
 
             self.county_update_with_selected()
 
+    def county_list_item_clicked(self, index):
+        item = self.ui.county_list_entry.itemFromIndex(index)
+        self.entity_control.select_entity( item.eID )
+        self.ui.toolBox.setCurrentIndex( 1 )
+        self.set_update_selection( item.eID )
+
+        self.scene._active.drop()
+        self.scene._active = self.entity_control
+
     def county_kingdom_button(self):
         this_rid = self.county_control.selected_rid
 
@@ -547,6 +558,17 @@ class editor_gui(QMainWindow):
             self.scene._active.drop()
             self.scene._active = self.nation_control
             self.ui.toolBox.setCurrentIndex(4)
+
+    def nation_list_item_clicked(self, index):
+        item = self.ui.nation_list_entry.itemFromIndex(index)
+        this_county = item.eID
+
+        self.county_control.selected_rid = item.eID
+        self.ui.toolBox.setCurrentIndex(3)
+        self.county_update_with_selected()
+
+        self.scene._active.drop()
+        self.scene._active = self.county_control
 
     def nation_update_gui(self):
         self.ui.toolBox.setCurrentIndex(4)
