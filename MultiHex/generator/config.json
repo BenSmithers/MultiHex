@@ -8,14 +8,14 @@
             "water_width": 0.01
         },
         "mountains": {
-            "avg_range": 18.0,
+            "avg_range": 14.0,
             "dimensions": [
                 6000,
                 3000
             ],
-            "n_peaks": 9,
+            "n_peaks": 11,
             "sigma": 40,
-            "zones": 3
+            "zones": 4
         },
         "weather": {
             "diffusion": 0.03,
@@ -25,7 +25,7 @@
             "resr_weight": 1.25
         },
         "regions": {
-            "n_regions":24,
+            "n_regions":30,
             "reg_size" :20
         },
         "rivers": {

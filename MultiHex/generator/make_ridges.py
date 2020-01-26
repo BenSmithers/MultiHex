@@ -18,6 +18,7 @@ def make_basic_hex(arg1, arg2):
     new_one._temperature_base = 0.0
     return( new_one )
 
+
 def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
 
     # load the config file
@@ -43,125 +44,105 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
     #                Generate Mountain Peaks 
     # ======================================================
-    print("Seeding Mountain Peaks")
 
-    distribution_mean   = 0.65*dimensions[0]
-    distribution_width  = 0.20*dimensions[0]
-    print("    Y-Centered at {} +/- {}".format( distribution_mean, distribution_width))
-    print("    Uniform Y Distribution")
 
     ids_to_propagate = []
 
-
-    if size=='small' or size=='large':
-        for i in range( n_peaks ):
+    def make_continent():
+        ids_to_propagate = []
+        x_center = 0.80*rnd.random()*dimensions[0] + 0.10*dimensions[0]
+        y_cos  = 1.8*rnd.random() - 0.9
+        y_center = arccos( y_cos )*dimensions[1]/( pi )
+        print("Making New Continent at ({:.2f},{:.2f})".format(x_center, y_center))
+        for j in range(n_peaks):
             while True:
-                place = Point( rnd.gauss(distribution_mean, distribution_width), rnd.random()*dimensions[1] )
-                if not point_is_in( place , dimensions ):
-                    # try again... 
-                    continue
-                
+                place = Point( rnd.gauss( x_center, 300), rnd.gauss( y_center, 300) )
+                if not point_is_in(place, dimensions):
+                    continue 
                 loc_id = main_map.get_id_from_point( place )
                 new_hex_center = main_map.get_point_from_id( loc_id )
-                
-                new_hex = make_basic_hex( new_hex_center, main_map._drawscale)
+
+                new_hex = make_basic_hex(new_hex_center, main_map._drawscale)
                 new_hex.genkey = '11000000'
                 new_hex.fill = (99,88,60)
-                # it's unlikely, but possible that we sampled the same point multiple times 
                 try:
                     main_map.register_hex( new_hex, loc_id )
                     ids_to_propagate.append( loc_id )
-                    # if it doesn't, break out of the while loop! 
-                    break 
+                    new_hex = None
+                    break
                 except NameError:
-                    # if that happens, just run through this again
+                        continue
+
+        direction = 360*rnd.random()
+        sigma       = config['sigma']
+        avg_range   = config['avg_range']
+
+
+        # build the neighbor function
+        distribution = get_distribution( direction, sigma)
+        print("    Ridgeline Direction: {} +/- {}".format(direction, sigma))
+        print("    Ridgline Avg Length: {}".format(avg_range))
+
+        angles = [150., 90., 30., 330., 270., 210.]
+        neighbor_weights = [ distribution( angle ) for angle in angles]
+
+        # calculate CDF of neighbor weights 
+        neighbor_cdf = [0. for weight in neighbor_weights]
+        for index in range(len(neighbor_weights)):
+            if index == 0:
+                neighbor_cdf[0] = neighbor_weights[0]
+            else:
+                neighbor_cdf[index] = neighbor_cdf[index - 1] + neighbor_weights[index]
+
+        while len(ids_to_propagate)!=0:
+            if rnd.random()>(1.-(1./avg_range)):
+                #terminate this ridgeline
+                ids_to_propagate.pop()
+                continue
+            else:
+                index = 0 
+                die_roll = rnd.random()
+                while neighbor_cdf[index]<die_roll:
+                    index += 1
+                # scan over until you find the one corresponding to this die roll
+
+                target_ids = main_map.get_hex_neighbors( ids_to_propagate[-1] )
+                target_id = target_ids[index]
+
+                place = main_map.get_point_from_id( target_id )
+                if not point_is_in(place, dimensions):
+                    ids_to_propagate.pop(0)
                     continue
+            
+                new_hex = make_basic_hex( place , main_map._drawscale)
+                new_hex.genkey = '11000000'
+                new_hex.fill = (99,88,60)
+            
+
+                try:
+                    main_map.register_hex( new_hex, target_id)
+                    ids_to_propagate.pop()
+                    ids_to_propagate.append( target_id )
+                    new_hex = None
+                    continue 
+                except NameError:
+                    # let's try this again... 
+                    continue
+
 
     if size=='cont':
         for i in range(zones):
-            x_center = 0.80*rnd.random()*dimensions[0] + 0.10*dimensions[0]
-            y_cos  = 1.8*rnd.random() - 0.9
-            y_center = arccos( y_cos )*dimensions[1]/( pi )
-            for j in range(n_peaks):
-                while True:
-                    place = Point( rnd.gauss( x_center, 300), rnd.gauss( y_center, 300) )
-                    if not point_is_in(place, dimensions):
-                        continue 
-                    loc_id = main_map.get_id_from_point( place )
-                    new_hex_center = main_map.get_point_from_id( loc_id )
-
-                    new_hex = make_basic_hex(new_hex_center, main_map._drawscale)
-                    new_hex.genkey = '11000000'
-                    new_hex.fill = (99,88,60)
-                    try:
-                        main_map.register_hex( new_hex, loc_id )
-                        ids_to_propagate.append( loc_id )
-                        break
-                    except NameError:
-                            continue
-    
-    
-    #                  Create ridgelines 
-    # =====================================================
-    print("Forking Ridglines")
+            make_continent()
+    else:
+        raise NotImplementedError()
 
     # choose a direction the ridgeline will preferably go, and spread around that direction
 
-    direction = 360*rnd.random()
-    sigma       = config['sigma']  # 40.0
-    avg_range   = config['avg_range']  # 18.0
 
 
-    # build the neighbor function
-    distribution = get_distribution( direction, sigma)
-    print("    Ridgeline Direction: {} +/- {}".format(direction, sigma))
 
-
-    print("    Ridgline Avg Length: {}".format(avg_range))
-
-#    angles = [ 90., -90., 30., -30., 150., -150.]
-    angles = [150., 90., 30., -30., -90., -150]
-    neighbor_weights = [ distribution( angle ) for angle in angles]
-    print("DEBUG: Neighbor weights for ridges {}: ".format(neighbor_weights))
-    neighbor_cdf = [0. for weight in neighbor_weights]
-    for index in range(len(neighbor_weights)):
-        if index == 0:
-            neighbor_cdf[0] = neighbor_weights[0]
-        else:
-            neighbor_cdf[index] = neighbor_cdf[index - 1] + neighbor_weights[index]
-
-    print("and neighbor cdf {}".format(neighbor_cdf))
-
-    while len(ids_to_propagate)!=0:
-        if rnd.random()>(1.-(1./avg_range)):
-            #terminate this ridgeline
-            ids_to_propagate.pop(0)
-            continue
-        else:
-            index =0 
-            die_roll = rnd.random()
-            while neighbor_cdf[index]<die_roll:
-                index += 1
-            # scan over until you find the one corresponding to this die roll
-
-            target_id = main_map.get_hex_neighbors( ids_to_propagate[0] )[index]
-            place = main_map.get_point_from_id( target_id )
-            if not point_is_in(place, dimensions):
-                ids_to_propagate.pop(0)
-                continue
+    
             
-            new_hex = make_basic_hex( place , main_map._drawscale)
-            new_hex.genkey = '11000000'
-            new_hex.fill = (99,88,60)
-            
-            try:
-                main_map.register_hex( new_hex, target_id)
-                ids_to_propagate.append( target_id)
-                ids_to_propagate.pop(0)
-                continue 
-            except NameError:
-                # let's try this again... 
-                continue
 
           
 
