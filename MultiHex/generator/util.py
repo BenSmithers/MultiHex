@@ -11,46 +11,30 @@ import pickle
 # calculate the difference between two angles... sorta 
 # returned angle is always less than 180 degrees
 def angle_difference( theta_1, theta_2 ):
-    if not (theta_1 > 0 and theta_1<360):
+
+    if not (theta_1 >= 0 and theta_1<=360):
         raise Exception("bad angle {}".format(theta_1))
-    if not (theta_2 > 0 and theta_2<360):
+    if not (theta_2 >= 0 and theta_2<=360):
         raise Exception("bad angle {}".format(theta_2))
     
-    # return minimum of distance between theta_2 and theta2+180
-    theta_2_rotate = (theta_2 + 180.) % 360.
-    
-    distance1 = 0
-    distance2 = 0
+    return(min((360) - abs(theta_1-theta_2), abs(theta_1-theta_2)) )
 
-    phi = abs( theta_1 - theta_2) % 360.
-    if phi>180.:
-        distance1 = 360.-phi
-    else:
-        distance1 = phi
-    phi = abs(theta_1 - theta_2_rotate)
-    if phi>180.:
-        distance2 = 360.-phi
-    else:
-        distance2 = phi
-
-    return(distance1)
 
 
 # prepares a discrete distribution so that 
 #   mountains are preferentially made in a certain direction
 
-# neighbors  = [ 90, 270, 30, 330, 150, 210 ]
 def get_distribution( direction, variance=20. ):
     normalization = 0
 #    variance = 20.
-    angles = [ 90, -90, 30, -30, 150, -150 ]
+    angles = [150., 90., 30., 330., 270., 210.]
 
     # calculate normalization
     for angle in angles:
-        normalization += exp( -1.*(angle_difference(angle+180., direction)**2)/(2*variance**2))
+        normalization += exp( -1.*(angle_difference(angle, direction)**2)/(2*variance**2))
 
     def distribution(angle): 
-        return( (1./normalization)*exp(-1*(angle_difference(angle+180., direction)**2)/(2*variance**2)))
+        return( (1./normalization)*exp(-1*(angle_difference(angle, direction)**2)/(2*variance**2)))
 
     return( distribution )
 

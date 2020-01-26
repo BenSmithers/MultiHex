@@ -632,6 +632,7 @@ class Hexmap:
             raise TypeError("Cannot register non-hexes, dumb dumb!")
 
         if new_id in self.catalogue:
+            raise NameError()
             temp_altitude = self.catalogue[new_id]._altitude_base
             temp_temp     = self.catalogue[new_id]._temperature_base
             self.catalogue[new_id] = target_hex
@@ -640,6 +641,7 @@ class Hexmap:
             self.catalogue[new_id].rescale_color()
         else:
             self.catalogue[new_id] = target_hex
+
     def remove_region(self, rid, r_layer):
         if not isinstance(rid, int):
             raise TypeError("Expected type {} for arg `int`, got{}".format(int, type(rid)) )
@@ -680,8 +682,7 @@ class Hexmap:
 
         neighbors = []
 
-
-
+        # returns IDs starting from up and to the left, and going around clockwise 
         if grid:
             neighbors.append(construct_id(x_id-1, y_id,   not grid) )
             neighbors.append(construct_id(x_id, y_id+1, grid) )
@@ -690,12 +691,12 @@ class Hexmap:
             neighbors.append(construct_id(x_id, y_id-1, grid) )
             neighbors.append(construct_id(x_id-1, y_id-1, not grid) )
         else:
-            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
-            neighbors.append(construct_id(x_id, y_id+1, grid) )
             neighbors.append(construct_id(x_id,   y_id+1,   not grid) )
-            neighbors.append(construct_id(x_id,   y_id, not grid) )
-            neighbors.append(construct_id(x_id, y_id-1, grid) )
-            neighbors.append(construct_id(x_id+1, y_id, not grid) )
+            neighbors.append(construct_id(x_id,   y_id+1, grid) )
+            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
+            neighbors.append(construct_id(x_id+1, y_id,     not grid) )
+            neighbors.append(construct_id(x_id,   y_id-1, grid) )
+            neighbors.append(construct_id(x_id,   y_id,     not grid) )
 
         return(neighbors)    
 

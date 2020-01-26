@@ -319,10 +319,12 @@ class River_Brush( path_brush ):
         self._path_key = "rivers"
 
 class Biome_Brush( region_brush):
-    def __inti__(self, parent):
+    def __init__(self, parent, civmode = False):
         region_brush.__init__(self, parent, 'biome')
 
-        self.draw_borders = False
+
+        self.draw_borders = not civmode
+        self.small_font = civmode
         self._type = Biome
 
     def secondary_mouse_released(self, event):
@@ -509,9 +511,10 @@ class OHex_Brush( hex_brush ):
             self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
             self._river_drawn[-1].setZValue(2)
 
-        for pID in self.parent.main_map.path_catalog['rivers']:
-            assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
-            draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
+        if 'rivers' in self.parent.main_map.path_catalog:
+            for pID in self.parent.main_map.path_catalog['rivers']:
+                assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
+                draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
 
     def update_selection(self):
         self.set_sliders( self._selected_id )

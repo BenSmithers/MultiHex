@@ -833,6 +833,8 @@ class hex_brush(basic_tool):
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
 
+        self.overwrite = True
+
     def primary_mouse_released(self, event):
         if self.writing:
             self.write(event)
@@ -925,6 +927,13 @@ class hex_brush(basic_tool):
         
         # register that hex in the hexmap 
         try:
+            if (loc_id in self.parent.main_map.catalogue) and self.overwrite:
+                # if we're overwriting, delete any hex that exists here
+                new_hex._altitude_base = self.parent.main_map.catalogue[loc_id]._altitude_base
+                new_hex._temperature_base = self.parent.main_map.catalogue[loc_id]._temperature_base
+                new_hex.rescale_color()
+                self.parent.main_map.remove_hex(loc_id)
+
             self.parent.main_map.register_hex( new_hex, loc_id )
             self.redraw_hex( loc_id )
         except NameError: # error registering hex. Das ok 
@@ -935,6 +944,11 @@ class hex_brush(basic_tool):
                 new_hex_center = self.parent.main_map.get_point_from_id( neighbor )
                 new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
                 try:
+                    if (neighbor in self.parent.main_map.catalogue) and self.overwrite:
+                        new_hex._altitude_base = self.parent.main_map.catalogue[neighbor]._altitude_base
+                        new_hex._temperature_base = self.parent.main_map.catalogue[neighbor]._temperature_base
+                        new_hex.rescale_color()
+                        self.parent.main_map.remove_hex(neighbor)
                     self.parent.main_map.register_hex( new_hex, neighbor )            
                     self.redraw_hex( neighbor )
                 except NameError:
@@ -1036,7 +1050,7 @@ class hex_brush(basic_tool):
     
     def clear(self):
         self.drawn_hexes = {}
-        self._outline_obj = {}
+        self._outline_obj = None
         
 
 
