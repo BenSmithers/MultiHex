@@ -6,8 +6,8 @@ from MultiHex.guis.about_gui import Ui_Dialog as about_MHX
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
-from MultiHex.tools import clicker_control, basic_tool, region_brush, QEntityItem
-from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation
+from MultiHex.tools import clicker_control, basic_tool, QEntityItem
+from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -49,8 +49,7 @@ class editor_gui(QMainWindow):
         self.entity_control = OEntity_Brush(self)
         self.writer_control = OHex_Brush(self)
         self.path_control = Road_Brush(self)
-        self.biome_control = region_brush(self, 'biome')
-        self.biome_control.small_font = True
+        self.biome_control = Biome_Brush(self, civmode=True)
         self.county_control = County_Brush( self )
         self.county_control.small_font = False
         self.nation_control = Nation_Brush(self)
