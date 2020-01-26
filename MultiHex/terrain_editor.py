@@ -46,7 +46,7 @@ class editor_gui(QMainWindow):
         self.scene = clicker_control( self.ui.graphicsView, self )
         # start with the hex as the currently used tool
         self.writer_control = OHex_Brush(self)
-        self.region_control = Biome_Brush(self, parent)
+        self.region_control = Biome_Brush(self)
        
         
         self.scene._active = self.writer_control
@@ -144,15 +144,18 @@ class editor_gui(QMainWindow):
         self.main_map = load_map( file_name )
         self.file_name = file_name 
         
-        print("redrawing")
+        print("Drawing hexes... ", end='')
         for ID in self.main_map.catalogue: 
             self.writer_control.redraw_hex( ID )
-
+        print("done")
+        print("Drawing biomes... ", end='')
         if 'biome' in self.main_map.rid_catalogue :
             for rid in self.main_map.rid_catalogue['biome']:
                 self.region_control.redraw_region( rid )
-            
+        print("done")
+        print("Drawing rivers... ", end='')
         self.writer_control.redraw_rivers()
+        print("done")
         
 
 
