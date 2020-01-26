@@ -147,10 +147,11 @@ class editor_gui(QMainWindow):
         print("Drawing hexes... ", end='')
         for ID in self.main_map.catalogue: 
             self.writer_control.redraw_hex( ID )
+            
         print("done")
         print("Drawing biomes... ", end='')
-        if 'biome' in self.main_map.rid_catalogue :
-            for rid in self.main_map.rid_catalogue['biome']:
+        if self.region_control.r_layer in self.main_map.rid_catalogue :
+            for rid in self.main_map.rid_catalogue[self.region_control.r_layer]:
                 self.region_control.redraw_region( rid )
         print("done")
         print("Drawing rivers... ", end='')
