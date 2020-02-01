@@ -15,13 +15,27 @@ from glob import glob
 
 from copy import deepcopy, copy
 
-class Icons:
-    def __init__(self):
-        self._art_dir = os.path.join(os.path.dirname(__file__), '..', 'Artwork')
+class PixHolder:
+    """
+    Generic implementation of an object that loads in images from some directory and stores them as pixmaps. 
+
+    These are intended to be used as icons, buttons, and cursors to minimize the amount of times such pixmaps are stored in memory. 
+
+    @ param subidr  - sub-directory of the Artwork directory where this object will search for Art
+    """
+    def __init__(self, subdir):
+        assert( isinstance( subdir, str))
+        self._art_dir = os.path.join(os.path.dirname(__file__), '..', 'Artwork', subdir)
+        if not os.path.isdir( self._art_dir ):
+            raise OSError("No such directory exists at: {}".format( self._art_dir))
+
         self._icon_size = 24
         
         self._allowed_extensions = [".svg", ".png" ]
 
+        self.pixdict = {} 
+
+    def load(self):
         for file_type in self._allowed_extensions:
             # gets a list of filenames matching the provided path, with * being a wildcard
             files_found = glob( os.path.join( self._art_dir, "*" + file_type) )
@@ -29,17 +43,32 @@ class Icons:
             # load that file in and apply it to the self
             for found_file in files_found:
                 obj_name = os.path.basename(found_file).split(".")[0]
-                if hasattr( self, obj_name):
+                if obj_name in self.pixdict:
                     print("Skipping '{}{}', already have file with same name".format( obj_name, file_type))
                     continue
+            
+                self.pixdict[ obj_name ] = QtGui.QPixmap(found_file).scaledToWidth( self._icon_size)  
+            if len(files_found)!=0:
+                print("Loaded ({}) media in {}".format(len(files_found), self._art_dir ))
 
-                setattr( self, obj_name , QtGui.QPixmap(found_file).scaledToWidth( self._icon_size) )
-                print("Loaded media '{}{}'".format( obj_name, file_type ))
-    
     @property
     def shift(self):
         return( self._icon_size / 2)
 
+class Icons( PixHolder ):
+    def __init__(self):
+        PixHolder.__init__(self,'map_icons')
+        self.load()
+
+class Cursors( PixHolder ):
+    def __init__(self):
+        PixHolder.__init__(self,'cursors')
+        self.load()
+
+class Buttons( PixHolder ):
+    def __init__(self):
+        PixHolder.__init__(self,'buttons')
+        self.load()
 
 class Entity:
     """

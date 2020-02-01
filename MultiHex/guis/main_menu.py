@@ -9,6 +9,8 @@
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QSpacerItem, QSizePolicy, QVBoxLayout, QLabel, QPushButton, QMenuBar, QStatusBar, QApplication, QWidget
 
+import os
+
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -48,7 +50,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.addItem(spacerItem2)
         self.label_2 = QLabel(self.centralwidget)
         self.label_2.setText(_fromUtf8(""))
-        self.label_2.setPixmap(QtGui.QPixmap(_fromUtf8("./hexes/draw_several.gif")))
+        self.label_2.setPixmap(QtGui.QPixmap(_fromUtf8(os.path.join(os.path.dirname(__file__),'..','..','wiki_images','multihex_logo.png'))).scaledToWidth(760) )
         self.label_2.setScaledContents(False)
         self.label_2.setObjectName(_fromUtf8("label_2"))
         self.horizontalLayout_2.addWidget(self.label_2)

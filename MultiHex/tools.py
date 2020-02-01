@@ -172,9 +172,9 @@ class path_brush(basic_tool):
         # load in the appropriate icon! 
         self._icon_size = 24
         if self._vertex_mode:
-            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'river_icon.svg' )).scaledToWidth( self._icon_size )
+            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork','buttons', 'river_icon.svg' )).scaledToWidth( self._icon_size )
         else: # road mode
-            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
+            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork','cursors', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
 
         self._selected_pid = None
         self._selected_color = QtGui.QColor( 255, 100, 100 )
@@ -576,9 +576,9 @@ class entity_brush(basic_tool):
 
         if ent_type == 0 or ent_type == 1:
             if ent_type==0:
-                self._icon = self._all_icons.location
+                self._icon = self._all_icons.pixdict['location']
             else:
-                self._icon = self._all_icons.village 
+                self._icon = self._all_icons.pixdict['village']
             self._ghosted_placement = self.parent.scene.addPixmap( self._icon )
             self._ghosted_placement.setZValue(20)
             
@@ -709,8 +709,7 @@ class entity_brush(basic_tool):
         """
         Loads all the artwork into an Icon object held 
         """
-        self._all_icons = Icons()
-        self._icon = self._all_icons.location
+        self._all_icons = self.parent.icons
         self._loaded = True
     
     def redraw_entities_at_hex(self, hID):
@@ -788,7 +787,7 @@ class entity_brush(basic_tool):
             del self._drawn_entities[ eID ]
 
         if eID in self.parent.main_map.eid_catalogue:
-            self._drawn_entities[eID] = self.parent.scene.addPixmap( getattr( self._all_icons, self.parent.main_map.eid_catalogue[ eID ].icon ))
+            self._drawn_entities[eID] = self.parent.scene.addPixmap( self._all_icons.pixdict[self.parent.main_map.eid_catalogue[ eID ].icon] )
             self._drawn_entities[eID].setZValue(5)
             location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
             self._drawn_entities[eID].setX( location.x - self._all_icons.shift)
