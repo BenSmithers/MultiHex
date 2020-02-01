@@ -709,8 +709,7 @@ class entity_brush(basic_tool):
         """
         Loads all the artwork into an Icon object held 
         """
-        self._all_icons = Icons()
-        self._icon = self._all_icons.pixdict['location']
+        self._all_icons = self.parent.icons
         self._loaded = True
     
     def redraw_entities_at_hex(self, hID):

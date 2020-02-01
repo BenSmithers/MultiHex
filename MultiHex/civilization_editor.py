@@ -6,6 +6,7 @@ from MultiHex.guis.about_gui import Ui_Dialog as about_MHX
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
+from MultiHex.objects import Icons
 from MultiHex.tools import clicker_control, basic_tool, QEntityItem
 from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush
 
@@ -129,6 +130,9 @@ class editor_gui(QMainWindow):
 
         self.file_name = ''
         self.main_map = Hexmap()
+        self.icons = Icons()
+        for icon in self.icons.pixdict.keys():
+            self.ui.loc_icon.addItem( QtGui.QIcon(self.icons.pixdict[icon]), icon )
     
         self.ward_accept = False
 
@@ -363,6 +367,11 @@ class editor_gui(QMainWindow):
         """
         self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ eID ].name)
         self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ eID ].description)
+        
+        temp_index = self.ui.loc_icon.findText( self.main_map.eid_catalogue[eID].icon )
+        if temp_index >= 0:
+            self.ui.loc_icon.setCurrentIndex( temp_index )
+
 
     def loc_update_selection(self, HexID=None):
         """
@@ -408,7 +417,9 @@ class editor_gui(QMainWindow):
         if self.entity_control.selected is not None:
             self.main_map.eid_catalogue[ self.entity_control.selected ].name = self.ui.loc_name_edit.text()
             self.main_map.eid_catalogue[ self.entity_control.selected ].description = self.ui.loc_desc_edit.toPlainText()
+            self.main_map.eid_catalogue[ self.entity_control.selected ].icon = self.ui.loc_icon.currentText()
             self.entity_control.update_wrt_new_hex()
+            self.entity_control.redraw_entities_at_hex( self.entity_control.selected_hex )
             self.ui.status_label.setText("saved")
         
 
@@ -421,8 +432,7 @@ class editor_gui(QMainWindow):
             self.ui.toolBox.setCurrentIndex( 1 )
             self.set_update_selection( item.eID )
         else:
-            self.ui.loc_name_edit.setText( self.main_map.eid_catalogue[ item.eID ].name )
-            self.ui.loc_desc_edit.setText( self.main_map.eid_catalogue[ item.eID ].description )
+            self.loc_update_name_text( item.eID )
 
 
     def new_location_button_toolbar(self):
