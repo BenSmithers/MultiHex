@@ -1,0 +1,142 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[margin=0.75in]{geometry}
+
+%Used for doing math things
+\usepackage{amsmath}
+
+%Used for fonts, I guess?
+\usepackage{amsfonts}
+
+%allows for bold-faced mathematical symbols (like beta)
+\usepackage{bm}
+
+
+%I have no idea what this does, so I commented it out. If the file breaks, try un-commenting this out.
+%\usepackage[latin1]{inputenc}
+
+% Amssymb is for assorted symbols
+\usepackage{amssymb}
+
+%This allows for the enumeration of
+\usepackage{enumitem}
+
+%Used for seting the spacing density. 
+\usepackage{setspace}
+
+%The first package is used for incorporating images into the LaTeX file
+\usepackage{graphicx}
+
+%Allows the usage of the [H] argument, which forces figure/tabular placement to be HERE and nowhere else. 
+\usepackage{float}
+
+%These are useful commands I've hard-coded in.  
+\newcommand{\eps}{\epsilon}
+\newcommand{\braket}[1]{\left<#1\right>}
+\newcommand{\bra}[1]{\left< #1 \right|}
+\newcommand{\ket}[1]{\left| #1 \right>}
+\newcommand{\comm}[1]{\left[ #1 \right]}
+\newcommand{\cross}{\times}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\bvec}[1]{\bm{#1}}
+
+%rcurs is the basic cursive one
+%\def\rcurs{{\mbox{$\resizebox{.16in}{.08in}{\includegraphics{ScriptR}}$}}}
+%\def\brcurs{{\mbox{$\resizebox{.16in}{.08in}{\includegraphics{BoldR}}$}}}
+%\def\hrcurs{{\mbox{$\hat \brcurs$}}}
+
+
+
+%Use this if you use images. Default path is the file's directory. 
+
+%\graphicspath{ {Path} }
+
+
+
+% Fancy Title
+
+\usepackage{array}
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{L}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcommand{\Qbox}[1]{\noindent\fbox{\parbox{\textwidth}{#1}}}
+
+\singlespacing
+
+\begin{document}
+\begin{table}
+	\centering
+	\begin{tabular}{R{2in} P{2in} L{2in}}
+		Benjamin Smithers & \begin{tabular}{c}{\Large MultiHex} \\ {\Large The Math}  \end{tabular} & February 2020 \\\hline
+	\end{tabular}
+
+\end{table}
+
+\section{Sunlight Algorithm}
+
+\subsection{Background Mathematics}
+
+This algorithm is used to approximately find the sunrise and sunset on a given day for a given latitude. We define:
+\begin{itemize}
+	\item \(\theta\): correlates with the position on the map's local time. \(\theta=0\) opposite the sun (midnight) and grows clockwise while looking from above the North pole (Easterly spin). 
+	\item \(\xi\): latitude of location, or radians from the equator. 
+	\item \(\gamma\): axial tilt of planet
+	\item \(\alpha\): correlates with the time of the year. \(\alpha=0\) is winter solstice, \(\alpha=\pi/2\) is vernal equinox, and so on.
+\end{itemize}
+Consider a sphere of radius \(R\) representing a planet, centered at the origin, and bisected by a plane at \(x=0\). We consider one half day and one half night. \\
+
+Now consider a single point on that sphere. If we rotate the sphere one full revolution about the \(\hat{z}\) axis, the point will trace out a path parametrized by
+\begin{equation}
+\vec{P} = \left(\begin{array}{ccc} R\cos\theta\sin\xi & R\sin\theta\sin\xi & R\cos\xi \end{array}\right).
+\end{equation}
+We want to find the points where the aforementioned plane intersects this path after applying transformations to account for axial tilt and seasonal rotations. \\
+
+First, we apply the axial tilt. We rotate the planet, and therefore the parametrization, about the \(\hat{x}\)-axis by an angle \(\gamma\).  
+\begin{align}
+\vec{P}'&= \left(\begin{array}{ccc} 1 & 0 & 0\\ 0 & \cos\gamma & -\sin\gamma \\ 0 & \sin\gamma & \cos\gamma \end{array}\right)\left(\begin{array}{c} R\cos\theta\sin\xi \\ R\sin\theta\sin\xi \\ R\cos\xi \end{array}\right) \\
+\vec{P}'&=\left(\begin{array}{c} R\cos\theta\sin\xi \\ R\sin\theta\cos\gamma\sin\xi - R\sin\gamma\cos\xi \\ R\sin\theta\sin\gamma\sin\xi + R\cos\gamma\cos\xi  \end{array}\right) \\
+\end{align}
+Now, we rotate this parametrization about the \(\hat{z}\)-axis by an angle \(\alpha\) to apply seasonal variations.
+\begin{align}
+\vec{P}''&= \left(\begin{array}{ccc} \cos\alpha & -\sin\alpha & 0 \\ \sin\alpha & \cos\alpha & 0 \\ 0 & 0 & 1 \end{array}\right)\left(\begin{array}{c} R\cos\theta\sin\xi \\ R\sin\theta\cos\gamma\sin\xi - R\sin\gamma\cos\xi \\ R\sin\theta\sin\gamma\sin\xi + R\cos\gamma\cos\xi  \end{array}\right) \\
+\vec{P}''&= \left(\begin{array}{c} R\cos\theta\cos\alpha\sin\xi -R \sin\theta\sin\alpha\cos\gamma\sin\xi + R\sin\alpha\sin\gamma\cos\xi \\ \left[\ldots\right] \\\left[\ldots\right] \end{array}\right) 
+\end{align}
+Intersections of this parametrization with the plane at \(x=0\) are independent of the values of \(y\) and \(z\), so we can skip those calculations. Intersections then simply satisfy the relation
+\begin{equation}
+R\cos\theta\cos\alpha\sin\xi -R \sin\theta\sin\alpha\cos\gamma\sin\xi + R\sin\alpha\sin\gamma\cos\xi = 0
+\end{equation}
+To simplify representation, we divide by \(R\) and define
+\begin{align}\label{eq:const}
+A&= \cos\alpha\sin\xi, & B&= \sin\alpha\cos\gamma\sin\xi, & &\text{and} & C&=\sin\alpha\sin\gamma\cos\xi.
+\end{align}
+So that we have
+\begin{equation}
+A\cos\theta - B\sin\theta + C = 0.
+\end{equation}
+We solve for \(\sin\theta\) from here.
+\begin{align}
+A\cos\theta  &=  B\sin\theta - C \\
+A^{2}\cos^{2}\theta  &=  B^{2}\sin^{2}\theta + C^{2} - 2CB\sin\theta \\
+A^{2} - A^{2}\sin^{2}\theta  &=  B^{2}\sin^{2}\theta + C^{2} - 2CB\sin\theta \\
+0&=  (A^{2} + B^{2})\sin^{2}\theta - 2CB\sin\theta  + (C^{2}-A^{2})
+\end{align}
+It is trivially easy to solve such an equation for \(\sin\theta\)
+\begin{equation}
+\sin\theta = \dfrac{2CB \pm \sqrt{4C^{2}B^{2} + (A^{2}+B^{2})(A^{2}-C^{2}) }}{2(A^{2}+B^{2})},
+\end{equation}
+and therefore calculate \(\theta\), and derive its corresponding time.  \\[10pt]
+
+Of course, this does not \textit{always} have solutions. When 
+\begin{equation}\label{eq:test}
+4C^{2}B^{2} + (A^{2}+B^{2})(A^{2}-C^{2})  < 0
+\end{equation}
+there is no solution: suggesting the point lies within an arctic circle at the wrong time of the year.
+
+
+\subsection{Implementation}
+First, calculate \(\alpha\) for the given day of the year. Knowing \(\gamma\) and \(\xi\), calculate the constants \(A\), \(B\), and \(C\) according to Equation~\eqref{eq:const}.\\
+
+First the inequality of Equation~\eqref{eq:test} should be tested. 
+
+\end{document}
+
