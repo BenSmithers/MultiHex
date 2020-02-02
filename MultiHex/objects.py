@@ -47,7 +47,7 @@ class PixHolder:
                     print("Skipping '{}{}', already have file with same name".format( obj_name, file_type))
                     continue
             
-                self.pixdict[ obj_name ] = QtGui.QPixmap(found_file).scaledToWidth( self._icon_size)  
+                self.pixdict[ obj_name ] = QtGui.QPixmap(found_file).scaledToWidth( self._icon_size, 1) 
             if len(files_found)!=0:
                 print("Loaded ({}) media in {}".format(len(files_found), self._art_dir ))
 
