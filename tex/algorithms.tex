@@ -136,7 +136,26 @@ there is no solution: suggesting the point lies within an arctic circle at the w
 \subsection{Implementation}
 First, calculate \(\alpha\) for the given day of the year. Knowing \(\gamma\) and \(\xi\), calculate the constants \(A\), \(B\), and \(C\) according to Equation~\eqref{eq:const}.\\
 
-First the inequality of Equation~\eqref{eq:test} should be tested. 
+First the inequality of Equation~\eqref{eq:test} should be tested. If the inequality is true, use \(\alpha\) and \(\xi\) to determine whether it is night or day. 
+\begin{center}
+If \(\xi>0\) and \(\tfrac{\pi}{2} < \alpha < \tfrac{3\pi}{2}\), then it's daytime. Nighttime otherwise. 
+\end{center}
+Otherwise get the two solutions to \(\sin\theta\). Use arcsine to get the associated values of \(\theta\); this will give angles in the range \(\left(-\pi,\pi\right)\). 
+\begin{itemize}
+	\item If \(\tfrac{\pi}{2}<\alpha<\tfrac{3\pi}{2}\) (Summer in North, Winter in South)
+	\begin{itemize}
+		\item If \(\xi > 0\). Values accurate; value under 0 is sunset. 
+		\item If \(\xi < 0\). Change both values \(\theta\to\pi-\theta\). Larger of the two is sunset. 
+	\end{itemize}
+	\item If \(\alpha < \tfrac{\pi}{2}\) or \(\alpha>\tfrac{3\pi}{2}\) (Winter in North, Summer in South)
+	\begin{itemize}
+		\item If \(\xi > 0\). Change both values \(\theta\to\pi-\theta\). Larger of the two is sunset. 
+		\item If \(\xi < 0\). Values accurate; value under 0 is sunset. 
+	\end{itemize}
+	
+\end{itemize}
+
+
 
 \end{document}
 
