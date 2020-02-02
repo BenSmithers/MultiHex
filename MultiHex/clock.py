@@ -4,10 +4,10 @@
 # it's a perfect clockwork universe. Hurray
 
 
-from math import pi, abs, floor
-from math import cos, sin, arcsin, sqrt
+from math import pi, floor
+from math import cos, sin, sqrt
 
-months = {}
+from numpy import arcsin
 
 degrees = pi/180.
 
@@ -37,86 +37,67 @@ assert( len(month_list) == months_in_year )
 
 class Time:
     """
-    Used to pass times around 
+    Used to pass around and properly format the time of day
     """
 
-    def __init__( self, hour, minute ):
-        assert( minute>=0 and minutes<minutes_in_hour)
-        assert( hour>=0 and hour<hours_in_day )
+    def __init__( self, hour=0, minute=0, month=0, day = 0,year = 0 ):
+        if not ( minute>=0 ):
+            raise ValueError("Invalid number of minutes {}".format(minute))
+        if not (hour>=0 and hour<hours_in_day):
+            raise ValueError("Invalid number of hours {}".format(hour))
 
-        morning = ( hour < hours_in_day/2  )
 
-        self.hour = hour 
-        self.minute = minute
+        self._hour      = hour 
+        self._minute    = minute
+        self._month     = month
+        self._day       = day
+        self._year      = year
+
+        while self._minute > minutes_in_hour:
+            self._hour += 1
+            self._minute -= minutes_in_hour
+        while self._hour > hours_in_day:
+            self._hour -= hours_in_day
+            self._day += 1
+
+        self.morning = ( hour < hours_in_day/2  )
+
+    @property
+    def year(self):
+        return( self._year )
+    @property
+    def month(self):
+        return( self._month )
+    @property
+    def day(self):
+        return( self._day )
+    @property
+    def hour(self):
+
+        return( self._hour )
+    @property
+    def minute(self):
+
+        return(self._minute)
 
     def __str__(self):
-        if morning:
+        self.morning = ( self.hour < hours_in_day/2  )
+        if self.morning:
             if self.hour == 0:
-                out = "12:{} AM".format( self.minute )
+                out = "12:{:02d} AM".format( self.minute )
             else:
-                out = "{}:{} AM".format( self.hour, self.minute )
+                out = "{}:{:02d} AM".format( self.hour, self.minute )
         else: 
             if self.hour == 12:
-                out = "12:{} PM".format( self.minute)
+                out = "12:{:02d} PM".format( self.minute)
             else:
-                out = "{}:{} PM".format( self.hour - hours_in_day/2 , self.minute)
+                out = "{}:{:02d} PM".format( int(self.hour - hours_in_day/2 ), self.minute)
 
         return( out )
 
-class Clock:
-    """
-    Simple clock class to keep track of the time 
-    """
-
-    def __init__(self):
-        # this counts the minutes through an entire year
-        self._minute    = 0
-        self._hour      = 0
-        self._day       = 0
-        self._month     = 0
-        self._year      = 0
-
-        self._axial_tilt = 17*degrees
-
-    def month_str(self):
-        """
-        Returns the current month as a string
-        """
-        if type(self.month())!=int:
-            raise TypeError("That's not right... month is type {}".format(type(self.month)))
-        
-        return( month_list[self._month] )
-
-    def year(self):
-        return( self._year )
-
-    def month(self):
-        """
-        Given the minutes elapsed in the year so far, return what month it is
-        """
-        return( self._month )
-
-
-    def day(self):
-        """
-        Returns the day of the month as an int.
-        """
-        return( self._day )
-
-    def hour(self):
-        """
-        Returns the hour of the day (24 hour format) as an int. 
-        """
-        return( self._hour )
-
-    def minute(self):
-        """
-        Returns the current minute of the hour as an int. 
-        """
-        
-        return(self._minute)
-
-    def _month_step(self, monthts):
+    def _month_step(self, months):
+        if not isinstance( months, int):
+            raise TypeError("Expected {} for months, got {}".format(int, type(months)))
         self._month = months + self._month
 
         while self._month >= months_in_year:
@@ -124,13 +105,17 @@ class Clock:
             self._month -= months_in_year
 
     def _day_step(self, days):
+        if not isinstance( days, int):
+            raise TypeError("Expected {} for days, got {}".format(int, type(days)))
         self._day += days
 
-        while self._day >= days_in_month:
+        while self._day >= (days_in_month + 1):
             self._month_step( 1 )
             self._day-= days_in_month
 
     def _hour_step(self, hours):
+        if not isinstance( hours, int):
+            raise TypeError("Expected {} for hours, got {}".format(int, type(hours)))
         self._hour += hours
 
         while self._hour >= hours_in_day:
@@ -139,57 +124,21 @@ class Clock:
 
 
     def _minute_step(self, minutes):
+        if not isinstance( minutes, int):
+            raise TypeError("Expected {} for minutes, got {}".format(int, type(minutes)))
         self._minute += minutes
         
         while self._minute >= minutes_in_hour:
             self._hour_step(1)
             self._minute -= minutes_in_hour
 
-    def minute_of_day(self):
+    def _minute_of_day(self):
         return( self._minute + self._hour*minutes_in_hour )
 
-    def days_of_year(self):
-        return( self._day + self.month*months_in_year )
+    def _days_of_year(self):
+        return( self._day + self._month*days_in_month )
 
-    def get_next_suntime(self, latitude):
-        """
-        Implements sunrise algorithm. Returns tuple of this day's (sunrise, sunset).
-
-        @param latitude     - latitude of point for sunrise/set. Should be in RADIANS
-        """
-        assert( abs(latitude)<=pi )
-
-        # representative of angle around sun
-        alpha = 2*pi*float(self.days_of_year())/(days_in_month*months_in_year)
-        
-        # calculate the constants
-        A = cos(alpha)*sin(latitude)
-        B = sin(alpha)*cos(self._axial_tilt)*sin(latitude)
-        C = sin(alpha)*sin(self._axial_tilt)*cos(latitude)
-
-        under_root = 4*(C**2)*(B**2) + (A**2 + B**2)*(A**2 - C**2)
-        
-        # check if it's deep winter or summer 
-        if under_root<0:
-            if (latitude > 0) and ((pi/2)<alpha or alpha<(3*pi/2)):
-                return("Sunny") # sunny 
-            if (latitude < 0) and not ((pi/2)<alpha or alpha<(3*pi/2)):
-                return() # sunny
-            
-            return() # dark
-
-        soln_1 = arcsin( (2*C*B+sqrt(under_root))/( 2*A**2 + 2*B**2 ) )
-        soln_2 = arcsin( (2*C*B-sqrt(under_root))/( 2*A**2 + 2*B**2 ) )
-
-        if (alpha>pi/2) and (alpha<3*pi/2):
-            if latitude>0:
-                pass
-            else:
-                pass
-        else:
-            pass
-
-
+ 
     def time_step(self, minutes=0, hours=0, days=0, months=0, years=0):
         """
         Move the current time forward by some number of minutes (or optionally years, months, etc)
@@ -205,6 +154,87 @@ class Clock:
 
         self._year += years
 
+    def __repr__(self):
+        return("<Time Object {}>".format(self))
+
+    def __add__(self, other ):
+        new = Time(self.hour, self.minute, self.month, self.day, self.year)
+        new._hour += other.hour
+        new._minute+= other.minute
+        new._day += other.day
+        new._month += other.month
+        new._year += other.year
+
+        while new._minute>= minutes_in_hour:
+            new._minute -= minutes_in_hour
+            new._hour += 1
+        while new._hour>= hours_in_day:
+            new._hour -= hours_in_day
+            new._day  += 1
+        while new._day>= days_in_month:
+            new._day -=  days_in_month
+            new._month += 1
+        while new._month>= months_in_year:
+            new._month -= months_in_year
+            new._year += 1
+
+        return(new)
+        
+
+    def __sub__(self, other):
+        new = Time(self.hour, self.minute, self.month, self.day, self.year)
+        new._minute -= other._minute
+        while new.minute<0:
+            new._minute+=minutes_in_hour
+            new._hour -= 1
+        new._hour -= other.hour
+        while new.hour < 0:
+            new._hour += hours_in_day
+            new._day -= 1
+        new._day -= other.day
+        while new.day <0:
+            new._day += days_in_month
+            new._month -= 1
+        new._month -= other.month
+        while new._month <0 :
+            new._month += months_in_year
+            new._year -= 1
+        new._year -= other.year
+
+        return(new)
+    
+
+class Clock:
+    """
+    Simple clock class to keep track of the time 
+    """
+
+    def __init__(self):
+        
+        # GMT like time counter
+        self._time = Time(0 , 0)
+
+        self._axial_tilt = 23.5*degrees
+        self._coax = cos(self._axial_tilt)
+        self._siax = sin(self._axial_tilt)
+
+        print("Version 4")
+
+    def month_str(self):
+        """
+        Returns the current month as a string
+        """
+        if type(self._time.month )!=int:
+            raise TypeError("That's not right... month is type {}".format(type(self._time.month)))
+        
+        return( month_list[self._time.month] )
+
+    def get_local_time( self, lat ):
+        # 24 time zones
+
+        hour_shift = int( hours_in_day*(lat/(2*pi)) )
+        return( self._time + Time(hour=hour_shift) )
+
     def get_moon_phase(self):
         """
         returns the current phase of the moon 
@@ -213,8 +243,8 @@ class Clock:
         """
 
         # just so the moon phase isn't perfectly aligned with the weeks! 
-        offset = 3*minutes_in_day
-        length = 28*minutes_in_day
+        offset = 3  # days
+        length = 28 # days
 
         phases = [  "New",
                     "Waxing Crescent",
@@ -223,7 +253,7 @@ class Clock:
                     "Wanning Gibbous",
                     "Wanning Crescent"]
 
-        total_days = int(floor((self._minutes/minutes_in_day)))
+        total_days = self._time.day + self._time.month*days_in_month + self._time.year*days_in_month*months_in_year
         days_through_cycle = (total_days - offset) % length 
         
         percent_through = float( days_through_cycle )/length
@@ -231,5 +261,60 @@ class Clock:
         
         return( phases[which_part] )
          
+    def get_light_level(self, time_minutes, lat, long):
+        yr_freq = 2*pi/minutes_in_year
+        dy_freq = 2*pi/minutes_in_day
+
+        cos_omgom   = cos(time_minutes*(-1*yr_freq + dy_freq))
+        sin_omgom   = sin(time_minutes*(-1*yr_freq + dy_freq))
+
+        cos_lat     = cos(lat)
+        sin_lat     = sin(lat)
+        cos_lon     = cos(long)
+        sin_lon     = sin(long)
+
+        light_level     = cos(yr_freq*time_minutes)*(cos_omgom*cos_lat*cos_lon*self._coax - sin_omgom*cos_lat*sin_lon*self._coax - self._siax*sin_lat)
+        light_level    += sin(yr_freq*time_minutes)*(sin_omgom*cos_lat*cos_lon + cos_omgom*cos_lat*sin_lon )
+        light_level    *= -1
+
+        if light_level<-0.1:
+            return(-0.1)
+        else:
+            return(light_level)
+
+    def time_step(self, minutes=0, hours=0, days=0, months=0, years=0):
+        self._time.time_step( minutes, hours, days, months, years)
+
+    def get_current_light_level(self, lat, lon):
+        return( self.get_light_level( self.get_time_in_minutes(), lat,lon))
+
+    def get_next_suntime( self, lat, lon):
+        ll = self.get_current_light_level(lat, lon)
+        time = self.get_time_in_minutes()
+        stepped = 0
+
+        while abs(ll)>0.01:
+            if ll > 0.5:
+                time += minutes_in_hour
+                stepped += minutes_in_hour
+            elif ll > 0.25:
+                time += int(0.25*minutes_in_hour)
+                stepped += int(0.25*minutes_in_hour)
+            else:
+                time += 1
+                stepped += 1
+            ll = self.get_light_level( time, lat, lon)
+
+        return(  self.get_local_time(lat) + Time( 0 , stepped) )
+
+
+    def get_time_in_minutes(self):
+        time = self._time.minute
+        time += self._time.hour*minutes_in_hour
+        time += self._time.day*minutes_in_day
+        time += self._time.month*minutes_in_month
+        time += self._time.year*minutes_in_year
+        return(time)
+
     def __str__(self):
-        return("It is {} {}, {}, at {:02d}:{:02d}\nThe moon is {}".format(self.month_str(), self.day(), self.year(), self.hour(), self.minute(), self.get_moon_phase()) )
+        return("It is {} {}, {}, at {}\nThe moon is {}".format(self.month_str(), self._time.day, self._time.year, self._time, self.get_moon_phase()) )
