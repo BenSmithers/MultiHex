@@ -295,7 +295,7 @@ class Clock:
         light_level    *= -1
 
         if light_level<-0.1:
-            return(-0.1)
+            return(-1.0)
         else:
             return(light_level)
 
@@ -327,6 +327,32 @@ class Clock:
 
         return(  self.get_local_time(lon) + Time( 0 , stepped) )
 
+    def get_moon_visibility(self, time_minutes, long):
+
+        yr_freq = 2*pi/minutes_in_year
+        dy_freq = 2*pi/minutes_in_day
+
+        cos_lat     = 1
+        sin_lat     = 0
+        cos_lon     = cos(long)
+        sin_lon     = sin(long)
+
+        cos_omgom   = cos(time_minutes*(-1*yr_freq + dy_freq))
+        sin_omgom   = sin(time_minutes*(-1*yr_freq + dy_freq))
+
+        offset = 3*minutes_in_day
+        length = 28*minutes_in_day
+
+        ang_velocity = 2*pi/length
+        phase = 2*pi*(float(offset)/length)
+
+        # \vec{M} = ( cos( ang*t + phase), sin(ang*t + phase), 0)
+
+        moon     = cos(ang_velocity*time_minutes + phase)*(cos_omgom*cos_lon*self._coax - sin_omgom*sin_lon*self._coax)
+        moon    += sin(ang_velocity*time_minutes + phase)*(sin_omgom*cos_lon + cos_omgom*sin_lon )
+
+    def get_current_moon_visibility( self, long):
+        return( self.get_mooniness( self.get_time_in_minutes(), long))
 
     def get_time_in_minutes(self):
         time = self._time.minute
