@@ -1,6 +1,5 @@
 # this class will be used to keep track of time
 
-# in our fictional universe there are no timezones... no leap anything.
 # it's a perfect clockwork universe. Hurray
 
 
@@ -37,7 +36,7 @@ assert( len(month_list) == months_in_year )
 
 class Time:
     """
-    Used to pass around and properly format the time of day
+    Used to pass around and properly format the times
     """
 
     def __init__( self, hour=0, minute=0, month=0, day = 0,year = 0 ):
@@ -80,22 +79,19 @@ class Time:
 
         return(self._minute)
 
-    def __str__(self):
-        self.morning = ( self.hour < hours_in_day/2  )
-        if self.morning:
-            if self.hour == 0:
-                out = "12:{:02d} AM".format( self.minute )
-            else:
-                out = "{}:{:02d} AM".format( self.hour, self.minute )
-        else: 
-            if self.hour == 12:
-                out = "12:{:02d} PM".format( self.minute)
-            else:
-                out = "{}:{:02d} PM".format( int(self.hour - hours_in_day/2 ), self.minute)
-
-        return( out )
+    def month_str(self):
+        """
+        Returns the current month as a string
+        """
+        if type(self._month )!=int:
+            raise TypeError("That's not right... month is type {}".format(type(self._month)))
+        
+        return( month_list[self._month] )
 
     def _month_step(self, months):
+        """
+        Steps forward by given number of months
+        """
         if not isinstance( months, int):
             raise TypeError("Expected {} for months, got {}".format(int, type(months)))
         self._month = months + self._month
@@ -105,6 +101,9 @@ class Time:
             self._month -= months_in_year
 
     def _day_step(self, days):
+        """
+        Steps forward by given number of days
+        """
         if not isinstance( days, int):
             raise TypeError("Expected {} for days, got {}".format(int, type(days)))
         self._day += days
@@ -114,6 +113,9 @@ class Time:
             self._day-= days_in_month
 
     def _hour_step(self, hours):
+        """
+        Steps forward by given number of hours
+        """
         if not isinstance( hours, int):
             raise TypeError("Expected {} for hours, got {}".format(int, type(hours)))
         self._hour += hours
@@ -124,6 +126,9 @@ class Time:
 
 
     def _minute_step(self, minutes):
+        """
+        Steps forward by given number of minutes
+        """
         if not isinstance( minutes, int):
             raise TypeError("Expected {} for minutes, got {}".format(int, type(minutes)))
         self._minute += minutes
@@ -131,13 +136,6 @@ class Time:
         while self._minute >= minutes_in_hour:
             self._hour_step(1)
             self._minute -= minutes_in_hour
-
-    def _minute_of_day(self):
-        return( self._minute + self._hour*minutes_in_hour )
-
-    def _days_of_year(self):
-        return( self._day + self._month*days_in_month )
-
  
     def time_step(self, minutes=0, hours=0, days=0, months=0, years=0):
         """
@@ -154,10 +152,28 @@ class Time:
 
         self._year += years
 
+    def __str__(self):
+        self.morning = ( self.hour < hours_in_day/2  )
+        if self.morning:
+            if self.hour == 0:
+                out = "12:{:02d} AM".format( self.minute )
+            else:
+                out = "{}:{:02d} AM".format( self.hour, self.minute )
+        else: 
+            if self.hour == 12:
+                out = "12:{:02d} PM".format( self.minute)
+            else:
+                out = "{}:{:02d} PM".format( int(self.hour - hours_in_day/2 ), self.minute)
+
+        return("{} {}, {}, at {}".format(self.month_str(), self._day, self._year, out))
+
     def __repr__(self):
-        return("<Time Object {}>".format(self))
+        return("<Time Object: {}>".format(self))
 
     def __add__(self, other ):
+        """
+        Define method by which two times are added together
+        """
         new = Time(self.hour, self.minute, self.month, self.day, self.year)
         new._hour += other.hour
         new._minute+= other.minute
@@ -220,26 +236,21 @@ class Clock:
 
         print("Version 4")
 
-    def month_str(self):
+    def get_local_time( self, long ):
         """
-        Returns the current month as a string
+        Uses the longitude of the given point to shift to a different time zone
+
+        We assume standard time zones 
         """
-        if type(self._time.month )!=int:
-            raise TypeError("That's not right... month is type {}".format(type(self._time.month)))
-        
-        return( month_list[self._time.month] )
 
-    def get_local_time( self, lat ):
-        # 24 time zones
-
-        hour_shift = int( hours_in_day*(lat/(2*pi)) )
+        hour_shift = int( hours_in_day*(long/(2*pi)) )
         return( self._time + Time(hour=hour_shift) )
 
     def get_moon_phase(self):
         """
         returns the current phase of the moon 
         
-        Moon phase simplified to be exactly one month long.
+        Moon phase simplified to be exactly 28 days long
         """
 
         # just so the moon phase isn't perfectly aligned with the weeks! 
@@ -261,6 +272,12 @@ class Clock:
         
         return( phases[which_part] )
          
+    def skip_to_time(self, new_time):
+        if not isinstance(new_time, Time):
+            raise TypeError("Expected object of type {}, got {}.".format(Time, type(new_time)))
+
+        lapse = new_time - self._time
+
     def get_light_level(self, time_minutes, lat, long):
         yr_freq = 2*pi/minutes_in_year
         dy_freq = 2*pi/minutes_in_day
@@ -282,8 +299,11 @@ class Clock:
         else:
             return(light_level)
 
-    def time_step(self, minutes=0, hours=0, days=0, months=0, years=0):
-        self._time.time_step( minutes, hours, days, months, years)
+    def time_step(self, amount):
+        #self._time.time_step( minutes, hours, days, months, years)
+        if not isinstance(amount, Time):
+            raise TypeError("Expected object of type {}, got {}.".format(Time, type(amount)))
+        self._time.time_step( amount.minute, amount.hour, amount.day, amount.month, amount.year)
 
     def get_current_light_level(self, lat, lon):
         return( self.get_light_level( self.get_time_in_minutes(), lat,lon))
@@ -305,7 +325,7 @@ class Clock:
                 stepped += 1
             ll = self.get_light_level( time, lat, lon)
 
-        return(  self.get_local_time(lat) + Time( 0 , stepped) )
+        return(  self.get_local_time(lon) + Time( 0 , stepped) )
 
 
     def get_time_in_minutes(self):
@@ -317,4 +337,4 @@ class Clock:
         return(time)
 
     def __str__(self):
-        return("It is {} {}, {}, at {}\nThe moon is {}".format(self.month_str(), self._time.day, self._time.year, self._time, self.get_moon_phase()) )
+        return("{}\nThe moon is {}".format(self._time, self.get_moon_phase()) )
