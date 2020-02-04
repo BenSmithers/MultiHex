@@ -19,7 +19,7 @@ minutes_in_day   = minutes_in_hour*hours_in_day
 minutes_in_month = minutes_in_day*days_in_month
 minutes_in_year  = minutes_in_month*months_in_year
 
-month_list = [  "January",
+month_list = [ "January",
             "February",
             "March",
             "Aprtil",
@@ -31,6 +31,21 @@ month_list = [  "January",
             "October",
             "November",
             "December" ]
+
+day_list = [ "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+          "Sunday"]
+
+phases = {  "New":0.0,
+            "Waxing Crescent":0.3,
+            "Waxing Gibbous":0.6,
+            "Full":1.0,
+            "Wanning Gibbous":0.6,
+            "Wanning Crescent":0.3}
 
 assert( len(month_list) == months_in_year )
 
@@ -219,6 +234,33 @@ class Time:
 
         return(new)
     
+    def __lt__(self, other):
+        if self.year < other.year:
+            return( True )
+        elif other.year < self.year:
+            return( False )
+        else: # years are equal
+            if self.month < other.month:
+                return( True )
+            elif other.month < self.month:
+                return( False )
+            else: #months are equal
+                if self.day < other.day:
+                    return( True )
+                elif other.day < self.day:
+                    return( False )
+                else: # days are equal
+                    if self.hour < other.hour:
+                        return( True )
+                    elif other.hour < self.hour:
+                        return( False )
+                    else: # hours are equal
+                        if self.minute < other.minute:
+                            return( True )
+                        else: # either it's greater than or equal to
+                            return( False )
+    def __gt__(self, other):
+        return( (not self.__it__(other)) and (self.minute!=other.minute))
 
 class Clock:
     """
@@ -234,7 +276,40 @@ class Clock:
         self._coax = cos(self._axial_tilt)
         self._siax = sin(self._axial_tilt)
 
-        print("Version 4")
+        self._holidays = { "Winter_Solstice":Time(month=0),
+                    "Spring_Equinox":Time(month=3),
+                    "Summer_Solstice":Time(month=6),
+                    "Autumnal_Equinox":Time(month=9) }
+
+    def go_to_holiday(self, holiday):
+        if not isinstance(name, str):
+            raise TypeError("Expected type {}, got {}".format(str, type(name)))
+        if holiday not in self._holidays:
+            raise ValueError("{} not a known holiday".format(holiday))
+
+        when = self._holidays[holiday]
+        when._year = self._time.year
+
+        if when < self._time:
+            when._year = when._year + 1
+
+        self.skip_to_time( when )
+
+    def add_holiday( self, time_obj, name):
+        if not isinstance(name, str):
+            raise TypeError("Expected type {}, got {}".format(str, type(name)))
+        if not isinstance(time_obj, Time):
+            raise TypeError("Expected type {}, got {}".format(Time, type(time_obj)))
+        if name in self._holidays.keys():
+            raise ValueError("Key '{}' already in holiday list".format(name))
+
+        self._holidays[name] = time_obj
+
+    def remove_holiday(self, name):
+        if not isinstance(name, str):
+            raise TypeError("Expected type {}, got {}".format(str, type(name)))
+
+        del self._holidays[name]
 
     def get_local_time( self, long ):
         """
@@ -245,6 +320,14 @@ class Clock:
 
         hour_shift = int( hours_in_day*(long/(2*pi)) )
         return( self._time + Time(hour=hour_shift) )
+
+    def _time_to_phase(self, phase):
+        if not isinstance(phase, str):
+            raise TypeError("Expected {}, got {}".format(str, type(phase)))
+
+
+
+        how_many = index(phase)*length
 
     def get_moon_phase(self):
         """
@@ -257,26 +340,24 @@ class Clock:
         offset = 3  # days
         length = 28 # days
 
-        phases = [  "New",
-                    "Waxing Crescent",
-                    "Waxing Gibbous",
-                    "Full",
-                    "Wanning Gibbous",
-                    "Wanning Crescent"]
-
         total_days = self._time.day + self._time.month*days_in_month + self._time.year*days_in_month*months_in_year
         days_through_cycle = (total_days - offset) % length 
         
         percent_through = float( days_through_cycle )/length
-        which_part = int( percent_through * len(phases) )
+        which_part = int( percent_through * len(phases.keys()) )
         
-        return( phases[which_part] )
+        return( list(phases.keys())[which_part] )
+
+    def get_base_moon_light(self):
+        return(phases[self.get_moon_phase()])
+
          
     def skip_to_time(self, new_time):
         if not isinstance(new_time, Time):
             raise TypeError("Expected object of type {}, got {}.".format(Time, type(new_time)))
 
         lapse = new_time - self._time
+        self._time.time_step( lapse )
 
     def get_light_level(self, time_minutes, lat, long):
         yr_freq = 2*pi/minutes_in_year
@@ -327,7 +408,15 @@ class Clock:
 
         return(  self.get_local_time(lon) + Time( 0 , stepped) )
 
-    def get_moon_visibility(self, time_minutes, long):
+    def get_moon_visibility(self, long, current=True, time=None):
+
+        if current:
+            time = self.get_time_in_minutes()
+        else:
+            if time is None:
+                raise ValueError("If not asking for current, must provide time")
+            if not isinstance(time, int):
+                raise TypeError("Expected type {}, got {}".format(int, type(time)))
 
         yr_freq = 2*pi/minutes_in_year
         dy_freq = 2*pi/minutes_in_day
@@ -350,9 +439,6 @@ class Clock:
 
         moon     = cos(ang_velocity*time_minutes + phase)*(cos_omgom*cos_lon*self._coax - sin_omgom*sin_lon*self._coax)
         moon    += sin(ang_velocity*time_minutes + phase)*(sin_omgom*cos_lon + cos_omgom*sin_lon )
-
-    def get_current_moon_visibility( self, long):
-        return( self.get_mooniness( self.get_time_in_minutes(), long))
 
     def get_time_in_minutes(self):
         time = self._time.minute
