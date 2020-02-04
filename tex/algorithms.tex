@@ -179,14 +179,14 @@ We construct a unit-vector from the Earth's core to a position on the surface, b
 
 Now we rotate Eq~\eqref{eq:basic} about the \(\hat{z}\)-axis to account for the planet's spin and its rotation around the star.
 \begin{align}
-\vec{P}_{s}'' &=\left(\begin{array}{ccc} \cos(\omega + \gamma)t & -\sin(\omega + \gamma) t & 0 \\ \sin(\omega + \gamma) t & \cos(\omega + \gamma) t & 0 \\ 0 & 0 & 1 \end{array} \right) \left(\begin{array}{c}\cos l_{a}\cos l_{d} \\ \cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
-\vec{P}_{s}'' &=  \left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \label{eq:rotated}
+\vec{P}_{s}'' &=\left(\begin{array}{ccc} \cos(\omega - \gamma)t & -\sin(\omega - \gamma) t & 0 \\ \sin(\omega - \gamma) t & \cos(\omega - \gamma) t & 0 \\ 0 & 0 & 1 \end{array} \right) \left(\begin{array}{c}\cos l_{a}\cos l_{d} \\ \cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
+\vec{P}_{s}'' &=  \left(\begin{array}{c} \cos(\omega-\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega - \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \label{eq:rotated}
 \end{align}
 
-For instance, for a planet without spin \(\omega = 0\). There is rotation, relative to the star, as the planet goes around the sun. The planet and star are tidally locked when \(\omega=-\gamma\). Now Eq~\eqref{eq:rotated} is rotated about the \(\hat{y}\)-axis to incorporate axial tilt. 
+For instance, for a planet without spin \(\omega = 0\). There is rotation, relative to the star, as the planet goes around the sun. The planet and star are tidally locked when \(\omega=\gamma\). Now Eq~\eqref{eq:rotated} is rotated about the \(\hat{y}\)-axis to incorporate axial tilt. 
 \begin{align}
-\vec{P}_{s} &= \left(\begin{array}{ccc}\cos\xi  & 0 & -\sin\xi \\ 0 & 1 & 0 \\ \sin\xi & 0 & \cos\xi \end{array}\right)\left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
-\vec{P}_{s} &= \left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d}\cos\xi - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d}\cos\xi -\sin\xi\sin l_{a} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \cos(\omega+\gamma)t\cos l_{a}\cos l_{d}\sin\xi - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d}\sin\xi + \cos\xi\sin l_{a} \end{array}\right) \label{eq:dir}
+\vec{P}_{s} &= \left(\begin{array}{ccc}\cos\xi  & 0 & -\sin\xi \\ 0 & 1 & 0 \\ \sin\xi & 0 & \cos\xi \end{array}\right)\left(\begin{array}{c} \cos(\omega-\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega - \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
+\vec{P}_{s} &= \left(\begin{array}{c} \cos(\omega-\gamma)t\cos l_{a}\cos l_{d}\cos\xi - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d}\cos\xi -\sin\xi\sin l_{a} \\ \sin(\omega - \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \cos(\omega-\gamma)t\cos l_{a}\cos l_{d}\sin\xi - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d}\sin\xi + \cos\xi\sin l_{a} \end{array}\right) \label{eq:dir}
 \end{align}
 Using Equations~\eqref{eq:sun_earth}-\eqref{eq:dir}, we can define a `light level'
 \begin{equation}
