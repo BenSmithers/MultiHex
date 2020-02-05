@@ -520,8 +520,8 @@ class Clock:
         yr_freq = 2*pi/minutes_in_year
         dy_freq = 2*pi/minutes_in_day
 
-        cos_omgom   = cos(time_minutes*(-1*yr_freq + dy_freq))
-        sin_omgom   = sin(time_minutes*(-1*yr_freq + dy_freq))
+        cos_omgom   = cos(time_minutes*(yr_freq + dy_freq))
+        sin_omgom   = sin(time_minutes*(yr_freq + dy_freq))
 
         cos_lat     = cos(lat)
         sin_lat     = sin(lat)
