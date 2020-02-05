@@ -129,7 +129,7 @@ class Time:
             raise TypeError("Expected {} for days, got {}".format(int, type(days)))
         self._day += days
 
-        while self._day >= (days_in_month + 1):
+        while self._day >= (days_in_month):
             self._month_step( 1 )
             self._day-= days_in_month
 
@@ -187,7 +187,7 @@ class Time:
                 else:
                     out = "{}:{:02d} PM".format( int(self.hour - hours_in_day/2 ), self.minute)
 
-            return("{} {}, {}, at {}".format(self.month_str(), self._day, self._year, out))
+            return("{} {}, {}, at {}".format(self.month_str(), self._day+1, self._year, out))
         else:
             out = ""
             if self._year!=0:
@@ -256,6 +256,9 @@ class Time:
         return(new)
     
     def __lt__(self, other):
+        """
+        implements the "<" operator 
+        """
         if self.year < other.year:
             return( True )
         elif other.year < self.year:
@@ -281,6 +284,9 @@ class Time:
                         else: # either it's greater than or equal to
                             return( False )
     def __gt__(self, other):
+        """
+        Implements the ">" operator. Opposite of "<" operator but they can't be equal! 
+        """
         return( (not self.__lt__(other)) and (self.minute!=other.minute))
 
 class Clock:
@@ -304,7 +310,9 @@ class Clock:
                     "Spring_Equinox":Time(month=3),
                     "Summer_Solstice":Time(month=6),
                     "Autumnal_Equinox":Time(month=9) }
-
+        
+        #self.time_step(Time(hour=int(0.5*hours_in_day)))
+    
     def change_axial_tilt(self, new_tilt):
         """
         Changes the axial tilt of the planet to the provided tilt
@@ -388,15 +396,22 @@ class Clock:
 
         del self._holidays[name]
 
-    def get_local_time( self, long ):
+    def get_local_time( self, lon ):
         """
         Uses the longitude of the given point to shift to a different time zone
 
         We assume standard time zones 
         """
 
-        hour_shift = int( hours_in_day*(long/(2*pi)) )
-        return( self._time + Time(hour=hour_shift) )
+        if not ( lon>=0 and (lon<(2*pi))):
+            raise ValueError("Invalid longitude {}".format(lon))
+
+        hour_shift = int( hours_in_day*(lon/(2*pi))) # - 0.5*hours_in_day)
+
+        if hour_shift >= 0 :
+            return( self._time + Time(hour=hour_shift ) )
+        else:
+            return( self._time - Time(hour=-1*hour_shift))
 
     def skip_to_phase(self, phase):
         if not isinstance(phase, str):
@@ -485,12 +500,12 @@ class Clock:
         """
         Returns the height of the sun above the horizon, in radians
         """
-        ll = self.get_current_light_level(lat, long)
+        ll = -1*self.get_current_light_level(lat, long)
 
-        if ll < 0:
+        if ll > 0:
             return()
         else:
-            return( pi - arccos( ll ))
+            return( arccos( ll ) )
 
     def get_light_level(self, time_minutes, lat, long):
         """
@@ -500,6 +515,8 @@ class Clock:
         -0.1 < ll < 0.1 is twilight
         >0.1 is day time
         """
+        if not isinstance(time_minutes, int):
+            raise TypeError("Expected time_minutes of {}, got {}".format(int, type(time_minutes)))
         yr_freq = 2*pi/minutes_in_year
         dy_freq = 2*pi/minutes_in_day
 
@@ -508,17 +525,14 @@ class Clock:
 
         cos_lat     = cos(lat)
         sin_lat     = sin(lat)
-        cos_lon     = cos(long)
-        sin_lon     = sin(long)
+        cos_lon     = cos(long )
+        sin_lon     = sin(long )
 
         light_level     = cos(yr_freq*time_minutes)*(cos_omgom*cos_lat*cos_lon*self._coax - sin_omgom*cos_lat*sin_lon*self._coax - self._siax*sin_lat)
         light_level    += sin(yr_freq*time_minutes)*(sin_omgom*cos_lat*cos_lon + cos_omgom*cos_lat*sin_lon )
         light_level    *= -1
 
-        if light_level<-0.1:
-            return(-1.0)
-        else:
-            return(light_level)
+        return(light_level)
 
     def time_step(self, amount):
         """
@@ -545,11 +559,13 @@ class Clock:
         time = self.get_time_in_minutes()
         stepped = 0
 
-        while abs(ll)>0.01:
-            if ll > 0.5:
-                time += minutes_in_hour
-                stepped += minutes_in_hour
-            elif ll > 0.25:
+        starts_positive = (ll > 0)
+
+        while starts_positive==( ll > 0 ):
+            if abs(ll) > 0.5:
+                time += int(0.5*minutes_in_hour)
+                stepped += int(0.5*minutes_in_hour)
+            elif abs(ll) > 0.25:
                 time += int(0.25*minutes_in_hour)
                 stepped += int(0.25*minutes_in_hour)
             else:
@@ -557,7 +573,8 @@ class Clock:
                 stepped += 1
             ll = self.get_light_level( time, lat, lon)
 
-        return(  self.get_local_time(lon) + Time( 0 , stepped) )
+        
+        return(  self.get_local_time(lon) + Time( minute = stepped) )
 
     def get_moon_visibility(self, long, current=True, time=None):
 
@@ -606,4 +623,5 @@ class Clock:
         return(time)
 
     def __str__(self):
-        return("{}\nThe moon is {}".format(self._time, self.get_moon_phase()) )
+        return("{}\nThe moon is {}".format(self.get_local_time(0), self.get_moon_phase()) )
+
