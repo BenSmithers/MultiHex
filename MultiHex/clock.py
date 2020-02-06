@@ -413,6 +413,15 @@ class Clock:
         else:
             return( self._time - Time(hour=-1*hour_shift))
 
+    def skip_to_suntime(self, latitude, longitude):
+        """
+        Skips to the next sunrise or sunset at the given latitude and longitude 
+        """
+        when    = self.get_next_suntime(latitude, longitude)
+        now     = self.get_local_time(longitude)
+
+        self.time_step( when - now )
+
     def skip_to_phase(self, phase):
         if not isinstance(phase, str):
             raise TypeError("Expected {}, got {}".format(str, type(phase)))
