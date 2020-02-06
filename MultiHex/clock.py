@@ -310,9 +310,15 @@ class Clock:
                     "Spring_Equinox":Time(month=3),
                     "Summer_Solstice":Time(month=6),
                     "Autumnal_Equinox":Time(month=9) }
-        
-        #self.time_step(Time(hour=int(0.5*hours_in_day)))
-    
+            
+        # cache some things to speed up sunrise and sunset calculations
+        self._cache_lat = None
+        self._cache_lon = None
+        self._cache_co_lat = 0.0
+        self._cache_sin_lat = 0.0
+        self._cache_co_lon = 0.0
+        self._cache_sin_lon = 0.0
+
     def change_axial_tilt(self, new_tilt):
         """
         Changes the axial tilt of the planet to the provided tilt
@@ -344,7 +350,7 @@ class Clock:
         when = self._holidays[holiday]
         self.skip_to_day( when )
 
-    def skip_to_time(self, what_time):
+    def skip_to_hour(self, what_time):
         """
         Dials the clock /forward/ to a specific time of day
         """
@@ -420,7 +426,7 @@ class Clock:
         when    = self.get_next_suntime(latitude, longitude)
         now     = self.get_local_time(longitude)
 
-        self.time_step( when - now )
+        self.skip_time( when - now )
 
     def skip_to_phase(self, phase):
         if not isinstance(phase, str):
@@ -443,11 +449,11 @@ class Clock:
 
         # sted to one day before the cycle 
         if days_to_skip > 1:
-            self.time_step(Time( day = (days_to_skip - 1  )))
+            self.skip_time(Time( day = (days_to_skip - 1  )))
 
         # default time is midnight
         # skip to then
-        self.skip_to_time( Time() )
+        self.skip_to_hour( Time() )
 
     def get_moon_phase(self):
         """
@@ -483,7 +489,7 @@ class Clock:
 
         lapse = new_time - self._time
 
-        self._time.time_step(lapse.minute, lapse.hour, lapse.day, lapse.month, lapse.year)
+        self._time.skip_time(lapse.minute, lapse.hour, lapse.day, lapse.month, lapse.year)
 
     def get_time_to_holiday(self, holiday):
         """
@@ -514,7 +520,7 @@ class Clock:
         if ll > 0:
             return()
         else:
-            return( arccos( ll ) )
+            return( pi - arccos( ll ) )
 
     def get_light_level(self, time_minutes, lat, long):
         """
@@ -532,24 +538,31 @@ class Clock:
         cos_omgom   = cos(time_minutes*(yr_freq + dy_freq))
         sin_omgom   = sin(time_minutes*(yr_freq + dy_freq))
 
-        cos_lat     = cos(lat)
-        sin_lat     = sin(lat)
-        cos_lon     = cos(long )
-        sin_lon     = sin(long )
+        if (lat==self._cache_lat and long==self._cache_lon):
+            pass
+        else:
+            # calculate and cache these
+            self._cache_lat = lat
+            self._cache_lon = long
+            self._cache_co_lat =  cos(lat)
+            self._cache_co_lon =  cos(long)
+            self._cache_sin_lat = sin(lat)
+            self._cache_sin_lon = sin(long)
 
-        light_level     = cos(yr_freq*time_minutes)*(cos_omgom*cos_lat*cos_lon*self._coax - sin_omgom*cos_lat*sin_lon*self._coax - self._siax*sin_lat)
-        light_level    += sin(yr_freq*time_minutes)*(sin_omgom*cos_lat*cos_lon + cos_omgom*cos_lat*sin_lon )
+
+        light_level     = cos(yr_freq*time_minutes)*(cos_omgom*self._cache_co_lat*self._cache_co_lon*self._coax - sin_omgom*self._cache_co_lat*self._cache_sin_lon*self._coax - self._siax*self._cache_sin_lat)
+        light_level    += sin(yr_freq*time_minutes)*(sin_omgom*self._cache_co_lat*self._cache_co_lon + cos_omgom*self._cache_co_lat*self._cache_sin_lon )
         light_level    *= -1
 
         return(light_level)
 
-    def time_step(self, amount):
+    def skip_time(self, amount):
         """
         Turns the clock forward by an amount of time.
 
         amount should be of type Time
         """
-        #self._time.time_step( minutes, hours, days, months, years)
+
         if not isinstance(amount, Time):
             raise TypeError("Expected object of type {}, got {}.".format(Time, type(amount)))
         self._time.time_step( amount.minute, amount.hour, amount.day, amount.month, amount.year)
@@ -586,7 +599,9 @@ class Clock:
         return(  self.get_local_time(lon) + Time( minute = stepped) )
 
     def get_moon_visibility(self, long, current=True, time=None):
-
+        """
+        Returns a bool: True for visible, Fasle for not visible 
+        """
         if current:
             time_minutes = self.get_time_in_minutes()
         else:

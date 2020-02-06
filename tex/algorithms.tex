@@ -73,89 +73,7 @@
 \end{table}
 
 \section{Sunlight Algorithm}
-
-\subsection{Background Mathematics}
-
-This algorithm is used to approximately find the sunrise and sunset on a given day for a given latitude. We define:
-\begin{itemize}
-	\item \(\theta\): correlates with the position on the map's local time. \(\theta\) is measured from 6am in an easterly direciton
-	\item \(\xi\): latitude of location, or radians from the equator. 
-	\item \(\gamma\): axial tilt of planet
-	\item \(\alpha\): correlates with the time of the year. \(\alpha=0\) is winter solstice, \(\alpha=\pi/2\) is vernal equinox, and so on.
-\end{itemize}
-Consider a sphere of radius \(R\) representing a planet, centered at the origin, and bisected by a plane at \(x=0\). We consider one half day and one half night. \\
-
-Now consider a single point on that sphere. If we rotate the sphere one full revolution about the \(\hat{z}\) axis, the point will trace out a path parametrized by
-\begin{equation}
-\vec{P} = \left(\begin{array}{ccc} R\cos\theta\cos\xi & R\sin\theta\cos\xi & R\sin\xi \end{array}\right).
-\end{equation}
-We want to find the points where the aforementioned plane intersects this path after applying transformations to account for axial tilt and seasonal rotations. \\
-
-First, we apply the axial tilt. We rotate the planet, and therefore the parametrization, about the \(\hat{x}\)-axis by an angle \(\gamma\).  
-\begin{align}
-\vec{P}'&= \left(\begin{array}{ccc} 1 & 0 & 0\\ 0 & \cos\gamma & -\sin\gamma \\ 0 & \sin\gamma & \cos\gamma \end{array}\right)\left(\begin{array}{c} R\cos\theta\cos\xi \\ R\sin\theta\cos\xi \\ R\sin\xi \end{array}\right) \\
-\vec{P}'&=\left(\begin{array}{c} R\cos\theta\cos\xi \\ R\sin\theta\cos\gamma\cos\xi - R\sin\gamma\sin\xi \\ R\sin\theta\sin\gamma\cos\xi + R\cos\gamma\sin\xi  \end{array}\right) \\
-\end{align}
-Now, we rotate this parametrization about the \(\hat{z}\)-axis by an angle \(\alpha\) to apply seasonal variations.
-\begin{align}
-\vec{P}''&= \left(\begin{array}{ccc} \cos\alpha & -\sin\alpha & 0 \\ \sin\alpha & \cos\alpha & 0 \\ 0 & 0 & 1 \end{array}\right)\left(\begin{array}{c} R\cos\theta\cos\xi \\ R\sin\theta\cos\gamma\cos\xi - R\sin\gamma\sin\xi \\ R\sin\theta\sin\gamma\cos\xi + R\cos\gamma\sin\xi  \end{array}\right) \\
-\vec{P}''&= \left(\begin{array}{c} R\cos\theta\cos\alpha\cos\xi -R \sin\theta\sin\alpha\cos\gamma\cos\xi + R\sin\alpha\sin\gamma\sin\xi \\ \left[\ldots\right] \\\left[\ldots\right] \end{array}\right) 
-\end{align}
-Intersections of this parametrization with the plane at \(x=0\) are independent of the values of \(y\) and \(z\), so we can skip those calculations. Intersections then simply satisfy the relation
-\begin{equation}
-R\cos\theta\cos\alpha\cos\xi -R \sin\theta\sin\alpha\cos\gamma\cos\xi + R\sin\alpha\sin\gamma\sin\xi = 0
-\end{equation}
-To simplify representation, we divide by \(R\) and define
-\begin{align}\label{eq:const}
-A&= \cos\alpha\cos\xi, & B&= \sin\alpha\cos\gamma\cos\xi, & &\text{and} & C&=\sin\alpha\sin\gamma\sin\xi.
-\end{align}
-So that we have
-\begin{equation}
-A\cos\theta - B\sin\theta + C = 0.
-\end{equation}
-We solve for \(\sin\theta\) from here.
-\begin{align}
-A\cos\theta  &=  B\sin\theta - C \\
-A^{2}\cos^{2}\theta  &=  B^{2}\sin^{2}\theta + C^{2} - 2CB\sin\theta \\
-A^{2} - A^{2}\sin^{2}\theta  &=  B^{2}\sin^{2}\theta + C^{2} - 2CB\sin\theta \\
-0&=  (A^{2} + B^{2})\sin^{2}\theta - 2CB\sin\theta  + (C^{2}-A^{2})
-\end{align}
-It is trivially easy to solve such an equation for \(\sin\theta\)
-\begin{equation}
-\sin\theta = \dfrac{2CB \pm \sqrt{4C^{2}B^{2} + (A^{2}+B^{2})(A^{2}-C^{2}) }}{2(A^{2}+B^{2})},
-\end{equation}
-and therefore calculate \(\theta\), and derive its corresponding time.  \\[10pt]
-
-Of course, this does not \textit{always} have solutions. When 
-\begin{equation}\label{eq:test}
-4C^{2}B^{2} + (A^{2}+B^{2})(A^{2}-C^{2})  < 0
-\end{equation}
-there is no solution: suggesting the point lies within an arctic circle at the wrong time of the year.
-
-
-\subsection{Implementation}
-First, calculate \(\alpha\) for the given day of the year. Knowing \(\gamma\) and \(\xi\), calculate the constants \(A\), \(B\), and \(C\) according to Equation~\eqref{eq:const}.\\
-
-First the inequality of Equation~\eqref{eq:test} should be tested. If the inequality is true, use \(\alpha\) and \(\xi\) to determine whether it is night or day. 
-\begin{center}
-If \(\xi>0\) and \(\tfrac{\pi}{2} < \alpha < \tfrac{3\pi}{2}\), then it's daytime. Nighttime otherwise. 
-\end{center}
-Otherwise get the two solutions to \(\sin\theta\). Use arcsine to get the associated values of \(\theta\); this will give angles in the range \(\left(-\pi,\pi\right)\) and represents an angle as measured from the \(\hat{x}\)-axis. 
-\begin{itemize}
-	\item If \(\tfrac{\pi}{2}<\alpha<\tfrac{3\pi}{2}\) (Summer in North, Winter in South)
-	\begin{itemize}
-		\item If \(\xi > 0\). Add \(\pi\) to value under 0, this is sunset. 
-		\item If \(\xi < 0\). Change both values \(\theta\to\pi-\theta\). Larger of the two is sunset. 
-	\end{itemize}
-	\item If \(\alpha < \tfrac{\pi}{2}\) or \(\alpha>\tfrac{3\pi}{2}\) (Winter in North, Summer in South)
-	\begin{itemize}
-		\item If \(\xi > 0\). Change both values \(\theta\to\pi-\theta\). Larger of the two is sunset. 
-		\item If \(\xi < 0\). Values accurate; value under 0 is sunset. 
-	\end{itemize}
-	
-\end{itemize}
-
-\section{Math 2.0}
+\subsection{Mathematical Framework}
 We first define constants
 \begin{itemize}
 	\item \(t\): the present time [min]
@@ -179,14 +97,14 @@ We construct a unit-vector from the Earth's core to a position on the surface, b
 
 Now we rotate Eq~\eqref{eq:basic} about the \(\hat{z}\)-axis to account for the planet's spin and its rotation around the star.
 \begin{align}
-\vec{P}_{s}'' &=\left(\begin{array}{ccc} \cos(\omega - \gamma)t & -\sin(\omega - \gamma) t & 0 \\ \sin(\omega - \gamma) t & \cos(\omega - \gamma) t & 0 \\ 0 & 0 & 1 \end{array} \right) \left(\begin{array}{c}\cos l_{a}\cos l_{d} \\ \cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
-\vec{P}_{s}'' &=  \left(\begin{array}{c} \cos(\omega-\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega - \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \label{eq:rotated}
+\vec{P}_{s}'' &=\left(\begin{array}{ccc} \cos(\omega + \gamma)t & -\sin(\omega + \gamma) t & 0 \\ \sin(\omega+\gamma) t & \cos(\omega + \gamma) t & 0 \\ 0 & 0 & 1 \end{array} \right) \left(\begin{array}{c}\cos l_{a}\cos l_{d} \\ \cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
+\vec{P}_{s}'' &=  \left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \label{eq:rotated}
 \end{align}
 
 For instance, for a planet without spin \(\omega = 0\). There is rotation, relative to the star, as the planet goes around the sun. The planet and star are tidally locked when \(\omega=\gamma\). Now Eq~\eqref{eq:rotated} is rotated about the \(\hat{y}\)-axis to incorporate axial tilt. 
 \begin{align}
-\vec{P}_{s} &= \left(\begin{array}{ccc}\cos\xi  & 0 & -\sin\xi \\ 0 & 1 & 0 \\ \sin\xi & 0 & \cos\xi \end{array}\right)\left(\begin{array}{c} \cos(\omega-\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega - \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
-\vec{P}_{s} &= \left(\begin{array}{c} \cos(\omega-\gamma)t\cos l_{a}\cos l_{d}\cos\xi - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d}\cos\xi -\sin\xi\sin l_{a} \\ \sin(\omega - \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega-\gamma)t\cos l_{a}\sin l_{d} \\ \cos(\omega-\gamma)t\cos l_{a}\cos l_{d}\sin\xi - \sin(\omega-\gamma)t\cos l_{a}\sin l_{d}\sin\xi + \cos\xi\sin l_{a} \end{array}\right) \label{eq:dir}
+\vec{P}_{s} &= \left(\begin{array}{ccc}\cos\xi  & 0 & -\sin\xi \\ 0 & 1 & 0 \\ \sin\xi & 0 & \cos\xi \end{array}\right)\left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
+\vec{P}_{s} &= \left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d}\cos\xi - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d}\cos\xi -\sin\xi\sin l_{a} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \cos(\omega+\gamma)t\cos l_{a}\cos l_{d}\sin\xi - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d}\sin\xi + \cos\xi\sin l_{a} \end{array}\right) \label{eq:dir}
 \end{align}
 Using Equations~\eqref{eq:sun_earth}-\eqref{eq:dir}, we can define a `light level'
 \begin{equation}
@@ -197,6 +115,12 @@ And interpret it as such
 	\item \(L < -0.1\): nighttime
 	\item \(-0.1 < L < 0.1\): twilight hours
 	\item \(L>0.1\): daytime 
+\end{itemize}
+With \(+1\) correlating with the sun directly overhead. 
+
+\subsection{Implementation}
+\begin{itemize}
+	\item Finding sunrise and sunset: cache evaluated trigonometric values and propagate time-dependent ones forward until a point is found with a zero-valued light level. 
 \end{itemize}
 
 \end{document}
