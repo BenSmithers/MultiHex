@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5 import QtGui, QtCore
 
+
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 # from MultiHex.map_types.overland import Road, River
@@ -82,6 +83,7 @@ class clicker_control(QGraphicsScene):
         self._active = None
         self._held = False
         
+        self.parent = parent
         self.master = master
 
         self._alt_held = False
@@ -97,6 +99,13 @@ class clicker_control(QGraphicsScene):
         event.accept()
         if event.key() == QtCore.Qt.Key_Alt:
             self._alt_held = False
+
+        if event.key() == QtCore.Qt.Key_Plus or event.key()==QtCore.Qt.Key_PageUp or event.key()==QtCore.Qt.Key_BracketRight:
+            self.parent.scale( 1.05, 1.05 )
+
+        if event.key() == QtCore.Qt.Key_Minus or event.key()==QtCore.Qt.Key_PageDown or event.key()==QtCore.Qt.Key_BracketLeft:
+            self.parent.scale( 0.95, 0.95 )
+
 
     def mousePressEvent(self, event):
         """
@@ -132,6 +141,7 @@ class clicker_control(QGraphicsScene):
             self._active.primary_mouse_held( event )
  
         self._active.mouse_moved( event )
+
 
     # in c++ these could've been templates and that would be really cool 
     def to_hex(self):

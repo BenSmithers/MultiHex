@@ -17,3 +17,11 @@ Python_v/~$Plans.docx
 # visual studio project file
 *.pyproj
 *.sln
+
+# LaTeX compilation files
+*.aux
+*.log
+*.synctex.gz
+
+# Compiled documentation
+*.pdf

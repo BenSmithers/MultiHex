@@ -1,0 +1,127 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[margin=0.75in]{geometry}
+
+%Used for doing math things
+\usepackage{amsmath}
+
+%Used for fonts, I guess?
+\usepackage{amsfonts}
+
+%allows for bold-faced mathematical symbols (like beta)
+\usepackage{bm}
+
+
+%I have no idea what this does, so I commented it out. If the file breaks, try un-commenting this out.
+%\usepackage[latin1]{inputenc}
+
+% Amssymb is for assorted symbols
+\usepackage{amssymb}
+
+%This allows for the enumeration of
+\usepackage{enumitem}
+
+%Used for seting the spacing density. 
+\usepackage{setspace}
+
+%The first package is used for incorporating images into the LaTeX file
+\usepackage{graphicx}
+
+%Allows the usage of the [H] argument, which forces figure/tabular placement to be HERE and nowhere else. 
+\usepackage{float}
+
+%These are useful commands I've hard-coded in.  
+\newcommand{\eps}{\epsilon}
+\newcommand{\braket}[1]{\left<#1\right>}
+\newcommand{\bra}[1]{\left< #1 \right|}
+\newcommand{\ket}[1]{\left| #1 \right>}
+\newcommand{\comm}[1]{\left[ #1 \right]}
+\newcommand{\cross}{\times}
+\newcommand{\abs}[1]{\left| #1 \right|}
+\newcommand{\bvec}[1]{\bm{#1}}
+
+%rcurs is the basic cursive one
+%\def\rcurs{{\mbox{$\resizebox{.16in}{.08in}{\includegraphics{ScriptR}}$}}}
+%\def\brcurs{{\mbox{$\resizebox{.16in}{.08in}{\includegraphics{BoldR}}$}}}
+%\def\hrcurs{{\mbox{$\hat \brcurs$}}}
+
+
+
+%Use this if you use images. Default path is the file's directory. 
+
+%\graphicspath{ {Path} }
+
+
+
+% Fancy Title
+
+\usepackage{array}
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{L}[1]{>{\raggedleft\arraybackslash}p{#1}}
+\newcommand{\Qbox}[1]{\noindent\fbox{\parbox{\textwidth}{#1}}}
+
+\singlespacing
+
+\begin{document}
+\begin{table}
+	\centering
+	\begin{tabular}{R{2in} P{2in} L{2in}}
+		Benjamin Smithers & \begin{tabular}{c}{\Large MultiHex} \\ {\Large The Math}  \end{tabular} & February 2020 \\\hline
+	\end{tabular}
+
+\end{table}
+
+\section{Sunlight Algorithm}
+\subsection{Mathematical Framework}
+We first define constants
+\begin{itemize}
+	\item \(t\): the present time [min]
+	\item \((l_{a},l_{o})\): latitude and longitude of location [rad]
+	\item \(\xi\): axial tilt of rotation 
+	\item \(\omega\): frequency of days
+	\item \(\gamma\): frequency of years
+\end{itemize}
+Note that the frequency of days will need to be slightly adjusted 
+
+With these, we parametrize the position of the Earth relative to the sun with respect to time 
+\begin{equation}\label{eq:sun_earth}
+\vec{P}_{e} = \left( \begin{array}{ccc} \cos\gamma t & \sin\gamma t & 0 \end{array}\right).
+\end{equation}
+Suppose that at \(t=0\), we say the sun is tilted away from the sun, towards the \(\hat{x}\)-axis. At this time, \(l_{o}\) is also pointed along the \(\hat{x}\)-axis. \\
+
+We construct a unit-vector from the Earth's core to a position on the surface, before applying the tilt
+\begin{equation}\label{eq:basic}
+\vec{P}_{s}' = \left(\begin{array}{ccc}\cos l_{a}\cos l_{d} & \cos l_{a}\sin l_{d} & \sin l_{a} \end{array}\right)
+\end{equation}
+
+Now we rotate Eq~\eqref{eq:basic} about the \(\hat{z}\)-axis to account for the planet's spin and its rotation around the star.
+\begin{align}
+\vec{P}_{s}'' &=\left(\begin{array}{ccc} \cos(\omega + \gamma)t & -\sin(\omega + \gamma) t & 0 \\ \sin(\omega+\gamma) t & \cos(\omega + \gamma) t & 0 \\ 0 & 0 & 1 \end{array} \right) \left(\begin{array}{c}\cos l_{a}\cos l_{d} \\ \cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
+\vec{P}_{s}'' &=  \left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \label{eq:rotated}
+\end{align}
+
+For instance, for a planet without spin \(\omega = 0\). There is rotation, relative to the star, as the planet goes around the sun. The planet and star are tidally locked when \(\omega=\gamma\). Now Eq~\eqref{eq:rotated} is rotated about the \(\hat{y}\)-axis to incorporate axial tilt. 
+\begin{align}
+\vec{P}_{s} &= \left(\begin{array}{ccc}\cos\xi  & 0 & -\sin\xi \\ 0 & 1 & 0 \\ \sin\xi & 0 & \cos\xi \end{array}\right)\left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d} - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \sin l_{a} \end{array}\right) \\
+\vec{P}_{s} &= \left(\begin{array}{c} \cos(\omega+\gamma)t\cos l_{a}\cos l_{d}\cos\xi - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d}\cos\xi -\sin\xi\sin l_{a} \\ \sin(\omega + \gamma)t\cos l_{a}\cos l_{d} + \cos(\omega+\gamma)t\cos l_{a}\sin l_{d} \\ \cos(\omega+\gamma)t\cos l_{a}\cos l_{d}\sin\xi - \sin(\omega+\gamma)t\cos l_{a}\sin l_{d}\sin\xi + \cos\xi\sin l_{a} \end{array}\right) \label{eq:dir}
+\end{align}
+Using Equations~\eqref{eq:sun_earth}-\eqref{eq:dir}, we can define a `light level'
+\begin{equation}
+L = -(\vec{P}_{e}\cdot \vec{P}_{s}).
+\end{equation}
+And interpret it as such
+\begin{itemize}
+	\item \(L < -0.1\): nighttime
+	\item \(-0.1 < L < 0.1\): twilight hours
+	\item \(L>0.1\): daytime 
+\end{itemize}
+With \(+1\) correlating with the sun directly overhead. 
+
+\subsection{Implementation}
+\begin{itemize}
+	\item Finding sunrise and sunset: cache evaluated trigonometric values and propagate time-dependent ones forward until a point is found with a zero-valued light level. 
+\end{itemize}
+
+\end{document}
+
