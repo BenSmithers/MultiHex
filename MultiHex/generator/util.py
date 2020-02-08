@@ -1,5 +1,5 @@
 from math import exp
-from MultiHex.core import Hexmap, load_map, save_map
+from MultiHex.core import Hexmap, load_map, save_map, Point
 
 import random
 import os
@@ -8,10 +8,13 @@ import pickle
 # =====================================================
 
 
-# calculate the difference between two angles... sorta 
-# returned angle is always less than 180 degrees
 def angle_difference( theta_1, theta_2 ):
+    """
+    Returns the absolute difference between two angles
 
+    @param theta_1 - first angle [degrees]
+    @param theta_2 - second angle [degrees]
+    """
     if not (theta_1 >= 0 and theta_1<=360):
         raise Exception("bad angle {}".format(theta_1))
     if not (theta_2 >= 0 and theta_2<=360):
@@ -20,30 +23,37 @@ def angle_difference( theta_1, theta_2 ):
     return(min((360) - abs(theta_1-theta_2), abs(theta_1-theta_2)) )
 
 
-
-# prepares a discrete distribution so that 
-#   mountains are preferentially made in a certain direction
-
 def get_distribution( direction, variance=20. ):
+    """
+    Creates a normalized, discrete, gaussian distribution centered at a given angle and with a given variance. Distribution applies to the six angles correlated with the directions to a Hexes' neighbors' centers. 
+
+    @param direction - mean of distribution
+    @param variance -  variance of distribution
+    """
     normalization = 0
 #    variance = 20.
     angles = [150., 90., 30., 330., 270., 210.]
 
-    # calculate normalization
+    # We do this to calculate the overall normalization
     for angle in angles:
         normalization += exp( -1.*(angle_difference(angle, direction)**2)/(2*variance**2))
 
+    # Then prepare a function returning normalized probabilities 
     def distribution(angle): 
         return( (1./normalization)*exp(-1*(angle_difference(angle, direction)**2)/(2*variance**2)))
 
     return( distribution )
 
-# check if point is in the map
-# used literally all of the time 
-
-# TODO: generalize to different map shapes? 
-# could be cool to do a Mollweide like projection 
 def point_is_in(point, dimensions):
+    """
+    Returns whether or not a Point is within the bounds of a map of given dimensions.
+
+    @param Point    - a Point object
+    @param dimensions - list-like 
+    """
+    if not isinstance(point, Point):
+        raise TypeError("Expected type {}, got {}".format(Point, type(point)))
+
     return( point.x < dimensions[0] and point.x > 0 and point.y < dimensions[1] and point.y>0)
 
 
@@ -51,19 +61,18 @@ def point_is_in(point, dimensions):
 #  This function is deprecated. It is kept here solely for the author to either delete or use elsewhere.
 resources_dir = os.path.join( os.path.dirname(__file__),'..','resources')
 
-#  The following function was written by Ross McGuyer. Credit goes to the author (currently unknown) of
-#  http://pcg.wikidot.com/pcg-algorithm:markov-chain, as much of the code used is derived from the example.
-
-#  create_name
-#  Parameter(s): what - The region type. Appended to somewhere to the returned string.
-#                order - Controls how complex each look up syllable. Default value is 2.
-#  Return: A string to be used as a moniker for a region. Contains the region type so that users know what the region
-#           represents.
-#  Description: This function uses a simple markov chain to generate a name.
-
 
 def create_name(what, order=2, filename="Morrowind"):
+    """
+    The following function was written by Ross McGuyer. Credit goes to the author (currently unknown) of
+    http://pcg.wikidot.com/pcg-algorithm:markov-chain, as much of the code used is derived from the example.
 
+    create_name
+    Parameter(s): what - The region type. Appended to somewhere to the returned string.
+                    order - Controls how complex each look up syllable. Default value is 2.
+    Return: A string to be used as a moniker for a region. Contains the region type so that users know what the region represents.
+    Description: This function uses a simple markov chain to generate a name.
+    """
     try:
         mid_table, start_list = open_tables(filename)
     except:
@@ -77,19 +86,17 @@ def create_name(what, order=2, filename="Morrowind"):
     final_name = determine_name_style(syns, name)
     return final_name
 
-#  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
-#  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, much of the code used is derived from the example.
-#  fill_name_table
-#  Parameter(s): what - The region type. Eventually used to determine the style of the generated name.
-#                order - Controls how complex each look up syllable.
-#                filename - the text file to read from
-#  Return: A table containing the markov chain and weights
-#  Description: This function reads from a file containing several example words/names and uses that to generate the
-#                   rules for generating names.
-
-
 def fill_name_tables(what, order, filename):
-    
+    """ 
+    The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
+    of http://pcg.wikidot.com/pcg-algorithm:markov-chain, much of the code used is derived from the example.
+    fill_name_table
+    Parameter(s): what - The region type. Eventually used to determine the style of the generated name.
+                    order - Controls how complex each look up syllable.
+                    filename - the text file to read from
+    Return: A table containing the markov chain and weights
+    Description: This function reads from a file containing several example words/names and uses that to generate the rules for generating names.   
+    """
     if not os.path.exists( os.path.join( resources_dir , 'binary_tables' )):
         os.mkdir( os.path.join( resources_dir, 'binary_tables'))
 
@@ -120,21 +127,21 @@ def fill_name_tables(what, order, filename):
 
     return mid_table, start_list
 
-#  The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
-#  of http://pcg.wikidot.com/pcg-algorithm:markov-chain, since much of the code used is derived from the example.
-#  fill_name_table
-#  Parameter(s): table - The markov chain needed to form the name.
-#                order - Controls how complex each look up syllable.
-#                start - An index that chooses what syllable to start the new name with. Default is None, which means
-#                           a random syllable in table is used.
-#                max_length - controls that sizes of the word. Ideally terminating characters are reached, but in rare
-#                               case they are not and you don't want super long names. Default value is 20.
-#  Return: A string containing the a procedurally generated name.
-#  Description: This function splices together elements from table to create a randomized (but sensible) word or name.
-
 
 def generate_name(mid_table, order, start=None, max_length=20):
-
+    """
+    The following function was written by Ross McGuyer. Much of the credit goes to the author (currently unknown)
+    of http://pcg.wikidot.com/pcg-algorithm:markov-chain, since much of the code used is derived from the example.
+    fill_name_table
+    Parameter(s): table - The markov chain needed to form the name.
+                  order - Controls how complex each look up syllable.
+                  start - An index that chooses what syllable to start the new name with. Default is None, which means
+                             a random syllable in table is used.
+                  max_length - controls that sizes of the word. Ideally terminating characters are reached, but in rare
+                                 case they are not and you don't want super long names. Default value is 20.
+    Return: A string containing the a procedurally generated name.
+    Description: This function splices together elements from table to create a randomized (but sensible) word or name.
+    """
     name = ""
 
     if start == None:
@@ -152,14 +159,15 @@ def generate_name(mid_table, order, start=None, max_length=20):
 
     return name
 
-#  fetch_synonyms
-#  Parameter(s): what - The region type. Use to determine which synonym list to return.
-#  Return: syns - A list of strings containing synonyms of 'what'.
-#  Description: Takes in a string and returns a list containing the string and several synonyms.
 
 
 def fetch_synonyms(what):
-
+    """
+    fetch_synonyms
+    Parameter(s): what - The region type. Use to determine which synonym list to return.
+    Return: syns - A list of strings containing synonyms of 'what'.
+    Description: Takes in a string and returns a list containing the string and several synonyms.
+    """
     switcher = {
         "grassland": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
         "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
@@ -175,14 +183,15 @@ def fetch_synonyms(what):
 
     return switcher.get(what, ["Invalid What"])
 
-#  determine_name_style
-#  Parameter(s): syns - list of generated synonyms of the region type
-#  Return: A string to be used as a moniker for a region. Can either be in the format "The [region] of [name]" or
-#           or "The [Name] [Region]"
-#  Description: This randomly decides between two methods of arranging the region and the name.
-
 
 def determine_name_style(syns, name):
+    """
+    determine_name_style
+    Parameter(s): syns - list of generated synonyms of the region type
+    Return: A string to be used as a moniker for a region. Can either be in the format "The [region] of [name]" or
+             or "The [Name] [Region]"
+    Description: This randomly decides between two methods of arranging the region and the name.
+    """
 
     final_name = "The "
     result = random.randint(0, 100)
@@ -287,12 +296,13 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
     save_map( main_map, which )
 
 
-#  open_table
-#  Parameter(s): filename - the type of style table to retrieve.
-#  Return: N/A
-#  Description: This takes in both the start_table and the mid_table and pickles them as binary files.
-
 def open_tables(filename):
+    """
+    open_table
+    Parameter(s): filename - the type of style table to retrieve.
+    Return: N/A
+    Description: This takes in both the start_table and the mid_table and pickles them as binary files.
+    """
     try:
         start_file = open(os.path.join(resources_dir, 'binary_tables',filename + '_start'), 'rb')
         start_list = pickle.load(start_file)
@@ -308,16 +318,16 @@ def open_tables(filename):
 
     return mid_table, start_list
 
-#  save_table
-#  Parameter(s): start_table - the table of start characters to be saved
-#                mid_table - the table of mid word syllables
-#                filename - the name of the file associated with the start and mid tables
-#  Return: N/A
-#  Description: This takes in both the start_table and the mid_table and pickles them as binary files.
-
 
 def save_tables(start_table, mid_table, filename):
-    
+    """
+    save_table
+    Parameter(s): start_table - the table of start characters to be saved
+                  mid_table - the table of mid word syllables
+                  filename - the name of the file associated with the start and mid tables
+    Return: N/A
+    Description: This takes in both the start_table and the mid_table and pickles them as binary files.
+    """
     if not os.path.exists( os.path.join( resources_dir , 'binary_tables' )):
         os.mkdir( os.path.join( resources_dir, 'binary_tables'))
 
@@ -336,14 +346,15 @@ def save_tables(start_table, mid_table, filename):
 
     return
 
-#  break_name_loop
-#  Parameter(s): name - the name being generated thus far
-#  Return: True/False
-#  Description: This takes in the currently generated name and decides whether or not to continue building
-#                   the name or cutting it short. It will ensure that all names are at least 3 characters long.
-
 
 def break_name_loop(name):
+    """
+    break_name_loop
+    Parameter(s): name - the name being generated thus far
+    Return: True/False
+    Description: This takes in the currently generated name and decides whether or not to continue building
+                     the name or cutting it short. It will ensure that all names are at least 3 characters long.
+    """
     if len(name) >= 3:
         chance = 100 - len(name)*5
         if random.randint(1, 100) >= chance:
