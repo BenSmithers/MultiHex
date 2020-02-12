@@ -1,11 +1,80 @@
 from math import exp
-from MultiHex.core import Hexmap, load_map, save_map, Point
+from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id
 
 import random
 import os
 import pickle
 #                  Prepare Utilities
 # =====================================================
+
+
+def _get_perlin_coord( hexID ):
+    """
+    This function translates a HexID into a integer-coordinate system used by the perlinize function 
+    """
+    idx, idy, on_primary = deconstruct_id( hexID )
+
+    pidx = 0
+    pidy = 0
+
+    if on_primary:
+        pidx = 2*idx
+        pidy = idy - 2*idx
+    else:
+        pidx = 2*idx + 1
+        pidy = idy - 2*idx
+
+    return( pidx, pidy )
+
+_remainders = [ [0,-1], [1,-1], [-1,0], [0,0], [1,0], [-1,1], [0,1]]
+def _get_group( id_pair ):
+    if id_pair in _remainders:
+        return( _remainders.index( id_pair ) )
+    
+    return
+
+def _get_downsampled_id_pair( pair ):
+    """
+    Takes a len-2 list of integers: a perlin coordinate. Downsamples it 
+    """
+    if not isinstance(pair,list):
+        raise TypeError("Expected type {} for 'pair', got {}".format(list, type(pair)))
+    if not (len(pair)==2):
+        raise ValueError("'pair' should be of length 2, is {}".format(len(pair)))
+
+    # may have to change this to account for my rotated grid? 
+
+    p_u = Point( 7,0 )
+    p_v = Point( 2,1 )
+   
+    pass 
+
+
+def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), attr='altitude', magnitude =1.0 ):
+    """
+    Injets perline noise into the specified map. 
+
+    @param which - which map. Either a string specifying the filepath or a pointer to the Hexmap
+    @param attr  - which hex attribute to modify 
+    @param magnitude - scale of noise to inject 
+    """
+    
+    # this opens the map / loads the map to the proper variable 
+    if isinstance(which,str):
+        main_map = load_map(which)
+    elif isinstance(which, Hexmap):
+        main_map = which
+    else:
+        raise TypeError("Unexpected type for arg 'which': {}. Expected {} or {}".format(type(which), str, Hexmap))
+
+
+    # should ensure that the attribute given and the magnitude are appropriately typed
+    if not isinstance( attr, str ):
+        raise TypeError("Unexpected type {} for arg 'str', expected {}".format(type(attr), str))
+    if not (isinstance( magnitude, int) or isinstance(magnitude, float)):
+        raise TypeError("Expected number-like type for 'magnitude', got {}".format(type(magnitude)))
+    
+
 
 
 def angle_difference( theta_1, theta_2 ):
