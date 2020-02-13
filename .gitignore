@@ -11,6 +11,9 @@ Python_v/~$Plans.docx
 
 *.ui
 
+# numpy files
+*.npy
+
 # vim swap files
 *.swp
 
