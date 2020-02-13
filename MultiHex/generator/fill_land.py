@@ -169,5 +169,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     for i in range( n_rounds ):
         smooth( ['alt'], sim )
 
+    perlinize()
+
 if __name__=='__main__':
     generate('cont')

@@ -43,12 +43,12 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             # set those hexes to river borders 
             try:
                 main_map.catalogue[cw_id].river_border[0] = True
-                main_map.catalogue[cw_id]._rainfall_base = min( 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1 )
+                main_map.catalogue[cw_id]._rainfall_base = min([ 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1] )
             except KeyError:
                 pass
             try:
                 main_map.catalogue[ccw_id].river_border[1] = True
-                main_map.catalogue[ccw_id]._rainfall_base = min( 1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 )
+                main_map.catalogue[ccw_id]._rainfall_base = min( [1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 ])
             except KeyError:
                 pass
 
@@ -234,12 +234,12 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         for it in range(len(all_verts)-which):
                             ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it])
                             for ID in ids:
-                                main_map.catalogue[ID]._altitude_base = min( 1.0, 1.2*main_map.catalogue[ID]._altitude_base)
+                                main_map.catalogue[ID]._altitude_base = min( [1.0, 1.2*main_map.catalogue[ID]._altitude_base])
                                 main_map.catalogue[ID].river_border = [False, False, False]
                                 
                                 neighbors = main_map.get_hex_neighbors( ID )
                                 for neighbor in neighbors:
-                                    main_map.catalogue[neighbor]._altitude_base = min( 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base)
+                                    main_map.catalogue[neighbor]._altitude_base = min([ 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base])
                                     main_map.catalogue[neighbor].river_border = [False, False, False]
                         return( None )
 
