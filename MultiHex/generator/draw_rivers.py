@@ -239,8 +239,11 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                                 
                                 neighbors = main_map.get_hex_neighbors( ID )
                                 for neighbor in neighbors:
-                                    main_map.catalogue[neighbor]._altitude_base = min([ 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base])
-                                    main_map.catalogue[neighbor].river_border = [False, False, False]
+                                    try:
+                                        main_map.catalogue[neighbor]._altitude_base = min([ 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base])
+                                        main_map.catalogue[neighbor].river_border = [False, False, False]
+                                    except KeyError:
+                                        pass
                         return( None )
 
                                     
