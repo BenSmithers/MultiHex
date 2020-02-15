@@ -4,6 +4,8 @@ from MultiHex.core import load_map, save_map
 from math import sqrt
 from numpy import save, load, ndarray
 from numpy.random import rand 
+from numpy import max as nmax
+from numpy import min as nmin
 
 import os
 
@@ -26,7 +28,7 @@ def _is_valid_texture(obj,which):
             print("Not number")
             return(False)
     elif which=='gradient':
-        if not (isinstance(obj[0][0], list)):
+        if not (isinstance(obj[0][0], list) or isinstance(obj[0][0], ndarray)):
             print("Does not contain list-entries")
             return(False)
         else:
@@ -140,6 +142,7 @@ def _generate_perlin_texture(size = 512):
     _save_texture(grid_full)
 
 def _grad_sample( xsam, ysam, x_pos, y_pos, scale, texture):
+    size = len(texture)
     x_pos_scale = x_pos*scale
     y_pos_scale = y_pos*scale
 
@@ -147,11 +150,11 @@ def _grad_sample( xsam, ysam, x_pos, y_pos, scale, texture):
     y_weight = y_pos_scale - ysam
 
     n0 = _dot_grid_gradient( xsam, ysam, x_pos_scale, y_pos_scale ,texture)
-    n1 = _dot_grid_gradient( xsam+1, ysam, x_pos_scale, y_pos_scale ,texture)
+    n1 = _dot_grid_gradient( (xsam+1)%size, ysam, x_pos_scale, y_pos_scale ,texture)
     ix0 = _interpolate( n0, n1, x_weight)
 
-    n0 = _dot_grid_gradient( xsam, ysam+1, x_pos_scale, y_pos_scale ,texture)
-    n1 = _dot_grid_gradient( xsam+1, ysam+1, x_pos_scale, y_pos_scale ,texture)
+    n0 = _dot_grid_gradient( xsam, (ysam+1)%size, x_pos_scale, y_pos_scale ,texture)
+    n1 = _dot_grid_gradient( (xsam+1)%size, (ysam+1)%size, x_pos_scale, y_pos_scale ,texture)
     ix1 = _interpolate( n0, n1, x_weight)
     return( _interpolate( ix0, ix1, y_weight ))
 
@@ -213,9 +216,12 @@ def sample_noise(x_pos, y_pos, xsize=None, ysize=None, texture=None, algorithm='
         return( 0.25*value)
     elif algorithm=='gradient':
         temp =  _grad_sample(xsam, ysam, x_pos, y_pos, abs_scale, texture)
+        xsam = int(x_pos*abs_scale/10.)
+        ysam = int(y_pos*abs_scale/10.)
         temp += _grad_sample(xsam, ysam, x_pos, y_pos, abs_scale/10., texture)
+        return(temp)
 
-def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), algorithm='gradient', attr='_altitude_base', magnitude = 0.20 ):
+def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), algorithm='gradient', attr='_altitude_base', magnitude = 1.0 ):
     """
     Injets perline noise into the specified map's attribute. 
 
@@ -248,8 +254,10 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
 
     # We need to create a noise texture file
     if algorithm=='rectangular': 
+        print("Generating Rectangular Noise")
         _generate_perlin_texture()
     elif algorithm=='gradient':
+        print("Generating Gradients")
         _generate_gradients()
     else:
         raise NotImplementedError("Unsupported algorithm {}".format(algorithm))
@@ -263,6 +271,4 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
         setattr( this_hex, attr, new_value)
         this_hex.rescale_color()
     save_map( main_map, which )
-
-
 
