@@ -83,10 +83,10 @@ def apply_biome_to_hex( target ):
         """
 
         index = 0
-        if target._rainfall_base <= thresholds[0]:
-            index = 0
-        elif target._rainfall_base >= thresholds[-1]:
-            index = -1 
+        if getattr(target, hex_quantity) <= thresholds[0]:
+            return(0)
+        elif getattr(target, hex_quantity) >= thresholds[-1]:
+            return( len(thresholds)-2 ) 
         else:
             while (thresholds[index] < getattr( target, hex_quantity) ):
                 index += 1
