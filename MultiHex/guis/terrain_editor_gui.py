@@ -8,7 +8,7 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-class Ui_MainWindow(object):
+class editor_gui_window(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(1109, 815)
@@ -47,6 +47,7 @@ class Ui_MainWindow(object):
         self.graphicsView.setObjectName("graphicsView")
         self.horizontalLayout.addWidget(self.graphicsView)
         self.toolBox = QtWidgets.QToolBox(self.centralwidget)
+        self.toolBox.setMinimumSize(QtCore.QSize(250,0))
         self.toolBox.setMaximumSize(QtCore.QSize(250, 16777215))
         self.toolBox.setObjectName("toolBox")
         self.Detaoer = QtWidgets.QWidget()
@@ -119,6 +120,10 @@ class Ui_MainWindow(object):
         self.det_rain_lbl = QtWidgets.QLabel(self.Detaoer)
         self.det_rain_lbl.setObjectName("det_rain_lbl")
         self.formLayout_4.setWidget(11, QtWidgets.QFormLayout.LabelRole, self.det_rain_lbl)
+        self.det_apply_button = QtWidgets.QPushButton( self.Detaoer )
+        self.det_apply_button.setObjectName("det_apply_button")
+        self.formLayout_4.setWidget(13, QtWidgets.QFormLayout.SpanningRole, self.det_apply_button )
+
         self.toolBox.addItem(self.Detaoer, "")
         self.HexBrush = QtWidgets.QWidget()
         self.HexBrush.setGeometry(QtCore.QRect(0, 0, 250, 629))
@@ -336,6 +341,7 @@ class Ui_MainWindow(object):
         self.riv_but_astart.setText(_translate("MainWindow", "Add To Start"))
         self.riv_but_aend.setText(_translate("MainWindow", "Add To End"))
         self.river_trib.setText(_translate("MainWindow", "Tributaries:"))
+        self.det_apply_button.setText(_translate("MainWindow", "Apply"))
         self.riv_but_delete.setText(_translate("MainWindow", "Delte River"))
         self.riv_name_lbl.setText(_translate("MainWindow", "Selected: "))
         self.toolBox.setItemText(self.toolBox.indexOf(self.RiverPen), _translate("MainWindow", "River Pen"))
