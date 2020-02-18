@@ -1,0 +1,53 @@
+{
+  "standard": {
+    "thresholds": [
+
+    ],
+    "types": {
+      "forest": {
+        "dark forest": {
+          "color": 1.0
+        },
+        "gentle forest": {
+          "color": 1.0
+        },
+        "fey forest": {
+          "color": 1.0
+        }
+      },
+      "grasslands": {
+        "prarie": {
+          "color": 1.0
+        },
+        "scrub": {
+          "color": 1.0
+        },
+        "savannah": {
+          "color": 1.0
+        }
+      },
+      "barren": {
+        "tundra": {
+          "color": 1.0
+        },
+        "desert": {
+          "color": 1.0
+        }
+      },
+      "wetlands": {
+        "bog": {
+          "color": 1.0
+        },
+        "marsh": {
+          "color": 1.0
+        },
+        "fen": {
+          "color": 1.0
+        },
+        "swamp": {
+          "color": 1.0
+        }
+      },
+    }
+  }
+}
