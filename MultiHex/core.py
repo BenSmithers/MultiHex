@@ -225,7 +225,29 @@ class Hex:
 
     
 
+map_version = "0.1"
+def _update_to_0_1( which ):
+    """
+    Updates hexmap from before version numbering to the first numbered version 
+    """
+    which._version = "0.1"
+    which.__class__ = Hexmap
 
+def _update_save(which):
+    """
+    This function figures out the version mismatch of the given Hexmap and applies necessary updates
+    """
+    assert( isinstance( which, Hexmap ))
+
+    if not hasattr( which, version):
+        print("Updating map to version {}. You should save!")
+        _update_to_0_1( which )
+    elif which.version < map_version:
+        raise NotImplementedError("Unrecognized version number.")
+    elif which.version > map_version:
+        raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
+    
+    
 
 def save_map(h_map, filename):
     h_map.drawn_hexes = {}
@@ -243,6 +265,13 @@ def load_map(filename):
     file_object = open(filename, 'rb')
     hex_pickle = pickle.load(file_object)
     file_object.close()
+
+    # need to make sure that the loaded hexmap is up to date! 
+    if not hasattr(hex_pickle, version):
+        _update_save( hex_pickle )
+    elif hex_pickle.version != map_version:
+        _update_save( hex_pickle )
+
     return( hex_pickle )
 
 
@@ -296,6 +325,12 @@ class Hexmap:
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
+
+        self._version = map_version 
+
+    @property 
+    def version(self):
+        return( self._version )
 
     @property 
     def drawscale(self):
