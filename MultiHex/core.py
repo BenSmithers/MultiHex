@@ -232,6 +232,7 @@ def _update_to_0_1( which ):
     """
     which._version = "0.1"
     which.__class__ = Hexmap
+   
 
 def _update_save(which):
     """
@@ -239,9 +240,9 @@ def _update_save(which):
     """
     assert( isinstance( which, Hexmap ))
 
-    if not hasattr( which, version):
-        print("Updating map to version {}. You should save!")
+    if not hasattr( which, "version"):
         _update_to_0_1( which )
+        print("Updated map to version {}. You should save!")
     elif which.version < map_version:
         raise NotImplementedError("Unrecognized version number.")
     elif which.version > map_version:
@@ -267,7 +268,7 @@ def load_map(filename):
     file_object.close()
 
     # need to make sure that the loaded hexmap is up to date! 
-    if not hasattr(hex_pickle, version):
+    if not hasattr(hex_pickle, "version"):
         _update_save( hex_pickle )
     elif hex_pickle.version != map_version:
         _update_save( hex_pickle )
