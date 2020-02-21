@@ -2,7 +2,6 @@
 
 # civilization gui
 from MultiHex.guis.civ_gui import editor_gui_window
-from MultiHex.guis.about_gui import Ui_Dialog as about_MHX
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
@@ -14,8 +13,9 @@ from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Br
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog
 
-# ward dialog gui
+# ward dialog gui, about gui
 from MultiHex.guis.ward_dialog import Ui_Dialog as ward_ui
+from MultiHex.about_class import about_dialog
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
@@ -729,12 +729,6 @@ class editor_gui(QMainWindow):
         if 'county' in self.main_map.rid_catalogue :
             for rid in self.main_map.rid_catalogue['county']:
                 self.county_control.redraw_region( rid )
-
-class about_dialog(QDialog):
-    def __init__(self, parent):
-        super(about_dialog, self).__init__(parent)
-        self.ui = about_MHX()
-        self.ui.setupUi(self)
 
 class ward_dialog(QDialog):
     def __init__(self,parent, which, setting):

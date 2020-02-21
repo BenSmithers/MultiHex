@@ -8,6 +8,8 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from MultiHex.core import multihex_version
+
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
@@ -46,8 +48,5 @@ class Ui_Dialog(object):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
         self.label.setText(_translate("Dialog", "MultiHex"))
-        self.label_2.setText(_translate("Dialog", "Version 0.1.0\n"
-"\n"
-"by Ben Smithers\n"
-" with Ross McGuyer"))
+        self.label_2.setText(_translate("Dialog", "Version {}\n".format(multihex_version)+"\n"+"by Ben Smithers\n"+" with Ross McGuyer"))
 

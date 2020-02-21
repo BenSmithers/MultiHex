@@ -6,9 +6,10 @@ from MultiHex.map_types.overland import OHex_Brush, Biome_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog
 
 from MultiHex.guis.terrain_editor_gui import editor_gui_window
+from MultiHex.about_class import about_dialog
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
@@ -194,7 +195,9 @@ class editor_gui(QMainWindow):
         pass
 
     def menu_help(self):
-        pass
+        dialog = about_dialog(self)
+        dialog.setAttribute( QtCore.Qt.WA_DeleteOnClose )
+        dialog.exec_()
 
     def go_away(self):
         # show the main menu and disappear 
@@ -245,5 +248,4 @@ class editor_gui(QMainWindow):
         self.writer_control.redraw_rivers()
         print("done")
         
-
 

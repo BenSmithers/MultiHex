@@ -24,6 +24,9 @@ Objects:
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
+multihex_version = "0.1.1"
+map_version = "0.1"
+
 
 def is_number(object):
     try:
@@ -225,7 +228,7 @@ class Hex:
 
     
 
-map_version = "0.1"
+
 def _update_to_0_1( which ):
     """
     Updates hexmap from before version numbering to the first numbered version 
