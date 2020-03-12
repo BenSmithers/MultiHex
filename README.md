@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://github.com/BenSmithers/MultiHex/blob/master/wiki_images/multihex_logo.png" alt="MultiHex Logo" width="500" height="500">
+</p>
+
 # MultiHex
 A Hex-Map maker, editor, and interface by Ben Smithers.
 
