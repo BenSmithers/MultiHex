@@ -9,7 +9,7 @@ from MultiHex.civilization_editor import editor_gui as civ_gui
 from MultiHex.guis.new_map_dialogue import Ui_Dialog as nmd
 
 from MultiHex.ridge_editor import ridge_gui
-from MultiHex.generator import full_chain
+from MultiHex import generator
 
 import os
 import sys
@@ -104,7 +104,7 @@ class main_gui(QMainWindow):
             else:
                 print("Generating from scratch, name {}".format(self.new_name))
                 self.hide()
-                full_chain.full_sim('cont', self.new_name )
+                generator.full_chain.full_sim('cont', self.new_name )
                 self.show()
 
 class mod_accept(QDialog):
@@ -150,5 +150,4 @@ if __name__=="__main__":
         pass
     app_instance.show()
     sys.exit(app.exec_())
-
 

@@ -25,7 +25,7 @@ class PixHolder:
     """
     def __init__(self, subdir):
         assert( isinstance( subdir, str))
-        self._art_dir = os.path.join(os.path.dirname(__file__), '..', 'Artwork', subdir)
+        self._art_dir = os.path.join(os.path.dirname(__file__), 'Artwork', subdir)
         if not os.path.isdir( self._art_dir ):
             raise OSError("No such directory exists at: {}".format( self._art_dir))
 

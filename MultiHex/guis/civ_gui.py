@@ -10,7 +10,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 
 import os
 
-art_dir = os.path.join( os.path.dirname(__file__), '..', '..','Artwork','buttons')
+art_dir = os.path.join( os.path.dirname(__file__), '..', 'Artwork', 'buttons')
 
 class editor_gui_window(object):
     def setupUi(self, MainWindow):

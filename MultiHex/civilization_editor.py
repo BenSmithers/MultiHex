@@ -723,7 +723,7 @@ class editor_gui(QMainWindow):
             self.entity_control.redraw_entities_at_hex( hexID )
     def _redraw_roads(self):
         if self.path_control._path_key in self.main_map.path_catalog:
-            for pID in self.main_map.path_catalog[self.path_catalog._path_key]:
+            for pID in self.main_map.path_catalog[self.path_control._path_key]:
                 self.path_control.draw_path( pID )
     def _redraw_counties(self):
         if 'county' in self.main_map.rid_catalogue :

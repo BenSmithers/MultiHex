@@ -182,9 +182,9 @@ class path_brush(basic_tool):
         # load in the appropriate icon! 
         self._icon_size = 24
         if self._vertex_mode:
-            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork','buttons', 'river_icon.svg' )).scaledToWidth( self._icon_size )
+            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), 'Artwork','buttons', 'river_icon.svg' )).scaledToWidth( self._icon_size )
         else: # road mode
-            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), '..', 'Artwork','cursors', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
+            self._icon = QtGui.QPixmap( os.path.join(os.path.dirname(__file__), 'Artwork','cursors', 'road_cursor.svg' )).scaledToWidth( self._icon_size )
 
         self._selected_pid = None
         self._selected_color = QtGui.QColor( 255, 100, 100 )
