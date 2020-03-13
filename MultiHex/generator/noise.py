@@ -215,10 +215,10 @@ def sample_noise(x_pos, y_pos, xsize=None, ysize=None, texture=None, algorithm='
         value = texture[xsam][ysam] + texture[(xsam+1)%len(texture)][ysam] + texture[xsam][(ysam+1)%len(texture[0])] + texture[(xsam+1)%len(texture)][(ysam+1)%len(texture[0])]
         return( 0.25*value)
     elif algorithm=='gradient':
-        temp =  0.5*_grad_sample(xsam, ysam, x_pos, y_pos, abs_scale, texture)
+        temp =  0.25*_grad_sample(xsam, ysam, x_pos, y_pos, abs_scale, texture)
         xsam = int(x_pos*abs_scale/10.)
         ysam = int(y_pos*abs_scale/10.)
-        temp += 1.5*_grad_sample(xsam, ysam, x_pos, y_pos, abs_scale/10., texture)
+        temp += 1.75*_grad_sample(xsam, ysam, x_pos, y_pos, abs_scale/10., texture)
         return(temp)
 
 def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), algorithm='gradient', attr='_altitude_base', magnitude = 1.0 ):

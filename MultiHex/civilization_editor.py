@@ -461,7 +461,7 @@ class editor_gui(QMainWindow):
         self.ui.toolBox.setCurrentIndex( 3 )
         self.scene._active.drop()
         self.scene._active = self.county_control 
-        self.county_control.selector_mode = False
+        self.county_control.set_state( 1 )
 
     def entity_selector_toolbar(self):
         """
@@ -476,7 +476,7 @@ class editor_gui(QMainWindow):
         self.ui.toolBox.setCurrentIndex(3)
         self.scene._active.drop()
         self.scene._active = self.county_control
-        self.county_control.selector_mode = True
+        self.county_control.set_state( 0 )
 
     def county_update_with_selected(self):
         this_rid = self.county_control.selected_rid
