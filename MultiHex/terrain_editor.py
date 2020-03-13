@@ -111,19 +111,31 @@ class editor_gui(QMainWindow):
         self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
 
     def tb_hex_select(self):
-        pass
+        self.scene._active.drop()
+        self.scene._active = self.writer_control
+        self.writer_control.set_state(0)
+
+        self.toolBox.setCurrentIndex(0)
 
     def tb_detailer(self):
-        pass
+        self.scene._active.drop()
+
+        self.toolBox.setCurrentIndex(0)
 
     def tb_hex_brush(self):
-        pass
+        self.scene._active.drop()
+        self.scene._active = self.writer_control
+        self.writer_control.set_state(1)
+
+        self.toolBox.setCurrentIndex(1)
 
     def tb_new_river(self):
-        pass
+        self.scene._active.drop()
+        self.toolBox.setCurrentIndex(2)
 
     def tb_new_biome(self):
-        pass
+        self.scene._active.drop()
+        self.toolBox.setCurrentIndex(3)
 
     def det_comboBox_select(self):
         pass
