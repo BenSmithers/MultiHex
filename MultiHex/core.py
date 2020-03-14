@@ -25,7 +25,7 @@ Objects:
 """
 
 multihex_version = "0.1.1"
-map_version = "0.1"
+map_version = "0.2"
 
 
 def is_number(object):
@@ -43,16 +43,15 @@ class Point:
     @y          - y component of vector
     @magnitude  - length of this vector
     """
-    def __init__(self, ex =0.0, why=0.0):
-        if not is_number(ex):
-            raise TypeError("Expected type {} for arg 'ex', received {}".format(float, type(ex)))
-        if not is_number(why):
-            raise TypeError("Expected type {} for arg 'why', received {}".format(float, type(why)))
+    def __init__(self, x =0.0, y=0.0):
+        if not is_number(x):
+            raise TypeError("Expected type {} for arg 'x', received {}".format(float, type(x)))
+        if not is_number(y):
+            raise TypeError("Expected type {} for arg 'y', received {}".format(float, type(y)))
 
         # protected vector components
-        self._x = ex
-        self._y = why
-        
+        self._coords = [x,y]
+
         # use the bool so that we only have to calculate the magnitude once 
         self._mcalculated   = False
         self._magnitude     = 0.0
@@ -61,8 +60,8 @@ class Point:
         self._angle         = 0.0
 
     def normalize(self):
-        self._x /= self.magnitude
-        self._y /= self.magnitude
+        for element in range(len(self._coords)):
+            self._coords[element] /= self.magnitude
 
         self._magnitude = 1.0
 
@@ -71,56 +70,75 @@ class Point:
         """
         Used to add a point to another one through vector addition 
         """
-        if (type(obj)!=Point):
-            raise TypeError("Cannot add type {} to Point object".format(type(obj)) ) 
-        new = Point( self.x + obj.x, self.y + obj.y)
+        if (type(obj)!=self.__class__):
+            raise TypeError("Cannot add type {} to Point object".format(type(obj)) )        
+
+        new = self.__class__()
+        for component in range(len(self._coords)):
+            new._coords[component]  = self._coords[component] + obj._coords[component]
         return( new )
+
     def __sub__(self, obj):
         """
         Same as addition, but for subtraction
         """
-        if (type(obj)!=Point):
-            raise TypeError("Cannot subtract type {} from Point object".format(type(obj))) 
-        new = Point( self.x - obj.x, self.y - obj.y)
+        new = self + (obj*-1)
         return( new )
+
     def __mul__(self, obj):
         """
         Calculate the inner product of two vector-points, or scale one vector-point by a scalar. 
         """
         if is_number(obj):
-            return( Point( self.x*obj, self.y*obj ))
-        elif type(obj)==Point:
-            return( self.x*obj.x + self.y*obj.y )
+            new = self.__class__()
+            for comp in range(len(self._coords)):
+                new._coords[comp] = obj*self._coords[comp]
+            return( new )
+        elif type(obj)==self.__class__:
+            value = 0.0
+            for comp in range(len(self._coords)):
+                value += self._coords[comp]*obj._coords[comp]
+            return( value)
         else:
             raise TypeError("Cannot multiply type {} with Point object".format(type(obj)))
+
     def __eq__(self, obj):
-        if type(obj)==Point:
-            return( abs(self.x-obj.x)<0.01  and abs(self.y-obj.y)<0.01 )
+        if type(obj)==self.__class__:
+            is_same = True
+            for comp in range(len(self._coords)):
+                is_same &= abs(self._coords[comp] - obj._coords[comp])<0.01
+                if not is_same:
+                    return(False)
+            return( is_same )
         else:
             return(False)
     def __truediv__(self, obj):
         if not is_number(obj):
             raise TypeError("Cannot divide Point by object of type '{}'".format(type(obj)))
         else:
-            return( Point( self.x/obj, self.y/obj ) )
+            return( self*(1./obj) )
     
     def __pow__(self, obj):
         if not is_number(obj):
             raise TypeError("Cannot raise vector to a non-number power")
         else:
             # returns a scalar! 
-            return( self.x**obj + self.y**obj )
+            partial_sum = 0.0
+            for comp in range(len(self._coords)):
+                partial_sum += self._coords[comp]**obj
+
+            return( partial_sum )
 
     # functions used to access vector components
 
     @property
     def x(self):
-        copy = self._x
+        copy = self._coords[0]
         return( copy )
 
     @property
     def y(self):
-        copy = self._y
+        copy = self._coords[1]
         return( copy )
 
     @property
@@ -131,14 +149,14 @@ class Point:
         if cls._mcalculated:
             return( cls._magnitude )
         else:
-            cls._magnitude = sqrt( cls.x**2 + cls.y**2 )
+            cls._magnitude = sqrt( cls**2 )
             cls._mcalculated = True
             return(cls._magnitude)
     
     @property
     def angle(cls):
         """
-        returns the angle of the vector as measured from the x-axis. Calculates only once
+        returns the planar angle of the vector as measured from the x-axis. Calculates only once
         """
         if cls._acalculated:
             return( cls._angle )
@@ -164,6 +182,25 @@ class Point:
     
     def __repr__(self):
         return("Point({},{})".format(self.x,self.y))
+
+class Point3d(Point):
+    """
+    Implements the 2D point but now in 3D. 
+    
+    Distinct so as to save memory 
+    """
+    def __init__(self, x=0., y=0., z=0.):
+        Point.__init__(self, x, y)
+        if not is_number(z):
+            raise TypeError("Expected type {} for arg 'z', received {}".format(float, type(z)))
+        self._coords.append(z)
+
+    @property
+    def z(self):
+        copy = self._coords[2]
+        return( copy )
+        
+        
 
 default_p = Point(0.0,0.0)
 rthree = sqrt(3)
@@ -235,22 +272,54 @@ def _update_to_0_1( which ):
     """
     which._version = "0.1"
     which.__class__ = Hexmap
-   
+    _update_to_0_2(which)
+def _update_to_0_2(which):
+    def update_point( this ):
+        setattr( this, "_coords", [this._x, this._y ])
+        this.__class__ = Point
+
+    which._version = "0.2"
+    # go to every hex, update it to use the new point
+    update_point( which.draw_relative_to)
+    update_point( which.origin_shift )
+    for hexid in which.catalogue:
+        for i in range(6):
+            update_point( which.catalogue[hexid]._vertices[i] )
+            update_point( which.catalogue[hexid]._center )
+    for r_layer in which.rid_catalogue:
+        for rid in which.rid_catalogue[r_layer]:
+            for vert in range(len(which.rid_catalogue[r_layer][rid].perimeter)):
+                update_point( which.rid_catalogue[r_layer][rid].perimeter[vert] )
+
+    def update_path( this_one):
+        for vert in range(len( this_one._vertices)):
+            update_point( this_one._vertices[vert] )
+        if hasattr( this_one, "tributaries"):
+            if this_one.tributaries is not None:
+                update_path( this_one.tributaries[0] )
+                update_path( this_one.tributaries[1] )
+
+    for p_layer in which.path_catalog:
+        for pid in which.path_catalog[p_layer]:
+            update_path( which.path_catalog[p_layer][pid] )
 
 def _update_save(which):
     """
     This function figures out the version mismatch of the given Hexmap and applies necessary updates
     """
     assert( isinstance( which, Hexmap ))
-
-    if not hasattr( which, "version"):
+    print("Updating Map")
+    if not hasattr( which, "_version"):
         _update_to_0_1( which )
-        print("Updated map to version {}. You should save!")
+        
     elif which.version < map_version:
-        raise NotImplementedError("Unrecognized version number.")
+        if which._version == "0.1":
+            _update_to_0_2( which )
+
     elif which.version > map_version:
         raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
     
+    print("Updated map to version {}. You should save!".format(map_version))
     
 
 def save_map(h_map, filename):
@@ -271,7 +340,7 @@ def load_map(filename):
     file_object.close()
 
     # need to make sure that the loaded hexmap is up to date! 
-    if not hasattr(hex_pickle, "version"):
+    if not hasattr(hex_pickle, "_version"):
         _update_save( hex_pickle )
     elif hex_pickle.version != map_version:
         _update_save( hex_pickle )
