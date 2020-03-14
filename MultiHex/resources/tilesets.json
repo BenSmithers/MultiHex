@@ -6,48 +6,84 @@
     "types": {
       "forest": {
         "dark forest": {
-          "color": 1.0
+          "color": [ 5, 26, 13 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "gentle forest": {
-          "color": 1.0
+          "color": [ 51, 145, 68 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "fey forest": {
-          "color": 1.0
+          "color": [ 68, 199, 133 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         }
       },
       "grasslands": {
         "prarie": {
-          "color": 1.0
+          "color": [ 165, 217, 52 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "scrub": {
-          "color": 1.0
+          "color": [ 165, 217, 52 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "savannah": {
-          "color": 1.0
+          "color": [ 201, 214, 114 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         }
       },
       "barren": {
         "tundra": {
-          "color": 1.0
+          "color": [ 156, 213, 214 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "desert": {
-          "color": 1.0
+          "color": [ 207, 182, 116 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         }
       },
       "wetlands": {
         "bog": {
-          "color": 1.0
+          "color": [ 62, 97, 86 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "marsh": {
-          "color": 1.0
+          "color": [ 122, 194, 163 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "fen": {
-          "color": 1.0
+          "color": [ 38, 158, 106 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         },
         "swamp": {
-          "color": 1.0
+          "color": [ 77, 105, 93 ],
+          "altitude": 0.0,
+          "rainfall": 1.0,
+          "temperature": 1.0
         }
-      },
+      }
     }
   }
 }
