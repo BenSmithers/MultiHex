@@ -1,7 +1,7 @@
 #!/usr/bin/python3.6
 
 from math import exp
-from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id
+from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, Point3d
 
 import random
 import os
@@ -10,6 +10,28 @@ from numpy import save, load, min, max, ndarray
 from numpy.random import rand
 #                  Prepare Utilities
 # =====================================================
+
+def distance_between( point1, point2):
+    if not isinstance(point1, Point):
+        raise TypeError("Expected type {}, got {}".format(Point, type(point1)))
+    if not isinstance(point2, Point):
+        raise TypeError("Expected type {}, got {}".format(Point, type(point2)))
+
+    new = point1 - point2
+    return( new.magnitude )
+
+def distance_from_biome_ray( point1, ray):
+    if not isinstance(point1, Point3d):
+        raise TypeError("Expected type {}, got {}".format(Point3d, type(point1)))
+    if not isinstance(ray, Point3d):
+        raise TypeError("Expected type {}, got {}".format(Point3d, type(ray)))
+    
+    if point1.z > ray.z:
+        return( distance_between( point1, ray))
+    else:
+        difference = ray - point1
+        return( sqrt( difference.x**2 + difference.y**2) )
+
 
 def point_on_river( point, river ):
     """
