@@ -4,6 +4,8 @@ from MultiHex.core import RegionMergeError, RegionPopError
 from MultiHex.objects import Settlement, Government
 from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool
 
+from MultiHex.generator.util import point_on_river
+
 from PyQt5 import QtGui
 
 """
@@ -317,6 +319,23 @@ class River_Brush( path_brush ):
         self._creating = River
 
         self._path_key = "rivers"
+
+    def primary_mouse_released(self, event):
+        path_brush.primary_mouse_depressed( self, event)
+
+        if self._state in [2,3]:
+            for pid in self.parent.main_map.path_catalog[self._path_key]:
+                result = self.parent.main_map.path_catalog[self._path_key][pid].join_with( self._wip_path )
+                if result == 0:
+                    self._wip_path = None 
+                    if self._wip_path_object is not None:
+                        self.parent.scene.removeItem( self._wip_path_object)
+                        self._wip_path_object = None 
+
+                    self.set_state(0)
+                    self.draw_path( self._selected_pid)
+                    break
+                    
 
 class Biome_Brush( region_brush):
     def __init__(self, parent, civmode = False):

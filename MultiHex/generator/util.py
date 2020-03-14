@@ -11,6 +11,24 @@ from numpy.random import rand
 #                  Prepare Utilities
 # =====================================================
 
+def point_on_river( point, river ):
+    """
+    returns whether or not the Point `point` is somewhere on the River object `river`
+
+    @param point    - the Point...
+    @param river    - the River... 
+    """
+
+    assert( isinstance( point, Point))
+    assert( isinstance( river, River))
+
+    if river.tributaries is not None:
+        # see if the point is on the river body, or one of the tributaries. Call this function on each of the tributaries 
+        return( (point in river.vertices) or (point_on_river( point, river.tributaries[0])) or (point_on_river( point, river.tributaries[1] )))
+    else:
+
+        return( point in river.vertices )
+
 def angle_difference( theta_1, theta_2 ):
     """
     Returns the absolute difference between two angles

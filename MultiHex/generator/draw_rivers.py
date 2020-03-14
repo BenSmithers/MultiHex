@@ -70,24 +70,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             return( point==river.start() or point_hits_source(point, river.tributaries[0]) or point_hits_source(point, river.tributaries[1] ))
         else:
             return( point==river.start() )
-    
-    def point_on_river( point, river ):
-        """
-        returns whether or not the Point `point` is somewhere on the River object `river`
-
-        @param point    - the Point...
-        @param river    - the River... 
-        """
-
-        assert( isinstance( point, Point))
-        assert( isinstance( river, River))
-
-        if river.tributaries is not None:
-            # see if the point is on the river body, or one of the tributaries. Call this function on each of the tributaries 
-            return( (point in river.vertices) or (point_on_river( point, river.tributaries[0])) or (point_on_river( point, river.tributaries[1] )))
-        else:
-
-            return( point in river.vertices )
         
 
     def make_river():

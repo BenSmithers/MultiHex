@@ -288,8 +288,8 @@ class path_brush(basic_tool):
         self._selected_pid = None
         self._selected_color = QtGui.QColor( 255, 100, 100 )
 
-        self._wip_path = None
-        self._wip_path_object = None
+        self._wip_path = None #path object
+        self._wip_path_object = None #drawn object on map
 
         self._step_object = None
 
