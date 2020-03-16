@@ -1,21 +1,20 @@
+<p align="center">
+  <img src="https://github.com/BenSmithers/MultiHex/blob/master/wiki_images/multihex_logo.png" alt="MultiHex Logo" width="500" height="500">
+</p>
+
 # MultiHex
 A Hex-Map maker, editor, and interface by Ben Smithers.
 
 This is an open-source MultiHex tool for (eventually) all your hex-map needs. 
 It will always be open-source and always be freely available on github.
 It's under active development and there are no official stable releases at the moment.
-So, stability is not at all guaranteed! 
-
-Whatever those are. 
-Currently only the python verison is maintained, supported, and under development. 
-The c++ code is just there incase I ever decided to go back to it. 
-
+The `master` branch is kept stable (with a few known bugs), with experimental features being kept under the other branches. 
 
 # Prerequesites
 
 You will need PyQt5, Python 3, and numpy.
 Ensure you install numpy and Qt for python 3, and not python 2! 
-Python2 is unsupported (and won't work due to some changes in the way python handles class instance types between 2 and 3), and this is **known to fail in different verisons of Qt**.
+Python2 is unsupported (and won't work due to some changes in the way python handles class instance types between 2 and 3), and this is **known to fail in different verisons of Qt**. Because, again, there are big differences in the syntax used between PyQt4 and 5.
 
 # Installing and Running
 
@@ -28,25 +27,31 @@ Now, open up a new terminal window, go to `/path/to/HexMap/HexMap` and run `./la
 
 # Current Features
 
-## World Generation! 
+## World Generation
 
 MultiHex currently supports a multi-step world generation system. 
 When creating a new map, you have the option of 
 
-a. Allowing *MultiHex* to seed the world with its own mountain ridges, and spawn the world from there, or
+a. Allowing *MultiHex* to seed the world with its own mountain ridges, and spawn the world from there, (recommended) or
 
-b. Drawing out the mountainous ridge contours of your world, and letting *MultiHex* do the rest, or for the dedicated
+b. Drawing out the mountainous ridge contours of your world, and letting *MultiHex* do the rest, or for the dedicated. (outdated)
 
-c. Filling in all the dtails yourself, starting with just a blank canvas and creativity.
+c. Filling in all the dtails yourself, starting with just a blank canvas and creativity. (not working)
 
 *MultiHex* uses a seeded algorithm to generate the world's topography and oceans. 
 Then, it uses a 'nuanced' weather model to propagate storm systems across your new world to map out areas of intense rainfall and arid deserts. 
 
 ## World Editor
 
-The current way to view and edit a *MultiHex* hexmap. 
+The master branch editor allows you to change Hexes and draw new biomes. An update to this interface is currently under development, see #11 for more details. 
+
+## Civilization Editor
+
+Allows the user to view and edit the civilizations on the map: locations (with multiple choices of icons), settlements, roadways, counties, and kingdoms (which are collections of counties). Currently uses template artwork for the buttons. 
 
 # Future Plans
+
+For a detailed list of planned features, or ways to contribute, see the issues list.
 
 ## Map Run Mode
 
@@ -67,58 +72,3 @@ Turn the clock forward accordingly when travelling.
 * Insta-Flavor text. What's it like on a certain hex *right now?* Using the world clock, local weather, hex features, and neighbor hex features, this will provided a breif description of this hex. 
 
 * May want to add fog-of-war like feature to share maps with players
-
-## Civ Edit Mode
-
-An editor for non-geographical features in the world
-
-* Place and edit elements of civilization like cities, towns, and roads. 
-
-* Region definitions will allow the display of kingdom/emperor borders and names. 
-
-* Add points of interest to the hexes.
-
-* Insert civilizaitons to breath life into the new world. 
-
-* Incorporate civilization generation into world generation? 
-
-## World Generation
-
-Improvements and additions to the world generation
-
-* ~~ Use region backend to define geographical regions like deserts, forests, grasslands, and mountain regions. 
-Region names will be superimposed over map. ~~ (implemented!)
-
-* Gui for modifying world generation parameters. Currently the world gen params are stored in the `config.json` file in the generator folder; this is not ideal. 
-
-* ~~ rivers, lakes ~~ (_implemented_) 
-One bug still exists where rivers won't _quite_ reach the ocean. 
-
-* biodiversity. Will be influenced by rainfall, temperature 
-
-* Hex feature-dependent color.
-Currently implemented in a hacky way. Needs improvement. 
-
-## World Edit
-
-* Replace biome brush buttons with dropdown menus for each. 
-Region subtypes within general region type. 
-
-## Miscellaneous
-
-* Generic `entity` object. Allow hexes to house entities. 
-Will be a catch-all entry for things that are on hexes: cities, space stations, points of interest. 
-
-* Generic `mobile` object. Things that exist separate from the map and move around the map. 
-Consider this as being a non-player character, or the party, etc... 
-
-* Use Region backend to allow for arbitrarily large (or shaped) brushes when drawing land or regions
-
-* Efficiently sized save files.
-Save only the minimum necessary information necessary to recreate a hexmap.
-Will use an intermediate class instance from which to pickle and two functions for creating one from another. 
-Will become more necesary once we get to more complicated maps. _(low priority)_
-
-* Seasonal variation of rivers 
-
-* Export maps as pngs 
