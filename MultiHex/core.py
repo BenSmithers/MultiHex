@@ -25,7 +25,7 @@ Objects:
 """
 
 multihex_version = "0.1.1"
-map_version = "0.2"
+map_version = "0.3"
 
 
 def is_number(object):
@@ -200,7 +200,25 @@ class Point3d(Point):
         copy = self._coords[2]
         return( copy )
         
+
+class PointNd( Point ):
+    """
+    Implements the 2D point but now with arbitrary dimensionality
+
+    Does not allow for easy access functions like .z 
+    """
+    def __init__(self, coords):
+        Point.__init__(0,0)
+
+        if not isinstance( coords, list):
+            raise Exception("Coordinates need to be specified as {}, got {}".format(list, type(coords)))
+        for entry in coords:
+            if not (insinstance( entry, float) or isinstance( entry, int )):
+                raise TypeError("Each coordinate should be number-like, got {}".format( type(entry)))
+        if len(coords)<2:
+            raise ValueError("Need at least two coordinates! Just use a scalar...")
         
+        self._coords = coords
 
 default_p = Point(0.0,0.0)
 rthree = sqrt(3)
@@ -282,10 +300,12 @@ def _update_to_0_2(which):
     # go to every hex, update it to use the new point
     update_point( which.draw_relative_to)
     update_point( which.origin_shift )
+    # update all the verices on the hexes... and their centers
     for hexid in which.catalogue:
         for i in range(6):
             update_point( which.catalogue[hexid]._vertices[i] )
             update_point( which.catalogue[hexid]._center )
+    # update the perimeter of all regions
     for r_layer in which.rid_catalogue:
         for rid in which.rid_catalogue[r_layer]:
             for vert in range(len(which.rid_catalogue[r_layer][rid].perimeter)):
@@ -299,9 +319,17 @@ def _update_to_0_2(which):
                 update_path( this_one.tributaries[0] )
                 update_path( this_one.tributaries[1] )
 
+    # update the vertices on all the paths. Rivers have tributaries, so we update those (recursively)
     for p_layer in which.path_catalog:
         for pid in which.path_catalog[p_layer]:
             update_path( which.path_catalog[p_layer][pid] )
+    _update_to_0_3(which)
+
+def _update_to_0_3(which):
+    which._version = "0.3"
+    which.__class__ = Hexmap
+    setattr( which, "_tileset", "standard")
+
 
 def _update_save(which):
     """
@@ -315,6 +343,8 @@ def _update_save(which):
     elif which.version < map_version:
         if which._version == "0.1":
             _update_to_0_2( which )
+        if which._version == "0.2":
+            _update_to_0_3(which)
 
     elif which.version > map_version:
         raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
@@ -399,7 +429,29 @@ class Hexmap:
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
 
+        self._tileset = "standard"
         self._version = map_version 
+
+    @property
+    def tileset(self):
+        return(self._tileset)
+    
+    def set_tileset(self, new):
+        """
+        Change the map's tileset to one of the definitions in the tilesets json file
+        """
+        if not isinstance(new,str):
+            raise TypeError("Expected {}, got {}".format(str, type(new)))
+
+        loc = os.path.join(os.path.dirname(__file__) ,'resources', 'tilesets.json')
+        file_object = open( loc, 'r')
+        config = json.load( file_object )
+        file_object.close()
+
+        if new not in config:
+            raise ValueError("Unrecognized tileset {}".format(new))
+
+        self._tileset = new
 
     @property 
     def version(self):
