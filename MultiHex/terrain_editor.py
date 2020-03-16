@@ -3,6 +3,7 @@
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import clicker_control
 from MultiHex.map_types.overland import OHex_Brush, Biome_Brush
+from MultiHex.generator.util import get_tileset_params
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -13,7 +14,7 @@ from MultiHex.about_class import about_dialog
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
-
+import json # used to handle tileses 
 
 screen_ratio = 0.8
 
@@ -73,11 +74,20 @@ class editor_gui(QMainWindow):
         self.ui.det_apply_button.clicked.connect( self.det_apply_button )
 
         # Hexbar toolbox connections
-        self.ui.hex_type_combo.currentIndexChanged.connect( self.det_comboBox_select )
+        self.ui.hex_type_combo.currentIndexChanged.connect( self.hex_comboBox_select )
         self.ui.hex_list_entry = QtGui.QStandardItemModel() 
         self.ui.hex_sub_list.setModel( self.ui.hex_list_entry )
         self.ui.hex_sub_list.clicked[QtCore.QModelIndex].connect( self.hex_subtype_clicked )
         self.ui.hex_brush_disp.valueChanged.connect( self.hex_brush_change )
+
+        loc = os.path.join(os.path.dirname(__file__),'resources', 'tilesets.json')
+        file_object = open( loc, 'r')
+        self.config = json.load( file_object )
+        file_object.close()
+        self.params = []
+
+        self.hex_fill_supertypes()
+
 
         # river toolbox connections
         #   first all the list stuff
@@ -109,6 +119,8 @@ class editor_gui(QMainWindow):
         self.ui.actionBiome_Names.triggered.connect( self.menu_view_biome_name )
         self.ui.actionBiome_Borders.triggered.connect( self.menu_view_biome_border )
         self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
+
+
 
     def tb_hex_select(self):
         self.scene._active.drop()
@@ -150,13 +162,46 @@ class editor_gui(QMainWindow):
         pass
 
     def hex_comboBox_select(self):
-        pass
+        """
+        Called when you choose a new entry in the drop-down menu
+        """
+        self.ui.hex_list_entry.clear()
+        this_sub = self.ui.hex_type_combo.currentText()
+
+        for entry in self.config[self.main_map.tileset]["types"][this_sub]:
+            this = QtGui.QStandardItem(entry)
+            color =  self.config[self.main_map.tileset]["types"][this_sub][entry]["color"]
+            this.setBackground( QtGui.QColor(color[0], color[1], color[2] ))
+            self.ui.hex_list_entry.appendRow(this)
+
 
     def hex_subtype_clicked(self, index=None):
-        pass
+        """
+        Called when you click on a subtype 
+        """
+        sub_type = index.data()
+        this_type = self.ui.hex_type_combo.currentText()
+
+        new_param = {}
+        for key in self.params:
+            new_param[key] = self.config[self.main_map.tileset]["types"][this_type][sub_type][key]
+        
+        self.writer_control.set_color(self.config[self.main_map.tileset]["types"][this_type][sub_type]["color"])
+        self.writer_control.set_params( new_param )
 
     def hex_brush_change(self):
+        """
+        Called when the brush size changes
+        """
         pass
+
+    def hex_fill_supertypes(self):
+        # hex_type_combo
+        where = self.main_map.tileset
+        for super_type in self.config[self.main_map.tileset]["types"]:
+            self.ui.hex_type_combo.addItem(super_type)
+
+        self.ui.hex_type_combo.setCurrentIndex(0)
 
     def river_list_click(self, index=None):
         pass
@@ -259,5 +304,7 @@ class editor_gui(QMainWindow):
         print("Drawing rivers... ", end='')
         self.writer_control.redraw_rivers()
         print("done")
+
+        self.params = get_tileset_params( self.main_map.tileset )
         
 
