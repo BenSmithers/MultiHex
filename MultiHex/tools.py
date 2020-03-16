@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5 import QtGui, QtCore
 
 
-from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path
+from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 # from MultiHex.map_types.overland import Road, River
 
@@ -924,7 +924,10 @@ class hex_brush(Basic_Brush):
     """
     def __init__(self, parent):
         Basic_Brush.__init__(self,parent)
-        self._brush_type = None
+        self._brush_type = Hex
+        self._brush_color = [255,255,255]
+        self._brush_params = {}
+
         self._brush_size = 1
 
         self.pen_style = 0
@@ -933,6 +936,20 @@ class hex_brush(Basic_Brush):
         self.drawn_hexes = {}
 
         self.overwrite = True
+
+    def set_params( self, obj ):
+        assert( isinstance(obj, dict) )
+        self._brush_params = obj
+
+    def set_color( self, new_color ):
+        if not (isinstance( new_color, list) or isinstance( new_color, tuple )):
+            raise TypeError("Expected list-like, got {}".format(type(new_color)))
+        if len(new_color)!=3:
+            raise ValueError("Expected length-3 list, got {}".format(len(new_color)))
+
+
+    def make_hex(self):
+        pass
 
     def primary_mouse_released(self, event):
         if self._state==0:
