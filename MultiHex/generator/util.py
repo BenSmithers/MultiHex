@@ -1,17 +1,117 @@
 #!/usr/bin/python3.6
 
 from math import exp
-from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, Point3d
+from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd
 
 import random
-import os
+import os # used by the biomator 
 import pickle
+import json # used by the biomator
 from numpy import save, load, min, max, ndarray
 from numpy.random import rand
 #                  Prepare Utilities
 # =====================================================
 
+def get_tileset_params(tileset = "standard"):
+    loc = os.path.join(os.path.dirname(__file__), '..' ,'resources', 'tilesets.json')
+    file_object = open( loc, 'r')
+    config = json.load( file_object )
+    file_object.close()
+
+    # get the parameters
+    parameters = []
+    ignoring = ["color","is_ray"]
+    for super_type in config[tileset]["types"]:
+        for sub_type in config[tileset]["types"][super_type]:
+            for param in config[tileset]["types"][super_type][sub_type]:
+                if param not in ignoring:
+                    parameters.append( param )
+            # we really only need to do this for the first entry. So let's break! 
+            break
+        break
+    return( parameters )
+    # this is a length of strings. It tells the object what to access in the Hexes
+
+class biomator:
+    def __init__(self, tileset = "standard"):
+
+        loc = os.path.join(os.path.dirname(__file__), '..' ,'resources', 'tilesets.json')
+        file_object = open( loc, 'r')
+        self.tileset = tileset
+        self.config = json.load( file_object )
+        file_object.close()
+
+        if tileset not in config:
+            raise IOError("Tileset {} not in fileset folder".format(tileset))
+
+        # this is a length of strings. It tells the object what to access in the Hexes
+        self.parameters = get_tileset_params(tileset)
+        assert(len(self.parameters)>=1)
+
+
+    def get_sup_sub(self, parameters):
+        """
+        For a given set of parameters (list of numbers), get the sub-type and super-type from the given tileset 
+        """
+        if not isinstance(parameters, list):
+            raise TypeError("Parameters should be type {}, got {}".format(list, type(parameters)))
+        # the number of parameters needs to match that which this object has been configured for 
+        if not (len(parameters) == len(self.parameters)):
+            raise ValueError("Should specify {} params, got {}".format(len(self.parameters), len(parameters)))
+        for entry in parameters:
+            if not (isinstance( entry,int) or isinstance(entry, float)):
+                raise TypeError("Found non-numberlike entry: {}".format(entry))
+
+        # build a point for these parameters 
+        testing = PointNd( parameters )
+        distance = 10.
+        curr_pt = None
+        super = ""
+        sub = ""
+
+        # loop over all the specified presets and find the one closest to the parameters were given 
+        for super_type in self.config[self.tileset]["types"]:
+            for sub_type in self.config[self.tileset]["types"][super_type]:
+                which = self.config[self.tileset]["types"][super_type][sub_type]
+                temp  =[ which[param] for param in self.parameters ]
+                new = PointNd( temp )
+
+                # none found yet, set the chosen one and move on
+                if which=="":
+                    curr_pt = new
+                    super = super_type
+                    sub = sub_type
+                    continue
+
+                # calculate at distance depending on whether we treat this as a "ray" or a point in space
+                if self.config[self.tileset]["types"][super_type][sub_type]["is_ray"]:
+                    # temporarily disabling the ray stuff
+                    dist = distance_between( testing, new )
+                else:
+                    dist = distance_between( testing, new)
+
+                # if this biome is closer to the sampled point than the current best fit, assign it! 
+                if dist < distance:
+                    distance = dist
+                    curr_pt = new
+                    sub = sub_type
+                    super = super_type
+
+        return( super, sub )
+
+    def apply_biome_to_hex( self, target ):
+        temp  =[ getattr(target, param) for param in self.parameters ]
+        super, sub = self.get_sup_sub( temp )
+
+        target.fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
+        target.biome = sub
+
+
+
 def distance_between( point1, point2):
+    """
+    Returns the distance between two Points 
+    """
     if not isinstance(point1, Point):
         raise TypeError("Expected type {}, got {}".format(Point, type(point1)))
     if not isinstance(point2, Point):
@@ -21,9 +121,9 @@ def distance_between( point1, point2):
     return( new.magnitude )
 
 def distance_from_biome_ray( point1, ray):
-    if not isinstance(point1, Point3d):
+    if not isinstance(point1, PointNd):
         raise TypeError("Expected type {}, got {}".format(Point3d, type(point1)))
-    if not isinstance(ray, Point3d):
+    if not isinstance(ray, PointNd):
         raise TypeError("Expected type {}, got {}".format(Point3d, type(ray)))
     
     if point1.z > ray.z:
