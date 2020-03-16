@@ -1,9 +1,11 @@
 <p align="center">
-  <img src="https://github.com/BenSmithers/MultiHex/blob/master/wiki_images/multihex_logo.png" alt="MultiHex Logo" width="500" height="500">
+  <img src="https://github.com/BenSmithers/MultiHex/blob/master/MultiHex/Artwork/wiki_images/multihex_logo.png" alt="MultiHex Logo" width="500" height="500">
 </p>
 
 # MultiHex
 A Hex-Map maker, editor, and interface by Ben Smithers.
+
+Get the latest release [here](https://drive.google.com/drive/folders/1LXaBZ8eH035o1BIwKwD99GYJLY6AwxXB?usp=sharing)!
 
 This is an open-source MultiHex tool for (eventually) all your hex-map needs. 
 It will always be open-source and always be freely available on github.
