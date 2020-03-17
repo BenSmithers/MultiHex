@@ -504,9 +504,25 @@ class OEntity_Brush( entity_brush ):
 class OHex_Brush( hex_brush ):
     def __init__(self, parent):
         hex_brush.__init__(self, parent)
-        self._brush_type = Grassland_Hex
+        self._brush_type = OHex
+
+        self._skip_params = ["_altitude_base"]
 
         self._river_drawn = []
+
+    def adjust_hex(self, which):
+        """
+        OHex brush specific. Land shouldn't be made beneath sea level and ocean shouldn't be above it! 
+        """
+        hex_brush.adjust_hex(self, which)
+
+        which._is_land = bool(which._is_land)
+        if which._is_land:
+            if which._altitude_base < 0:
+                which._altitude_base = 0.
+        else:
+            if which._altitude_base > 0:
+                which._altitude_base = 0
 
     def redraw_rivers( self ):
         """
@@ -535,51 +551,11 @@ class OHex_Brush( hex_brush ):
                 assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
                 draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
 
-    def update_selection(self):
-        self.set_sliders( self._selected_id )
-
-    # set the sliders! 
-    def set_sliders(self, this_id ):
-# set the sliders 
-        self.parent.ui.rainfall.setValue(    max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._rainfall_base*100    )))) 
-        self.parent.ui.temperature.setValue( max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._temperature_base*100 ))))
-        self.parent.ui.biodiversity.setValue(max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._biodiversity*100     ))))
-
-    # these functions will be called to scale a selected hexes' properties using the sliders 
-    def rainfall(self, value):
-        if self.selected_id is not None:
-            self.parent.main_map.catalogue[self._selected_id]._rainfall_base = float(value)/100.
-    def temperature(self, value):
-        if self.selected_id is not None:
-            self.parent.main_map.catalogue[self._selected_id]._temperature_base = float(value)/100.
-    def biodiversity(self, value):
-        if self.selected_id is not None:
-            self.parent.main_map.catalogue[self._selected_id]._biodiversity_base = float(value)/100.
-    
-    # What kind of template to use when drawing 
-    def switch_forest(self):
-        self._brush_type = Forest_Hex
-    def switch_grass(self):
-        self._brush_type = Grassland_Hex
-    def switch_mountain(self):
-        self._brush_type = Mountain_Hex
-    def switch_desert(self):
-        self._brush_type = Desert_Hex
-    def switch_ocean(self):
-        self._brush_type = Ocean_Hex
-    def switch_arctic(self):
-        self._brush_type = Arctic_Hex
-    def switch_ridge(self):
-        self._brush_type = Ridge_Hex
-    
     # DIE
     def drop(self):
         if self.parent.main_map._outline is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
-        if self._selected_out is not None:
-            self.parent.scene.removeItem( self._selected_out )
-            self._selected_out = None
         self._selected_id = None
 
  

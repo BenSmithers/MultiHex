@@ -40,6 +40,11 @@ class basic_tool:
         @param setp  - vector pointing from last called location to @place
         """
         pass
+    def secondary_mouse_held(self, event):
+        """
+        Called continuously while the right mouse button is moved and depressed 
+        """
+        pass
     def secondary_mouse_released(self, event ):
         """
         Left click released event, used to select something
@@ -83,9 +88,10 @@ class Basic_Brush(basic_tool):
         basic_tool.__init__(self, parent)
         self._state = 0
 
-        self._selected_id = None
-        self._selected_out = None
+        self._selected_id = None # hex id of where the selection is 
+        self._outline_obj = None # qt5 object of the drawn outline 
         
+        self._color = (0,0,0)
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
 
@@ -117,8 +123,9 @@ class Basic_Brush(basic_tool):
         """
         
         # the default 0-state represents no drawing of the outline, and no brushing 
+
         if self._state == 0:
-            if self._selected_out is not None:
+            if self._outline_obj is not None:
                 self.parent.scene.removeItem( self._outline_obj )
                 self._outline_obj = None
             return
@@ -133,16 +140,20 @@ class Basic_Brush(basic_tool):
         else:
             self._selected_id = center_id
             outline = self.parent.main_map.get_neighbor_outline( center_id , self._brush_size)
-            self.QPen.setColor(QtGui.QColor(self._selected_color[0], self._selected_color[1], self._selected_color[2]))
+            #self.QPen.setColor(QtGui.QColor(self._selected_color[0], self._selected_color[1], self._selected_color[2]))
             self.QBrush.setStyle(0)
 
-            if self._selected_out is not None:
+            if self._outline_obj is not None:
                 self.parent.scene.removeItem( self._outline_obj )
-        
+            
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
             self._outline_obj.setZValue(10)
 
-    def _set_color( self, color):
+    def get_color(self):
+        new = (self._color[0], self._color[1], self._color[2])
+        return(new)
+            
+    def set_color( self, color):
         """
         Sets the brush and pen to a specified color. The brush is only partially opaque 
 
@@ -163,9 +174,10 @@ class Basic_Brush(basic_tool):
 
         self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 60))
         self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
+        self._color = color
 
     def drop(self):
-        if self._selected_out is not None:
+        if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
 
@@ -179,8 +191,9 @@ class clicker_control(QGraphicsScene):
     def __init__(self, parent=None, master=None):
         QGraphicsScene.__init__(self, parent)
 
-        self._active = None
-        self._held = False
+        self._active = None #basic_tool object
+        self._primary_held = False
+        self._secondary_held = False
         
         self.parent = parent
         self.master = master
@@ -212,8 +225,11 @@ class clicker_control(QGraphicsScene):
         """
         if event.button()==self._primary:
             event.accept() # accept the event
-            self._held = True # say that the mouse is being held 
+            self._primary_held = True # say that the mouse is being held 
             self._active.primary_mouse_depressed( event )
+        elif event.button()==self._secondary:
+            event.accept()
+            self._secondary_held = True
 
     def mouseReleaseEvent( self, event):
         """
@@ -222,12 +238,13 @@ class clicker_control(QGraphicsScene):
         if event.button()==self._primary:
             # usually a brush event 
             event.accept()
-            self._held = False
+            self._primary_held = False
             self._active.primary_mouse_released(event)
 
         elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
+            self._secondary_held = False
             self._active.secondary_mouse_released( event )
 
    #mouseMoveEvent 
@@ -236,8 +253,10 @@ class clicker_control(QGraphicsScene):
         called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
         """
         event.accept()
-        if self._held:
+        if self._primary_held:
             self._active.primary_mouse_held( event )
+        if self._secondary_held:
+            self._active.secondary_mouse_held( event )
  
         self._active.mouse_moved( event )
 
@@ -924,9 +943,12 @@ class hex_brush(Basic_Brush):
     """
     def __init__(self, parent):
         Basic_Brush.__init__(self,parent)
+        # what type of Hex does this brush draw
         self._brush_type = Hex
-        self._brush_color = [255,255,255]
+        # parameters (like rainfall, temperature, etc) and their defaults 
         self._brush_params = {}
+        # which of these to skip when overwriting an existing hex 
+        self._skip_params = []
 
         self._brush_size = 1
 
@@ -935,21 +957,49 @@ class hex_brush(Basic_Brush):
 
         self.drawn_hexes = {}
 
+        # are we overwriting hexes while we draw? 
         self.overwrite = True
+
+        self._activated = False
+        # start it out as transparent until we actually choose a color/param
+        self.QPen.setColor(QtGui.QColor(0,0,0,0))
 
     def set_params( self, obj ):
         assert( isinstance(obj, dict) )
+
+        if not self._activated:
+            self._activated = True
         self._brush_params = obj
 
-    def set_color( self, new_color ):
-        if not (isinstance( new_color, list) or isinstance( new_color, tuple )):
-            raise TypeError("Expected list-like, got {}".format(type(new_color)))
-        if len(new_color)!=3:
-            raise ValueError("Expected length-3 list, got {}".format(len(new_color)))
 
+    def _make_hex(self, where, radius):
+        """
+        Creates a new hex with the given center and radius (drawsize).
 
-    def make_hex(self):
-        pass
+        Assigns it all the defaults, as specified by the brush_params attribute 
+        """
+        if not isinstance(where, Point):
+            raise TypeError("Arg 'where' must be {}, got {}".format(Point, type(where)))
+        if not (isinstance(radius, int) or isinstance(radius, float)):
+            raise TypeError("Expected number-like for 'radius', got {}".format(type(radius)))
+
+        new = self._brush_type(where, radius)
+        self.adjust_hex( new )
+        return(new)
+
+    def adjust_hex( self, which ):
+        """
+        Adjust the given hex to the configured parameters
+        """
+        if not isinstance(which, Hex):
+            raise TypeError("Expected {}, got {}.".format(Hex, type(which)))
+        for param in self._brush_params:
+            if param in self._skip_params:
+                continue
+            else:
+                setattr( which, param, self._brush_params[param])
+
+        which.fill = self.get_color()
 
     def primary_mouse_released(self, event):
         if self._state==0:
@@ -963,6 +1013,11 @@ class hex_brush(Basic_Brush):
         elif self._state == 1:
             self.primary_mouse_released(event)
 
+    def secondary_mouse_held(self, event):
+        if self._state==0:
+            self.deselect(event)
+        elif self._state==1:
+            self.secondary_mouse_released(event)
     
     def secondary_mouse_released(self,event):
         if self._state==0:
@@ -971,7 +1026,12 @@ class hex_brush(Basic_Brush):
             self.erase(event)
     
     def select(self, event):
-        pass
+        place = Point(event.scenePos().x(),event.scenePos().y() )
+        loc_id = self.parent.main_map.get_id_from_point( place )
+        self.parent.update_with_hex_id(loc_id)
+
+    def deselect(self, event):
+        self.parent.update_with_hex_id('')
     
     def erase(self, event):
         """
@@ -1006,41 +1066,44 @@ class hex_brush(Basic_Brush):
         Same story for larger brush size. Try building and registering hexes for all the IDs neighboring the central ID 
 
         """
+        
+        if not self._activated:
+            # Brush hasn't been configured with any parameters yet! 
+            return
+
         place = Point( event.scenePos().x() , event.scenePos().y() )
         # get the nearest relevant ID
         loc_id = self.parent.main_map.get_id_from_point( place )
 
         # calculate the center of a hex that would have that id
         new_hex_center = self.parent.main_map.get_point_from_id( loc_id )
-        # create a hex at that point, with a radius given by the current drawscale 
-        new_hex= self._brush_type( new_hex_center, self.parent.main_map._drawscale )
-        
         
         # register that hex in the hexmap 
         try:
             if (loc_id in self.parent.main_map.catalogue) and self.overwrite:
                 # if we're overwriting, delete any hex that exists here
-                new_hex._altitude_base = self.parent.main_map.catalogue[loc_id]._altitude_base
-                new_hex._temperature_base = self.parent.main_map.catalogue[loc_id]._temperature_base
-                new_hex.rescale_color()
-                self.parent.main_map.remove_hex(loc_id)
-
-            self.parent.main_map.register_hex( new_hex, loc_id )
+                self.adjust_hex( self.parent.main_map.catalogue[loc_id])
+                self.parent.main_map.catalogue[loc_id].rescale_color()
+            else:
+                # create a hex at that point, with a radius given by the current drawscale 
+                new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
+                self.parent.main_map.register_hex( new_hex, loc_id )
             self.redraw_hex( loc_id )
-        except NameError: # error registering hex. Das ok 
+        except NameError:
+            # if we aren't overwriting, the register_hex function will raise a NameError. That's okay 
             pass
+
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors( loc_id )
             for neighbor in neighbors:
                 new_hex_center = self.parent.main_map.get_point_from_id( neighbor )
-                new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
                 try:
                     if (neighbor in self.parent.main_map.catalogue) and self.overwrite:
-                        new_hex._altitude_base = self.parent.main_map.catalogue[neighbor]._altitude_base
-                        new_hex._temperature_base = self.parent.main_map.catalogue[neighbor]._temperature_base
-                        new_hex.rescale_color()
-                        self.parent.main_map.remove_hex(neighbor)
-                    self.parent.main_map.register_hex( new_hex, neighbor )            
+                        self.adjust_hex( self.parent.main_map.catalogue[neighbor])
+                        self.parent.main_map.catalogue[neighbor].rescale_color()
+                    else:
+                        new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
+                        self.parent.main_map.register_hex( new_hex, neighbor )            
                     self.redraw_hex( neighbor )
                 except NameError:
                     pass
@@ -1122,7 +1185,6 @@ class region_brush(Basic_Brush):
 
         self.r_layer = layer
 
-        self._outline_obj = None
         self._drawn_regions = {} # map from rid to drawn region
         self._drawn_names = {}
 
@@ -1334,7 +1396,7 @@ class region_brush(Basic_Brush):
         except KeyError:
             return
 
-        self._set_color( reg_obj.color )
+        self.set_color( reg_obj.color )
 
         path = QtGui.QPainterPath()
         outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( reg_obj.perimeter + [reg_obj.perimeter[0]] ) )
@@ -1404,13 +1466,10 @@ class region_brush(Basic_Brush):
         Removes the selection outline for the tool. Called while switching to another tool. 
         """
         self.selected_rid = None
-        if self._outline_obj is not None:
-            self.parent.scene.removeItem( self._outline_obj )
-            self._outline_obj = None
+
 
 
     def clear(self):
         self._drawn_names = {}
         self._drawn_regions = {}
-        self._outline_obj = None
 
