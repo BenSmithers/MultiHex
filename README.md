@@ -12,6 +12,8 @@ It will always be open-source and always be freely available on github.
 It's under active development and there are no official stable releases at the moment.
 The `master` branch is kept stable (with a few known bugs), with experimental features being kept under the other branches. 
 
+If you find bugs or would like to request a feature not on the issues list (or if you just want to let us know how we're doing), let us know on [this form](https://forms.gle/XXBaRJvRrmQyJXfV9). 
+
 # Prerequesites
 
 You will need PyQt5, Python 3, and numpy.
