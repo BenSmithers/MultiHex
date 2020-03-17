@@ -123,7 +123,7 @@ class editor_gui_window(object):
         self.det_hexid_lbl = QtWidgets.QLabel(self.Detaoer)
         self.det_hexid_lbl.setObjectName("det_hexid_lbl")
         self.formLayout_4.setWidget(8, QtWidgets.QFormLayout.LabelRole, self.det_hexid_lbl)
-        self.det_hexid_disp = QtWidgets.QLCDNumber(self.Detaoer)
+        self.det_hexid_disp = QtWidgets.QLabel(self.Detaoer)
         self.det_hexid_disp.setObjectName("det_hexid_disp")
         self.formLayout_4.setWidget(8, QtWidgets.QFormLayout.FieldRole, self.det_hexid_disp)
         spacerItem3 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
