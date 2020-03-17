@@ -121,33 +121,40 @@ class editor_gui(QMainWindow):
         self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
 
 
+    def update_with_hex_id(self, id):
+        if not isinstance(id, int):
+            raise TypeError("Expected {}, got {}".format(int, type(id)))
+
+        self.ui.hex_select_disp.setText(str(id))
+        self.ui.det_hexid_disp.setText( str(id) )
+        #.setText( str(id) )
 
     def tb_hex_select(self):
         self.scene._active.drop()
         self.scene._active = self.writer_control
         self.writer_control.set_state(0)
 
-        self.toolBox.setCurrentIndex(0)
+        self.ui.toolBox.setCurrentIndex(1)
 
     def tb_detailer(self):
         self.scene._active.drop()
 
-        self.toolBox.setCurrentIndex(0)
+        self.ui.toolBox.setCurrentIndex(0)
 
     def tb_hex_brush(self):
         self.scene._active.drop()
         self.scene._active = self.writer_control
         self.writer_control.set_state(1)
 
-        self.toolBox.setCurrentIndex(1)
+        self.ui.toolBox.setCurrentIndex(1)
 
     def tb_new_river(self):
         self.scene._active.drop()
-        self.toolBox.setCurrentIndex(2)
+        self.ui.toolBox.setCurrentIndex(2)
 
     def tb_new_biome(self):
         self.scene._active.drop()
-        self.toolBox.setCurrentIndex(3)
+        self.ui.toolBox.setCurrentIndex(3)
 
     def det_comboBox_select(self):
         pass
@@ -179,6 +186,9 @@ class editor_gui(QMainWindow):
         """
         Called when you click on a subtype 
         """
+        # get ready to draw
+        self.tb_hex_brush()
+
         sub_type = index.data()
         this_type = self.ui.hex_type_combo.currentText()
 
@@ -191,9 +201,11 @@ class editor_gui(QMainWindow):
 
     def hex_brush_change(self):
         """
-        Called when the brush size changes
+        Called when the brush size changes. Tells the writer_control to switch to the new size
         """
-        pass
+        value = self.ui.hex_brush_disp.value()
+        self.writer_control.set_brush_size( value )
+
 
     def hex_fill_supertypes(self):
         # hex_type_combo
