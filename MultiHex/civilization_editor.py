@@ -7,7 +7,7 @@ from MultiHex.guis.civ_gui import editor_gui_window
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.objects import Icons
 from MultiHex.tools import clicker_control, basic_tool, QEntityItem
-from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush
+from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
@@ -50,6 +50,7 @@ class editor_gui(QMainWindow):
         self.entity_control = OEntity_Brush(self)
         self.writer_control = OHex_Brush(self)
         self.path_control = Road_Brush(self)
+        self.river_control = River_Brush(self)
         self.biome_control = Biome_Brush(self, civmode=True)
         self.county_control = County_Brush( self )
         self.county_control.small_font = False
@@ -208,6 +209,7 @@ class editor_gui(QMainWindow):
 
     def road_delete(self):
         self.path_control.delete_selected()
+        self.road_update_list()
 
     def road_update_list( self ):
         self.ui.road_list_entry.clear()
@@ -703,7 +705,7 @@ class editor_gui(QMainWindow):
 
         # draw all the counties and roads and crap
         print("Drawing rivers...",end='')
-        self.writer_control.redraw_rivers()
+        self.river_control.redraw_rivers()
         print(" done")
         print("Drawing everything else...",end='')
         self._redraw_entities()
