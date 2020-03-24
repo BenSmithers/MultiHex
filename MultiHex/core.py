@@ -789,7 +789,7 @@ class Hexmap:
     def register_hex(self, target_hex, new_id ):
         assert( target_hex._radius == self.drawscale )
         if not isinstance(target_hex, Hex):
-            raise TypeError("Cannot register non-hexes, dumb dumb!")
+            raise TypeError("Can only register {} objects".format(Hex))
 
         if new_id in self.catalogue:
             raise NameError()
@@ -923,11 +923,10 @@ class Hexmap:
             raise TypeError("Expected type {} for 'vertex', received {}".format(Point, type(vertex)))
         
         if v_type is None:
-            print("this shouldn't be called either")
-            l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
-            l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
-            r_up    = self.get_id_from_point( place+Point(  0.25*self.drawscale,   rthree*0.25*self.drawscale ))
-            r_down  = self.get_id_from_point( place+Point(  0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            l_up    = self.get_id_from_point( vertex+Point( -0.5*self.drawscale,   rthree*0.25*self.drawscale ))
+            l_down  = self.get_id_from_point( vertex+Point( -0.5*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            r_up    = self.get_id_from_point( vertex+Point(  0.5*self.drawscale,   rthree*0.25*self.drawscale ))
+            r_down  = self.get_id_from_point( vertex+Point(  0.5*self.drawscale,-1*rthree*0.25*self.drawscale ))
 
             if l_up==l_down:
                 v_type = 2
