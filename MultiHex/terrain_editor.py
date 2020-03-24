@@ -3,11 +3,11 @@
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import clicker_control, QEntityItem
 from MultiHex.map_types.overland import OHex_Brush, Biome_Brush, River_Brush, ol_clicker_control
-from MultiHex.generator.util import get_tileset_params
+from MultiHex.generator.util import get_tileset_params, create_name
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog
+from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
 
 from MultiHex.guis.terrain_editor_gui import editor_gui_window
 from MultiHex.about_class import about_dialog
@@ -67,6 +67,7 @@ class editor_gui(QMainWindow):
         self.ui.tool_detail.clicked.connect( self.tb_detailer )
         self.ui.tool_riv_but.clicked.connect( self.tb_new_river )
         self.ui.tool_biome_but.clicked.connect( self.tb_new_biome )
+        self.ui.tool_biome_sel.clicked.connect( self.tb_sel_biome )
 
         # Detailer toolbox connections
         self.ui.det_noise_combo.currentIndexChanged.connect( self.det_comboBox_select )
@@ -108,6 +109,8 @@ class editor_gui(QMainWindow):
         #biome painter buttons
         self.ui.bio_name_but_gen.clicked.connect( self.biome_name_gen )
         self.ui.biome_but_apply.clicked.connect( self.biome_apply )
+        self.ui.bio_color_combo.clicked.connect(self.biome_color_button)
+        self.ui.biome_but_delete.clicked.connect( self.biome_delete )
 
         # drop-down menu buttons
         self.ui.actionSave.triggered.connect( self.save_map )
@@ -180,6 +183,14 @@ class editor_gui(QMainWindow):
     def tb_new_biome(self):
         self.scene._active.drop()
         self.ui.toolBox.setCurrentIndex(3)
+        self.scene._active = self.region_control 
+        self.region_control.set_state( 1 )
+
+    def tb_sel_biome(self):
+        self.ui.toolBox.setCurrentIndex(3)
+        self.scene._active.drop()
+        self.scene._active = self.region_control
+        self.region_control.set_state( 0 )
 
     def det_comboBox_select(self):
         pass
@@ -283,10 +294,48 @@ class editor_gui(QMainWindow):
         self.river_update_list()
 
     def biome_name_gen(self):
-        pass
+        if self.region_control.selected_rid is None:
+            return
+
+        first = self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].ids[0]
+
+        new_one = create_name( self.main_map.catalogue[first].biome )
+        self.ui.bio_name_edit.setText( new_one )
 
     def biome_apply(self):
-        pass
+        if self.region_control.selected_rid is None:
+            pass
+        else:
+            self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].name = self.ui.bio_name_edit.text()
+            self.region_control.redraw_region_text( self.region_control.selected_rid)
+
+    def biome_update_gui(self):
+        if self.region_control.selected_rid is None:
+            self.ui.bio_name_edit.setText("")
+            self.ui.bio_color_combo.setEnabled(False)
+        else:
+            self.ui.bio_name_edit.setText(self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].name)
+            self.ui.bio_color_combo.setEnabled(True)
+
+    def biome_color_button(self):
+        if self.region_control.selected_rid is None:
+            pass
+        else:
+            old_one = self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].color
+            qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
+            new_color = QColorDialog.getColor(initial = qt_old_one, parent=self)
+
+            if new_color.isValid():
+                self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].color = (new_color.red(), new_color.green(), new_color.blue())
+                self.region_control.redraw_region(self.region_control.selected_rid)
+            else:
+                print("pass")
+    
+    def biome_delete(self):
+        if self.region_control.selected_rid is None:
+            pass
+        else:
+            self.main_map.remove_region( self.region_control.selected_rid, self.region_control.r_layer)
 
     def menu_open(self):
         pass
