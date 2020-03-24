@@ -97,6 +97,23 @@ class Basic_Brush(basic_tool):
 
         self.parent = parent
 
+        self._selected = None
+
+    @property
+    def selected(self):
+        return( self._selected )
+
+    def select(self, which = None):
+        """
+        Selects the hex, sets it as the selected one.
+
+        If no Arg is provided, deselect the hex
+        """
+        if which is not None:
+            if not isinstance(which, int):
+                raise TypeError("Expected {}, got {}".format(int, type(which)))
+
+        self._selected = which
 
     @property
     def state(self):
@@ -294,6 +311,7 @@ class path_brush(basic_tool):
         self._drawn_icon = None
         self._vertex_mode = vertex_mode
         self._creating = Path
+        self._qtpath_type = QtGui.QPainterPath
 
         self._path_key = "generic"
 
@@ -365,13 +383,70 @@ class path_brush(basic_tool):
             pass
 
         self.select_pid( None )
-        self.parent.road_update_list()
 
     def prepare(self, setting):
         assert( isinstance(setting, int))
 
         self._state = setting
 
+    def where_to_from(self, event):
+        # the stepsize is dependent on whether we're going center to center
+        # or vertex to vertex
+        if self._vertex_mode:
+            step_size = self.parent.main_map.drawscale
+        else:
+            step_size = rthree*self.parent.main_map.drawscale
+
+        # figure out from where we're adding
+        if self._state ==2:
+            from_point = self._wip_path.end()
+        elif self._state==3:
+            # we should have a river selected, in this state we're going from its end
+            try:
+                from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
+            except KeyError:
+                self._state = 0
+                self.select_pid( None )
+        elif self._state==4:
+            # should have a river selected, going from its start 
+            try:
+                from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
+            except KeyError:
+                self._state = 0
+                self.select_pid( None )
+        else:
+            raise NotImplementedError("Unexpected state {}".format(self._state))
+            
+        # we need to get the relative distance 
+        small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
+        small_step.normalize()
+        small_step = small_step * step_size
+        small_step = small_step + from_point
+
+        if self._vertex_mode:
+            # it's possible the vertex most in-line with the mouse position is not at a valid neighbor
+            # get the valid neighbors
+            possible = self.parent.main_map.get_vertices_beside( from_point )
+                
+            # initialize temporary data structures 
+            distance = None
+            where = Point()
+            # loop over the possibilities and find the closest
+            for each in possible:
+                if distance == None:
+                    where = each
+                    distance = ( each - small_step )**2 # looking at distance-squared so no sqrt
+                    continue
+                temp = (each - small_step)**2
+                if temp<distance:
+                    where = each
+                    distance = temp
+       
+                
+        else:
+            where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( small_step ))
+
+        return(where, from_point)
 
     def mouse_moved( self, event ):
         if self._state==0:
@@ -399,7 +474,7 @@ class path_brush(basic_tool):
 
             self._drawn_icon.setX( where.x ) #-(self._icon_size)/2 )
             self._drawn_icon.setY( where.y ) #-(self._icon_size)/2 )
-        elif self._state==2 or self._state==3 or self._state==4:
+        elif (self._state==2 or self._state==3 or self._state==4):
             if self._drawn_icon is None:
                 self._drawn_icon = self.parent.scene.addPixmap( self._icon )
                 self._drawn_icon.setZValue(20)
@@ -407,45 +482,12 @@ class path_brush(basic_tool):
             self._drawn_icon.setX( event.scenePos().x() )
             self._drawn_icon.setY( event.scenePos().y() )
 
-            if self._vertex_mode:
-                step_size = self.parent.main_map.drawscale
-            else:
-                step_size = rthree*self.parent.main_map.drawscale
-
-            if self._state ==2:
-                from_point = self._wip_path.end()
-            elif self._state==3:
-                try:
-                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
-                except KeyError:
-                    self._state = 0
-                    self.select_pid( None )
-                    return
-            else: #state is 4
-                try:
-                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
-                except KeyError:
-                    self._state = 0
-                    self.select_pid( None )
-                    return
-    
-            # draw a segment of length 'step size' from the end of the active Path in the direction of the cursor 
-            #   sorta slow since the 'normalize' method does a sqrt :( 
-            small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
-            small_step.normalize()
-            small_step = small_step * step_size
-            small_step = small_step + from_point
-
-            if self._vertex_mode:
-                where = self.parent.main_map.get_vert_from_point(small_step)
-            else:
-                where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( small_step ))
-
+            where, from_point = self.where_to_from(event)
 
             if self._step_object is not None:
                 self.parent.scene.removeItem( self._step_object )
             
-            path = QtGui.QPainterPath()
+            path = self._qtpath_type()
             path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ from_point, where])) )
             self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
                  
@@ -461,7 +503,6 @@ class path_brush(basic_tool):
         elif self._state==1:
             # get the location and make a new path
 
-
             if self._vertex_mode:
                 where = self.parent.main_map.get_vert_from_point(Point(event.scenePos().x(),event.scenePos().y() ))
 
@@ -474,45 +515,17 @@ class path_brush(basic_tool):
             self.QPen.setWidth( 2 +  self._wip_path.width)
             self.QPen.setColor( self._selected_color )
 
+        # if we're currently drawing on a river
         elif self._state==2 or self._state==3 or self._state==4:
-
-            if self._vertex_mode:
-                step_size = self.parent.main_map.drawscale
-            else:
-                step_size = rthree*self.parent.main_map.drawscale
-
-            if self._state ==2:
-                from_point = self._wip_path.end()
-            elif self._state==3:
-                try:
-                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].end()
-                except KeyError:
-                    self._state = 0
-                    self.select_pid( None )
-            else: #state is 4
-                try:
-                    from_point = self.parent.main_map.path_catalog[self._path_key][self._selected_pid].start()
-                except KeyError:
-                    self._state = 0
-                    self.select_pid( None )
             
-
-            small_step = Point( event.scenePos().x(), event.scenePos().y()) - from_point
-            small_step.normalize()
-            small_step = small_step * step_size
-            small_step = small_step + from_point
-
-            if self._vertex_mode:
-                where = self.parent.main_map.get_vert_from_point(small_step)
-            else:
-                where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( small_step ))
+            where, from_point = self.where_to_from(event)
 
             if self._state==2:
                 self._wip_path.add_to_end( where )
                 if self._wip_path_object is not None:
                     self.parent.scene.removeItem( self._wip_path_object )
                     self._wip_path_object = None
-                path = QtGui.QPainterPath()
+                path = self._qtpath_type()
                 self.QPen.setColor(self._selected_color)
                 path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( self._wip_path.vertices )))
                 self._wip_path_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
@@ -550,6 +563,7 @@ class path_brush(basic_tool):
             self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
             self._wip_path = None
             self.draw_path( pID )
+            print("Registered no {}".format(pID))
 
             self._state = 0
         elif self._state==3 or self._state==4:
@@ -560,13 +574,13 @@ class path_brush(basic_tool):
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
-        self.parent.road_update_list()
+        
 
     def draw_path( self, pID ):
         """
         Re-draws the path with given PathID. If no such path is found, it instead just erases any associated map item
         """
-
+        print("Calling wrong func")
         if pID is None:
             return
         else:
@@ -581,7 +595,7 @@ class path_brush(basic_tool):
         except KeyError:
             return
 
-        path = QtGui.QPainterPath()
+        path = self._qtpath_type()
         if pID==self._selected_pid:
             self.QPen.setColor(self._selected_color)
         else:
@@ -987,51 +1001,63 @@ class hex_brush(Basic_Brush):
         self.adjust_hex( new )
         return(new)
 
-    def adjust_hex( self, which ):
+    def adjust_hex( self, which, params=None ):
         """
-        Adjust the given hex to the configured parameters
+        Adjust the given hex to the configured parameters (or a set of given parameters)
         """
         if not isinstance(which, Hex):
             raise TypeError("Expected {}, got {}.".format(Hex, type(which)))
-        for param in self._brush_params:
-            if param in self._skip_params:
+
+        if params is None:
+            use = self._brush_params
+            skip = self._skip_params
+            which.fill = self.get_color()
+        else:
+            if not isinstance(params, dict):
+                raise TypeError("'params', if used, should be {}, not {}".format(dict, type(params)))
+            use = params
+            skip = []
+
+        for param in use:
+            if param in skip:
                 continue
             else:
-                setattr( which, param, self._brush_params[param])
-
-        which.fill = self.get_color()
+                setattr( which, param, use[param])
 
     def primary_mouse_released(self, event):
         if self._state==0:
-            self.select(event)
+            self.select_evt(event)
         elif self._state == 1:
             self.write(event)
 
     def primary_mouse_held(self, event):
         if self._state==0:
-            self.select(event)
+            pass
         elif self._state == 1:
             self.primary_mouse_released(event)
 
     def secondary_mouse_held(self, event):
         if self._state==0:
-            self.deselect(event)
+            pass
         elif self._state==1:
             self.secondary_mouse_released(event)
     
     def secondary_mouse_released(self,event):
         if self._state==0:
-            self.select(event)
+            self.deselect_evt(event)
         elif self._state == 1:
             self.erase(event)
     
-    def select(self, event):
+
+    def select_evt(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        self.parent.update_with_hex_id(loc_id)
+        self.parent.det_show_selected(loc_id)
+        self.select( loc_id ) #select
 
-    def deselect(self, event):
-        self.parent.update_with_hex_id('')
+    def deselect_evt(self, event):
+        self.parent.det_show_selected()
+        self.select() # deselect
     
     def erase(self, event):
         """
@@ -1193,7 +1219,7 @@ class region_brush(Basic_Brush):
 
         self._type = Region
 
-        self._state = 1
+        self._state = 0
 
         self.small_font = False
         self.default_name = "Region"
