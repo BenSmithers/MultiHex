@@ -1,8 +1,8 @@
 ## #!/usr/bin/python3.6m
 
 from MultiHex.core import Hexmap, save_map, load_map
-from MultiHex.tools import clicker_control
-from MultiHex.map_types.overland import OHex_Brush, Biome_Brush
+from MultiHex.tools import clicker_control, QEntityItem
+from MultiHex.map_types.overland import OHex_Brush, Biome_Brush, River_Brush, ol_clicker_control
 from MultiHex.generator.util import get_tileset_params
 
 # need these to define all the interfaces between the canvas and the user
@@ -45,11 +45,12 @@ class editor_gui(QMainWindow):
         # writes hexes on the screen
 
         # manages the writer and selector controls. This catches clicky-events on the graphicsView
-        self.scene = clicker_control( self.ui.graphicsView, self )
+        self.scene = ol_clicker_control( self.ui.graphicsView, self )
         # start with the hex as the currently used tool
         self.writer_control = OHex_Brush(self)
         self.region_control = Biome_Brush(self)
-       
+        self.river_writer = River_Brush(self)
+        
         
         self.scene._active = self.writer_control
 
@@ -121,20 +122,41 @@ class editor_gui(QMainWindow):
         self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
 
 
-    def update_with_hex_id(self, id):
-        if not isinstance(id, int):
-            raise TypeError("Expected {}, got {}".format(int, type(id)))
+    def _update_with_hex_id(self, id = None):
+        if id is not None:
+            if not isinstance(id, int):
+                raise TypeError("Expected {}, got {}".format(int, type(id)))
 
-        self.ui.hex_select_disp.setText(str(id))
-        self.ui.det_hexid_disp.setText( str(id) )
-        #.setText( str(id) )
+            self.ui.hex_select_disp.setText(str(id))
+            self.ui.det_hexid_disp.setText( str(id) )
+            #.setText( str(id) )
+        else:
+            self.ui.hex_select_disp.setText("")
+            self.ui.det_hexid_disp.setText( "")
+
+    def det_show_selected(self, id = None):
+        """
+        Function called when a new hex is selected 
+        """
+        if id is not None:
+            if not isinstance(id, int):
+                raise TypeError("Expected {}, got {}".format(int, type(id)))
+
+            self.ui.det_alt_slide.setValue( self.main_map.catalogue[id]._altitude_base*100 )
+            self.ui.det_temp_slide.setValue( self.main_map.catalogue[id]._temperature_base*100)
+            self.ui.det_rain_slide.setValue( self.main_map.catalogue[id]._rainfall_base*100)
+
+        self._update_with_hex_id( id )
+
+
+
 
     def tb_hex_select(self):
         self.scene._active.drop()
         self.scene._active = self.writer_control
         self.writer_control.set_state(0)
 
-        self.ui.toolBox.setCurrentIndex(1)
+        self.ui.toolBox.setCurrentIndex(0)
 
     def tb_detailer(self):
         self.scene._active.drop()
@@ -151,6 +173,9 @@ class editor_gui(QMainWindow):
     def tb_new_river(self):
         self.scene._active.drop()
         self.ui.toolBox.setCurrentIndex(2)
+        self.scene._active = self.river_writer
+
+        self.river_writer.prepare(1)
 
     def tb_new_biome(self):
         self.scene._active.drop()
@@ -166,7 +191,13 @@ class editor_gui(QMainWindow):
         pass
 
     def det_apply_button(self):
-        pass
+        # build the dictionary to adjut the hex
+        params = {
+                    "_altitude_base": self.ui.det_alt_slide.value()/100., 
+                    "_rainfall_base": self.ui.det_rain_slide.value()/100.,
+                    "_temperature_base": self.ui.det_temp_slide.value()/100.
+            }
+        self.writer_control( self.main_map.catalogue[self.writer_control.selected] , params )
 
     def hex_comboBox_select(self):
         """
@@ -216,25 +247,40 @@ class editor_gui(QMainWindow):
         self.ui.hex_type_combo.setCurrentIndex(0)
 
     def river_list_click(self, index=None):
-        pass
+        # river_list_entry
+        item = self.ui.river_list_entry.itemFromIndex(index)
+        pID = item.eID
+
+        if pID is not None:
+            self.river_writer.select_pid(pID)
+
 
     def river_trib_click(self, index=None):
-        pass
+        item = self.ui.tributary_list_entry.itemFromIndex(index)
+
+    def river_update_list(self):
+        self.ui.river_list_entry.clear()
+
+        if not ('rivers' in self.main_map.path_catalog):
+            return
+        for pID in self.main_map.path_catalog['rivers']:
+            self.ui.river_list_entry.appendRow( QEntityItem("River {}".format(pID), pID))
 
     def river_ps(self):
-        pass
+        self.river_writer.pop_selected_start()
 
     def river_pe(self):
-        pass
+        self.river_writer.pop_selected_end()
 
     def river_as(self):
-        pass
+        self.river_writer.prepare( 4 )
 
     def river_ae(self):
-        pass
+        self.river_writer.prepare( 3)
 
     def river_delete(self):
-        pass
+        self.river_writer.delete_selected()
+        self.river_update_list()
 
     def biome_name_gen(self):
         pass
@@ -314,8 +360,10 @@ class editor_gui(QMainWindow):
                 self.region_control.redraw_region( rid )
         print("done")
         print("Drawing rivers... ", end='')
-        self.writer_control.redraw_rivers()
+        #self.writer_control.redraw_rivers()
+        self.river_writer.redraw_rivers()
         print("done")
+        self.river_update_list()
 
         self.params = get_tileset_params( self.main_map.tileset )
         
