@@ -2,11 +2,12 @@ from MultiHex.core import Hex, Point, Region, Path, Hexmap
 from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.objects import Settlement, Government
-from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool
+from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
 
 from MultiHex.generator.util import point_on_river
 
 from PyQt5 import QtGui
+from PyQt5.QtWidgets import QGraphicsPathItem
 
 """
 Implements the overland map type, its brushes, and its hexes 
@@ -23,6 +24,42 @@ Entries:
 """
 
 default_p = Point(0.0,0.0)
+
+
+class ol_clicker_control( clicker_control ):
+    """
+    Implements the "clicker_control", which is itself a QtScene
+
+    This is used so that when a QPainterRiver is registered, the returned 
+    QtPathItem is of a special type that has a tribs object too
+    """
+    def __init__(self, parent=None, master = None):
+        clicker_control.__init__(self, parent, master)
+
+    def addPath(self, new_path, pen=QtGui.QPen(), brush=QtGui.QBrush() ):
+        obj = clicker_control.addPath( self, new_path, pen, brush)
+
+        if isinstance(new_path, QPainterRiver):
+            setattr(obj, 'tribs', new_path.tribs)
+
+        return(obj)
+
+
+class QPainterRiver( QtGui.QPainterPath ):
+    """
+    Derived class of the QPainterPath which simply adds a "tribs" attribute
+    """
+    def __init__(self, tribs=None):
+        QtGui.QPainterPath.__init__(self)
+
+        if tribs is not None:
+            if not isinstance(tribs, tuple):
+                raise TypeError("Should be {}, not {}".format(tuple, type(tribs)))
+            if len(tribs)!=2:
+                raise ValueError("Should be len {}, not {}".format(2, len(tribs)))
+
+        self.tribs = tribs
+
 
 class Town( Settlement ):
     """
@@ -83,6 +120,7 @@ class River(Path):
 
         # by default, should have none
         self.tributaries = None
+        self.tributary_objs = None
 
         self._max_len = 20
         
@@ -320,8 +358,10 @@ class River_Brush( path_brush ):
 
         self._path_key = "rivers"
 
+        self._qtpath_type = QPainterRiver
+
     def primary_mouse_released(self, event):
-        path_brush.primary_mouse_depressed( self, event)
+        path_brush.primary_mouse_released( self, event)
 
         if self._state in [2,3]:
             for pid in self.parent.main_map.path_catalog[self._path_key]:
@@ -335,6 +375,100 @@ class River_Brush( path_brush ):
                     self.set_state(0)
                     self.draw_path( self._selected_pid)
                     break
+    def secondary_mouse_released(self, event):
+        path_brush.secondary_mouse_released(self, event)
+        self.parent.river_update_list()
+        
+
+    def draw_path( self, pID):
+        """
+        I'm overriding the original function, but using a new class
+        """
+
+        if pID is None:
+            return
+        else:
+            assert(isinstance(pID, int ))
+
+        if pID in self._drawn_paths:
+            self.river_remove_item( self._drawn_paths[pID] )
+            del self._drawn_paths[pID]
+
+        try:
+            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+        except KeyError:
+            return
+
+        path = self._qtpath_type()
+        if pID==self._selected_pid:
+            self.QPen.setColor(self._selected_color)
+        else:
+            self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
+        path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_path.vertices )))
+        self._drawn_paths[pID] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+        self._drawn_paths[pID].setZValue( this_path.z_level )
+
+        if this_path.tributaries is not None:
+            self._drawn_paths[pID].tribs = self.draw_tribs( this_path )
+
+    def river_remove_item( self, which ):
+        self.parent.scene.removeItem( which )
+
+        if which.tribs is not None:
+            self.river_remove_item( which.tribs[0] )
+            self.river_remove_item( which.tribs[1] )
+            
+
+    def draw_tribs(self, river):
+        assert( isinstance( river, River))
+        if not hasattr(river, "tributary_objs"):
+            setattr(river, "tributary_objs", None)
+
+
+        
+
+        self.QBrush.setStyle(0)
+        self.QPen.setStyle(1)
+        self.QPen.setWidth(3 + river.width)
+        self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
+
+        trib1 = self._qtpath_type()
+        outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[0].vertices  ) )
+        trib1.addPolygon(outline)
+
+        
+        
+        trib2 = self._qtpath_type()
+        outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[1].vertices  ) )
+        trib2.addPolygon(outline)
+
+        #self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
+        #self._river_drawn[-1].setZValue(2)
+
+        tributary_objs = ( self.parent.scene.addPath( trib1, pen=self.QPen, brush=self.QBrush), \
+                                self.parent.scene.addPath( trib2, pen=self.QPen, brush=self.QBrush) )
+
+        if river.tributaries[0].tributaries is not None:
+            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0])
+        if river.tributaries[1].tributaries is not None:
+            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1])
+
+        tributary_objs[0].setZValue(2)
+        tributary_objs[1].setZValue(2)
+
+        return tributary_objs
+
+    def redraw_rivers( self ):
+        """
+        all the rivers
+        """
+        # self._river_drawn
+
+
+        if 'rivers' in self.parent.main_map.path_catalog:
+            for pID in self.parent.main_map.path_catalog['rivers']:
+                assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
+                self.draw_path( pID )
                     
 
 class Biome_Brush( region_brush):
@@ -495,6 +629,10 @@ class Road_Brush( path_brush ):
 
         self._path_key = "roads"
 
+    def secondary_mouse_released(self, event):
+        path_brush.secondary_mouse_released(self, event)
+        self.parent.road_update_list()
+
 
 class OEntity_Brush( entity_brush ):
     def __init__(self, parent):
@@ -523,33 +661,6 @@ class OHex_Brush( hex_brush ):
         else:
             if which._altitude_base > 0:
                 which._altitude_base = 0
-
-    def redraw_rivers( self ):
-        """
-        all the rivers
-        """
-        # self._river_drawn
-
-        def draw_river(river):
-
-            if river.tributaries is not None:
-                draw_river( river.tributaries[0] )
-                draw_river( river.tributaries[1] )
-
-            self.QBrush.setStyle(0)
-            self.QPen.setStyle(1)
-            self.QPen.setWidth(3 + river.width)
-            self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
-            path = QtGui.QPainterPath()
-            outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.vertices  ) )
-            path.addPolygon(outline)
-            self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
-            self._river_drawn[-1].setZValue(2)
-
-        if 'rivers' in self.parent.main_map.path_catalog:
-            for pID in self.parent.main_map.path_catalog['rivers']:
-                assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
-                draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
 
     # DIE
     def drop(self):
