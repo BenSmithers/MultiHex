@@ -480,13 +480,10 @@ class Biome_Brush( region_brush):
         self.small_font = civmode
         self._type = Biome
 
-    def secondary_mouse_released(self, event):
-        region_brush.secondary_mouse_released(self, event)
-
-        if self.selected_rid is None:
-            self.parent.ui.RegEdit.setText("")
-        else:
-            self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
+    def primary_mouse_released(self, event):
+        region_brush.primary_mouse_released(self, event)
+        self.parent.biome_update_gui()
+     
 
 
 class County_Brush( region_brush ):
@@ -501,12 +498,12 @@ class County_Brush( region_brush ):
 
         self.in_nation = None
 
-    def primary_mouse_released(self, event):
-        region_brush.primary_mouse_released( self, event )
+    def secondary_mouse_released(self, event):
+        region_brush.secondary_mouse_released( self, event )
 
         self.parent.county_update_with_selected()
 
-    def secondary_mouse_released(self, event):
+    def primary_mouse_released(self, event):
         if self.selected_rid is not None:
             if self.selector_mode:
                 self.selector_mode = False

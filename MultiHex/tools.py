@@ -1237,7 +1237,7 @@ class region_brush(Basic_Brush):
         else:
             raise ValueError("Can't set brush size to {}".format(size))
 
-    def secondary_mouse_released(self, event):
+    def primary_mouse_released(self, event):
         """
         Selects the region under the cursor. If no region is there, deselect whatever region is active 
         """
@@ -1249,12 +1249,13 @@ class region_brush(Basic_Brush):
         else:
             if self.parent.main_map.id_map[self.r_layer][this_id]!=self.selected_rid:
                 self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
-                
+              
 
-    def primary_mouse_held(self, event):
-        self.primary_mouse_released( event )
 
-    def primary_mouse_released(self, event):
+    def secondary_mouse_held(self, event):
+        self.secondary_mouse_released( event )
+
+    def secondary_mouse_released(self, event):
         """
         Draws or Erases, depending on the mode 
         """
