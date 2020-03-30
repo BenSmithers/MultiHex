@@ -2,6 +2,7 @@
 
 from math import exp
 from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd
+from MultiHex.map_types.overland import River
 
 import random
 import os # used by the biomator 
@@ -132,24 +133,6 @@ def distance_from_biome_ray( point1, ray):
         difference = ray - point1
         return( sqrt( difference.x**2 + difference.y**2) )
 
-
-def point_on_river( point, river ):
-    """
-    returns whether or not the Point `point` is somewhere on the River object `river`
-
-    @param point    - the Point...
-    @param river    - the River... 
-    """
-
-    assert( isinstance( point, Point))
-    assert( isinstance( river, River))
-
-    if river.tributaries is not None:
-        # see if the point is on the river body, or one of the tributaries. Call this function on each of the tributaries 
-        return( (point in river.vertices) or (point_on_river( point, river.tributaries[0])) or (point_on_river( point, river.tributaries[1] )))
-    else:
-
-        return( point in river.vertices )
 
 def angle_difference( theta_1, theta_2 ):
     """
