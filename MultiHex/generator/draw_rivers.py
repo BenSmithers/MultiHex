@@ -167,22 +167,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     dir_weights[it] = dir_weights[it]/3. 
                 
                 which_index = dir_weights.index( min(dir_weights) )
-               
-
-                #                   Check if hiting START of other river
-                # ========================================================================
-
-                
-                # before setting the river border bools, we should see if we're about to hit the end of another river...
-                bad = False
-                for pID in main_map.path_catalog['rivers']:
-                    # check if the new point is the source of this river 
-                    if point_hits_source( verts[which_index], main_map.path_catalog['rivers'][pID] ):
-                        bad = True
-                        break
-                if bad:
-                    # if it did, we just give up on this river. 
-                    return(None) 
 
 
                 
@@ -266,7 +250,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
             else:
                 raise ValueError("Unexpected vertex type found? {} of type {}".format(v_type, type(v_type)))
-        if (len(new_river.vertices)!=0) or (new_river.tributaries is not None):
+        if (len(new_river.vertices)>1) or (len(new_river.vertices)!=0 and (new_river.tributaries is not None)):
             return( new_river )
         else:
             return( None )
