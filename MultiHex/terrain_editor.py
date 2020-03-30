@@ -122,6 +122,9 @@ class editor_gui(QMainWindow):
         self.ui.actionRainfall.triggered.connect( self.menu_heatmap_rainfall )
         self.ui.actionBiome_Names.triggered.connect( self.menu_view_biome_name )
         self.ui.actionBiome_Borders.triggered.connect( self.menu_view_biome_border )
+        self.ui.actionBiome_Names.setChecked(True)
+        self.ui.actionBiome_Borders.setChecked(True)
+
         self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
 
 
@@ -277,6 +280,8 @@ class editor_gui(QMainWindow):
         for pID in self.main_map.path_catalog['rivers']:
             self.ui.river_list_entry.appendRow( QEntityItem("River {}".format(pID), pID))
 
+
+
     def river_ps(self):
         self.river_writer.pop_selected_start()
 
@@ -341,10 +346,14 @@ class editor_gui(QMainWindow):
         pass
 
     def menu_view_biome_name(self):
-        pass
+        state  = self.ui.actionBiome_Names.isChecked()
+        self.region_control.draw_names = state
+        self._redraw_biomes()
 
     def menu_view_biome_border(self):
-        pass
+        state = self.ui.actionBiome_Borders.isChecked()
+        self.region_control.draw_borders = state
+        self._redraw_biomes()
 
     def menu_view_rivers(self):
         pass
@@ -387,6 +396,15 @@ class editor_gui(QMainWindow):
         self.save_map()
 
 
+    def _redraw_hexes(self):
+        for ID in self.main_map.catalogue: 
+            self.writer_control.redraw_hex( ID )
+    def _redraw_biomes(self):
+        if self.region_control.r_layer in self.main_map.rid_catalogue :
+            for rid in self.main_map.rid_catalogue[self.region_control.r_layer]:
+                self.region_control.redraw_region( rid )
+    def _redraw_rivers(self):
+        pass
 
     def prep_map(self, file_name ):
         """
@@ -398,22 +416,19 @@ class editor_gui(QMainWindow):
         self.main_map = load_map( file_name )
         self.file_name = file_name 
         
+        self.params = get_tileset_params( self.main_map.tileset )
+
         print("Drawing hexes... ", end='')
-        for ID in self.main_map.catalogue: 
-            self.writer_control.redraw_hex( ID )
-            
+        self._redraw_hexes()
         print("done")
         print("Drawing biomes... ", end='')
-        if self.region_control.r_layer in self.main_map.rid_catalogue :
-            for rid in self.main_map.rid_catalogue[self.region_control.r_layer]:
-                self.region_control.redraw_region( rid )
+        self._redraw_biomes()
         print("done")
         print("Drawing rivers... ", end='')
-        #self.writer_control.redraw_rivers()
         self.river_writer.redraw_rivers()
         print("done")
         self.river_update_list()
 
-        self.params = get_tileset_params( self.main_map.tileset )
-        
 
+
+        
