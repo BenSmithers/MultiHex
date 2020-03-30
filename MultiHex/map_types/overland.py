@@ -4,8 +4,6 @@ from MultiHex.core import RegionMergeError, RegionPopError
 from MultiHex.objects import Settlement, Government
 from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
 
-from MultiHex.generator.util import point_on_river
-
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
 
@@ -25,6 +23,23 @@ Entries:
 
 default_p = Point(0.0,0.0)
 
+def point_on_river( point, river ):
+    """
+    returns whether or not the Point `point` is somewhere on the River object `river`
+
+    @param point    - the Point...
+    @param river    - the River... 
+    """
+
+    assert( isinstance( point, Point))
+    assert( isinstance( river, River))
+
+    if river.tributaries is not None:
+        # see if the point is on the river body, or one of the tributaries. Call this function on each of the tributaries 
+        return( (point in river.vertices) or (point_on_river( point, river.tributaries[0])) or (point_on_river( point, river.tributaries[1] )))
+    else:
+
+        return( point in river.vertices )
 
 class ol_clicker_control( clicker_control ):
     """
@@ -138,18 +153,39 @@ class River(Path):
         # make sure these rivers are join-able. One river needs to have its end point on the other! 
         if other.end() not in self._vertices:
             # try joining with its tributaries 
-            if other.tributaries is not None:
+            if self.tributaries is not None:
+                prior0 = self.tributaries[0].width
+                prior1 = self.tributaries[1].width
                 error_code = self.tributaries[0].join_with( other )
                 if error_code == 0:
+                    self.width += self.tributaries[0].width - prior0
                     return(0)
                 error_code = self.tributaries[1].join_with( other )
                 if error_code == 0:
+                    self.width += self.tributaries[1].width - prior1
                     return(0) 
                 
                 # failed to join other river with itself or its tributaries 
                 return( 1 )
             else:
                 return( 1)
+
+        # we know they meet somewhere
+        # check if they are end-to-end
+        if self.end()==other.start():
+            self._vertices = self._vertices + other.vertices
+            return(0)
+        elif other.end()==self.start():
+            self._vertices = other.vertices + self.vertices
+            return(0)
+        elif self.end()==other.end():
+            # if they meet end-to-end (weird)... reverse the appened one
+            self._vertices = self._vertices + other.vertices[::-1]
+            return(0)
+        elif self.start()==other.start():
+            #take the other, reverse it, append to the start
+            self._vertices = other.vertices[::-1] + self._vertices
+            return(0)
 
         # other one ends in this one
         tributary_1 = other
@@ -361,6 +397,10 @@ class River_Brush( path_brush ):
         self._qtpath_type = QPainterRiver
 
     def primary_mouse_released(self, event):
+        """
+        As usual, call the normal mouse-click function
+        But then check for intersections with a new river, and if one is found merge! 
+        """
         path_brush.primary_mouse_released( self, event)
 
         if self._state in [2,3]:
@@ -372,9 +412,10 @@ class River_Brush( path_brush ):
                         self.parent.scene.removeItem( self._wip_path_object)
                         self._wip_path_object = None 
 
-                    self.set_state(0)
-                    self.draw_path( self._selected_pid)
+                    self.prepare(0)
+                    self.draw_path( pid )
                     break
+
     def secondary_mouse_released(self, event):
         path_brush.secondary_mouse_released(self, event)
         self.parent.river_update_list()
@@ -382,36 +423,30 @@ class River_Brush( path_brush ):
 
     def draw_path( self, pID):
         """
-        I'm overriding the original function, but using a new class
+        Draw the path using the original implementaitno, then draw the tributaries 
         """
-
-        if pID is None:
-            return
-        else:
-            assert(isinstance(pID, int ))
+        # before calling the original implementation, we remove the drawn river recursively!
+        assert(isinstance( pID, int) or (pID is None))
 
         if pID in self._drawn_paths:
             self.river_remove_item( self._drawn_paths[pID] )
             del self._drawn_paths[pID]
+
+        path_brush.draw_path(self, pID)
 
         try:
             this_path = self.parent.main_map.path_catalog[self._path_key][pID]
         except KeyError:
             return
 
-        path = self._qtpath_type()
-        if pID==self._selected_pid:
-            self.QPen.setColor(self._selected_color)
-        else:
-            self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
-        path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_path.vertices )))
-        self._drawn_paths[pID] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
-        self._drawn_paths[pID].setZValue( this_path.z_level )
-
         if this_path.tributaries is not None:
             self._drawn_paths[pID].tribs = self.draw_tribs( this_path )
 
     def river_remove_item( self, which ):
+        """
+        Recursively removes a QPainterRiver and its child tributatry items 
+        """
+        assert( isinstance(which, QGraphicsPathItem))
         self.parent.scene.removeItem( which )
 
         if which.tribs is not None:
@@ -421,41 +456,41 @@ class River_Brush( path_brush ):
 
     def draw_tribs(self, river):
         assert( isinstance( river, River))
-        if not hasattr(river, "tributary_objs"):
-            setattr(river, "tributary_objs", None)
-
-
         
+        #if not hasattr(river, "tributary_objs"):
+        #    setattr(river, "tributary_objs", None)
 
-        self.QBrush.setStyle(0)
-        self.QPen.setStyle(1)
-        self.QPen.setWidth(3 + river.width)
-        self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
+
+        # color, style, already set by original call to the draw function! 
 
         trib1 = self._qtpath_type()
         outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[0].vertices  ) )
         trib1.addPolygon(outline)
 
-        
-        
         trib2 = self._qtpath_type()
         outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[1].vertices  ) )
         trib2.addPolygon(outline)
 
-        #self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
-        #self._river_drawn[-1].setZValue(2)
+        # draw both of the tributaries using the appropriate width, saving the QRiverItem
+        self.QPen.setWidth(3 + river.tributaries[0].width)
+        first =self.parent.scene.addPath( trib1, pen=self.QPen, brush=self.QBrush)
+        self.QPen.setWidth(3 + river.tributaries[1].width)
+        second = self.parent.scene.addPath( trib2, pen=self.QPen, brush=self.QBrush)
 
-        tributary_objs = ( self.parent.scene.addPath( trib1, pen=self.QPen, brush=self.QBrush), \
-                                self.parent.scene.addPath( trib2, pen=self.QPen, brush=self.QBrush) )
 
+        tributary_objs = ( first , second )
+
+        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
         if river.tributaries[0].tributaries is not None:
             tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0])
         if river.tributaries[1].tributaries is not None:
             tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1])
 
-        tributary_objs[0].setZValue(2)
-        tributary_objs[1].setZValue(2)
+        # set the z-value of the rivers
+        tributary_objs[0].setZValue(river.z_level)
+        tributary_objs[1].setZValue(river.z_level)
 
+        # return a tuple of the objects 
         return tributary_objs
 
     def redraw_rivers( self ):
@@ -466,7 +501,7 @@ class River_Brush( path_brush ):
 
 
         if 'rivers' in self.parent.main_map.path_catalog:
-            for pID in self.parent.main_map.path_catalog['rivers']:
+            for pID in self.parent.main_map.path_catalog['rivers'].keys():
                 assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
                 self.draw_path( pID )
                     

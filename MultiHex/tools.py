@@ -337,6 +337,8 @@ class path_brush(basic_tool):
         self.QPen.setStyle(1)
 
         self._drawn_paths = { }
+
+        self._extra_states = []
     
     @property
     def selected_pid(self):
@@ -414,6 +416,8 @@ class path_brush(basic_tool):
             except KeyError:
                 self._state = 0
                 self.select_pid( None )
+        elif self._state in self._extra_states:
+            return
         else:
             raise NotImplementedError("Unexpected state {}".format(self._state))
             
@@ -491,7 +495,8 @@ class path_brush(basic_tool):
             path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ from_point, where])) )
             self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
                  
-
+        elif self._state in self._extra_states:
+            return
         else:
             raise NotImplementedError("{} Reached unexpected state {}".format(self, self._state))
     # update the position of the river icon
@@ -540,7 +545,8 @@ class path_brush(basic_tool):
                 self.parent.main_map.path_catalog[self._path_key][self._selected_pid].add_to_start( where )
                 self.draw_path( self._selected_pid)
 
-
+        elif self._state in self._extra_states:
+            return
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
@@ -559,6 +565,11 @@ class path_brush(basic_tool):
                 self._wip_path_object = None
 
 
+            # no river is drawn if there aren't at least 2 vertices to make a river
+            if len(self._wip_path.vertices)<=1:
+                self._wip_path = None
+                return
+
             pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
             self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
             self._wip_path = None
@@ -571,6 +582,9 @@ class path_brush(basic_tool):
             self.select_pid(None )
             self._state = 0
 
+        elif self._state in self._extra_states:
+            pass
+
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
@@ -580,7 +594,7 @@ class path_brush(basic_tool):
         """
         Re-draws the path with given PathID. If no such path is found, it instead just erases any associated map item
         """
-        print("Calling wrong func")
+        
         if pID is None:
             return
         else:
@@ -595,11 +609,20 @@ class path_brush(basic_tool):
         except KeyError:
             return
 
+        self.QBrush.setStyle(0)
+        self.QPen.setStyle(1)
+        self.QPen.setWidth( 3 + this_path.width )
+
         path = self._qtpath_type()
+        
+        # if we're drawing the selected path, use red
+        # otherwise use the path's color 
         if pID==self._selected_pid:
             self.QPen.setColor(self._selected_color)
         else:
             self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
+
+
         path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_path.vertices )))
         self._drawn_paths[pID] = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
         self._drawn_paths[pID].setZValue( this_path.z_level )
