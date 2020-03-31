@@ -394,7 +394,50 @@ class River_Brush( path_brush ):
 
         self._path_key = "rivers"
 
+        # zeros and ones to select a tributary to a river
+        self._sub_selection = ''
+
         self._qtpath_type = QPainterRiver
+    
+    @property
+    def sub_selection(self):
+        return( self._sub_selection )
+
+    def sub_select(self, sub):
+        if not isinstance(sub, str):
+            raise TypeError("Sub selection should be {}, not {}".format(str, type(sub)))
+
+        for part in sub:
+            if not (part=='0' or part=='1'):
+                raise ValueError("Error in sub-selection. Encountered {}".format(part))
+
+        self._sub_selection = sub
+        self.draw_path( self.selected_pid )
+
+
+    def _dive(self,river, key):
+        assert(isinstance(key, str))
+        assert(isinstance(river, River))
+
+        if len(key)==1:
+            return( river.tributaries[ int(key[0]) ] )
+        else:
+            return( self._dive( river.tributaries[int(key[0])], key[1:] ))
+
+
+    def get_sub_selection(self):
+        if self.selected_pid is None:
+            return(None)
+        if self.sub_selection == '':
+            return(self.parent.main_map.path_catalog[self._path_key][self.selected_pid])
+        else:
+            return( self._dive(self.parent.main_map.path_catalog[self._path_key][self.selected_pid], self.sub_selection) )
+
+
+
+    def select_pid(self, pID=None):
+        path_brush.select_pid( self, pID)
+        self.sub_select('')
 
     def primary_mouse_released(self, event):
         """
@@ -432,7 +475,9 @@ class River_Brush( path_brush ):
             self.river_remove_item( self._drawn_paths[pID] )
             del self._drawn_paths[pID]
 
-        path_brush.draw_path(self, pID)
+        # if there's a sub-selection, make sure not to draw the base part blue 
+        blue = self.sub_selection!=''
+        path_brush.draw_path(self, pID, blue)
 
         try:
             this_path = self.parent.main_map.path_catalog[self._path_key][pID]
@@ -440,7 +485,7 @@ class River_Brush( path_brush ):
             return
 
         if this_path.tributaries is not None:
-            self._drawn_paths[pID].tribs = self.draw_tribs( this_path )
+            self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
 
     def river_remove_item( self, which ):
         """
@@ -454,26 +499,34 @@ class River_Brush( path_brush ):
             self.river_remove_item( which.tribs[1] )
             
 
-    def draw_tribs(self, river):
+    def draw_tribs(self, river, depth, is_selected):
         assert( isinstance( river, River))
-        
-        #if not hasattr(river, "tributary_objs"):
-        #    setattr(river, "tributary_objs", None)
-
-
+       
         # color, style, already set by original call to the draw function! 
+
 
         trib1 = self._qtpath_type()
         outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[0].vertices  ) )
         trib1.addPolygon(outline)
 
+        
         trib2 = self._qtpath_type()
         outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[1].vertices  ) )
         trib2.addPolygon(outline)
 
         # draw both of the tributaries using the appropriate width, saving the QRiverItem
+        if is_selected and self.sub_selection==depth+'0':
+            self.QPen.setColor(self._selected_color)
+        else:
+            self.QPen.setColor(QtGui.QColor(river.tributaries[0].color[0],river.tributaries[0].color[1],river.tributaries[0].color[2]  ))
         self.QPen.setWidth(3 + river.tributaries[0].width)
         first =self.parent.scene.addPath( trib1, pen=self.QPen, brush=self.QBrush)
+
+        if is_selected and self.sub_selection==depth+'1':
+            self.QPen.setColor(self._selected_color)
+        else:
+            self.QPen.setColor(QtGui.QColor(river.tributaries[1].color[0],river.tributaries[1].color[1],river.tributaries[1].color[2]  ))
+
         self.QPen.setWidth(3 + river.tributaries[1].width)
         second = self.parent.scene.addPath( trib2, pen=self.QPen, brush=self.QBrush)
 
@@ -482,9 +535,9 @@ class River_Brush( path_brush ):
 
         # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
         if river.tributaries[0].tributaries is not None:
-            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0])
+            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
         if river.tributaries[1].tributaries is not None:
-            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1])
+            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
 
         # set the z-value of the rivers
         tributary_objs[0].setZValue(river.z_level)

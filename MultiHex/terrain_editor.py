@@ -261,6 +261,9 @@ class editor_gui(QMainWindow):
         self.ui.hex_type_combo.setCurrentIndex(0)
 
     def river_list_click(self, index=None):
+        """
+        Called when an entry in the list of rivers is clicked 
+        """
         # river_list_entry
         item = self.ui.river_list_entry.itemFromIndex(index)
         pID = item.eID
@@ -268,9 +271,15 @@ class editor_gui(QMainWindow):
         if pID is not None:
             self.river_writer.select_pid(pID)
 
+        self.river_writer.sub_select( '' )
+        self.river_update_gui()
+        
 
     def river_trib_click(self, index=None):
-        item = self.ui.tributary_list_entry.itemFromIndex(index)
+        item = self.ui.tributary_list_entry.itemFromIndex(index).eID
+        self.river_writer.sub_select( self.river_writer.sub_selection + str(item) )
+        self.river_update_gui()
+
 
     def river_update_list(self):
         self.ui.river_list_entry.clear()
@@ -280,7 +289,32 @@ class editor_gui(QMainWindow):
         for pID in self.main_map.path_catalog['rivers']:
             self.ui.river_list_entry.appendRow( QEntityItem("River {}".format(pID), pID))
 
+    def river_update_gui(self):
+        """
+        Should be called when the gui needs updating because a tributary or river was selected. 
+        """
+        selected = self.river_writer.get_sub_selection()
 
+        self.ui.tributary_list_entry.clear()
+        if self.river_writer.selected_pid is not None:
+            if selected.tributaries is not None:
+                self.ui.tributary_list_entry.appendRow( QEntityItem("Tributary 0".format(0), 0))
+                self.ui.tributary_list_entry.appendRow( QEntityItem("Tributary 1".format(1), 1))
+
+        if selected.tributaries is not None:
+            self.ui.riv_but_pstart.setEnabled(False)
+            self.ui.riv_but_astart.setEnabled(False)
+        else:
+            self.ui.riv_but_pstart.setEnabled(True)
+            self.ui.riv_but_astart.setEnabled(True)
+
+        # can only add or remove from the end if this is not a tributary 
+        if self.river_writer.sub_selection == '':
+            self.ui.riv_but_pend.setEnabled(True)
+            self.ui.riv_but_aend.setEnabled(True)
+        else:
+            self.ui.riv_but_pend.setEnabled(False)
+            self.ui.riv_but_aend.setEnabled(False)
 
     def river_ps(self):
         self.river_writer.pop_selected_start()

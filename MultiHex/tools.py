@@ -590,7 +590,7 @@ class path_brush(basic_tool):
 
         
 
-    def draw_path( self, pID ):
+    def draw_path( self, pID, ignore_color=False):
         """
         Re-draws the path with given PathID. If no such path is found, it instead just erases any associated map item
         """
@@ -617,7 +617,7 @@ class path_brush(basic_tool):
         
         # if we're drawing the selected path, use red
         # otherwise use the path's color 
-        if pID==self._selected_pid:
+        if (pID==self._selected_pid) and not ignore_color:
             self.QPen.setColor(self._selected_color)
         else:
             self.QPen.setColor( QtGui.QColor(this_path.color[0], this_path.color[1], this_path.color[2] ))
