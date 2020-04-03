@@ -678,7 +678,9 @@ class Biome_Brush( region_brush):
         region_brush.primary_mouse_released(self, event)
         self.parent.biome_update_gui()
      
-
+    def secondary_mouse_released(self, event):
+        region_brush.secondary_mouse_released(self, event)
+        self.parent.biome_update_gui()
 
 class County_Brush( region_brush ):
     def __init__(self, parent):

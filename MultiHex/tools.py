@@ -656,7 +656,7 @@ class path_brush(basic_tool):
     def clear(self):
         for pID in self._drawn_paths:
             self.parent.scene.removeItem( self._drawn_paths[pID])
-            self._drawn_paths = {}
+        self._drawn_paths = {}
 
 class QEntityItem(QtGui.QStandardItem):
     """
@@ -1267,25 +1267,22 @@ class region_brush(Basic_Brush):
         else:
             raise ValueError("Can't set brush size to {}".format(size))
 
-    def primary_mouse_released(self, event):
+    def secondary_mouse_released(self, event):
         """
         Selects the region under the cursor. If no region is there, deselect whatever region is active 
         """
-        here = Point( event.scenePos().x(), event.scenePos().y())        
-        this_id = self.parent.main_map.get_id_from_point( here )
-        
-        if this_id not in self.parent.main_map.id_map[self.r_layer]:
-            self.selected_rid = None
-        else:
-            if self.parent.main_map.id_map[self.r_layer][this_id]!=self.selected_rid:
-                self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
+
+        # sets the state to 0, drops any selection
+
+        self.selected_rid = None
+        self.set_state(0)
               
 
 
-    def secondary_mouse_held(self, event):
-        self.secondary_mouse_released( event )
+    def primary_mouse_held(self, event):
+        self.primary_mouse_released( event )
 
-    def secondary_mouse_released(self, event):
+    def primary_mouse_released(self, event):
         """
         Draws or Erases, depending on the mode 
         """
@@ -1519,14 +1516,11 @@ class region_brush(Basic_Brush):
             self._drawn_names[rid].setZValue(14)
     
     def drop(self):
-        """
-        Removes the selection outline for the tool. Called while switching to another tool. 
-        """
-        self.selected_rid = None
-
-
+        Basic_Brush.drop(self)
+        pass
 
     def clear(self):
+        Basic_Brush.clear(self)
         self._drawn_names = {}
         self._drawn_regions = {}
 
