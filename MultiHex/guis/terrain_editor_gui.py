@@ -224,6 +224,10 @@ class editor_gui_window(object):
         self.river_trib_list.setMaximumSize(QtCore.QSize(16777215, 75))
         self.river_trib_list.setObjectName("river_trib_list")
         self.formLayout_2.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.river_trib_list)
+        self.river_trib_back_but =QtWidgets.QPushButton(self.RiverPen)
+        self.river_trib_back_but.setObjectName("river_trib_back_but")
+        self.formLayout_2.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.river_trib_back_but)
+
         self.riv_but_delete = QtWidgets.QPushButton(self.RiverPen)
         self.riv_but_delete.setObjectName("riv_but_delete")
         self.formLayout_2.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.riv_but_delete)
@@ -378,6 +382,7 @@ class editor_gui_window(object):
         self.riv_but_astart.setText(_translate("MainWindow", "Add To Start"))
         self.riv_but_aend.setText(_translate("MainWindow", "Add To End"))
         self.river_trib.setText(_translate("MainWindow", "Tributaries:"))
+        self.river_trib_back_but.setText(_translate("MainWindow","Back"))
         self.det_apply_button.setText(_translate("MainWindow", "Apply"))
         self.riv_but_delete.setText(_translate("MainWindow", "Delte River"))
         self.riv_name_lbl.setText(_translate("MainWindow", "Selected: "))
