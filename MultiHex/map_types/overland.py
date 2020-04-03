@@ -143,9 +143,9 @@ class River(Path):
 
     def join_with( self, other ):
         """
-        Joins with the other river! 
+        Looks and tries to see if the river 'other' merges with the self or one the self's tributaries
 
-        Other river must connect to this one 
+        Returns an integer: 0 for successful merge, 1 for no merge 
         """
         if not isinstance( other, River ):
             raise TypeError("Cannot join with object of type {}".format(type(other)))
@@ -177,6 +177,7 @@ class River(Path):
             return(0)
         elif other.end()==self.start():
             self._vertices = other.vertices + self.vertices
+            self.tributaries = other.tributaries
             return(0)
         elif self.end()==other.end():
             # if they meet end-to-end (weird)... reverse the appened one
@@ -398,6 +399,8 @@ class River_Brush( path_brush ):
         self._sub_selection = ''
 
         self._qtpath_type = QPainterRiver
+
+        self._extra_states = [5] # adding to a river's tributary's start 
     
     @property
     def sub_selection(self):
@@ -426,6 +429,9 @@ class River_Brush( path_brush ):
 
 
     def get_sub_selection(self):
+        """
+        Returns the river object based on the sub-selection
+        """
         if self.selected_pid is None:
             return(None)
         if self.sub_selection == '':
@@ -433,11 +439,47 @@ class River_Brush( path_brush ):
         else:
             return( self._dive(self.parent.main_map.path_catalog[self._path_key][self.selected_pid], self.sub_selection) )
 
+    def pop_selected_start(self):
+        """
+        Pops off the end of the selected tributary or registered river
+        """
+        if self.sub_selection=='':
+            path_brush.pop_selected_start()
+        else:
+            # get the sub selection
+            this_riv = self.get_sub_selection()
+            if this_riv is not None:
+                this_riv.trim_at(1, False )
+                if len(this_riv.vertices)==1:
+                    # this river now has no length
+                    former = self.sub_selection
+
+                    # get its parent
+                    self.sub_select(former[:-1])
+                    parent = self.get_sub_selection()
+
+                    # the width will get changed a little bit
+                    new_width = parent.width - this_riv.width
+
+                    # get the other tributary 
+                    if former[-1]==0:
+                        what_to_add = parent.tributaries[1]
+                    else:
+                        what_to_add = parent.tributaries[0]
+
+                    result = parent.join_with(what_to_add)
+                    if result==1:
+                        raise Exception("Failed to join rivers when it should've succeded!")
+                    parent.width = new_width
+                self.draw_path( self.selected_pid )
 
 
     def select_pid(self, pID=None):
         path_brush.select_pid( self, pID)
         self.sub_select('')
+
+    def get_alt_from_point(self, event):
+        return( self.get_sub_selection().start() )
 
     def primary_mouse_released(self, event):
         """
@@ -445,8 +487,9 @@ class River_Brush( path_brush ):
         But then check for intersections with a new river, and if one is found merge! 
         """
         path_brush.primary_mouse_released( self, event)
-
-        if self._state in [2,3]:
+        if self._state==0 or self._state==1:
+            return
+        if self._state==2: # see if this WIP river will merge
             for pid in self.parent.main_map.path_catalog[self._path_key]:
                 result = self.parent.main_map.path_catalog[self._path_key][pid].join_with( self._wip_path )
                 if result == 0:
@@ -458,9 +501,68 @@ class River_Brush( path_brush ):
                     self.prepare(0)
                     self.draw_path( pid )
                     break
+        elif self._state==3: 
+            #adding to start
+            # try joining the active river with other ones 
+            selected_river = self.get_sub_selection()
+
+            
+            for pid in self.parent.main_map.path_catalog[self._path_key]:
+                if pid==self.selected_pid:
+                    continue
+                result = self.parent.main_map.path_catalog[self._path_key][pid].join_with( selected_river )
+                if result == 0:
+
+                    self.parent.main_map.unregister_path( self.selected_pid, 'rivers')
+                    self.prepare(0)
+                    self.draw_path(self.selected_pid)
+                    self.draw_path(pid)
+                    self.select_pid(None)
+                    self.sub_select('')
+                    self.parent.river_update_gui()
+                    print("merge")
+                    return
+
+        elif self._state==4: # adding to end
+            return
+        elif self._state==5:
+            where, from_point = self.where_to_from(event)
+
+            which = self.get_sub_selection()
+            which.add_to_start(where)
+            self.draw_path(self.selected_pid)
+
+        else:
+            raise NotImplementedError("Unexpected state {} encountered".format(self._state))
+
+    def mouse_moved(self, event):
+        path_brush.mouse_moved(self, event)
+        #print("mouse moved state {}".format(self._state))
+        if self._state==5:
+            if self._drawn_icon is None:
+                self._drawn_icon = self.parent.scene.addPixmap( self._icon )
+                self._drawn_icon.setZValue(20)
+
+            self._drawn_icon.setX( event.scenePos().x() )
+            self._drawn_icon.setY( event.scenePos().y() )
+
+            where, from_point = self.where_to_from(event)
+
+            if self._step_object is not None:
+                self.parent.scene.removeItem( self._step_object )
+            
+            path = self._qtpath_type()
+            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ from_point, where])) )
+            self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
 
     def secondary_mouse_released(self, event):
         path_brush.secondary_mouse_released(self, event)
+        
+        if self._state==5:
+            self.draw_path( self._selected_pid )
+            self.select_pid(None )
+            self._state = 0
+
         self.parent.river_update_list()
         
 
@@ -557,6 +659,10 @@ class River_Brush( path_brush ):
             for pID in self.parent.main_map.path_catalog['rivers'].keys():
                 assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
                 self.draw_path( pID )
+    def clear(self):
+        path_brush.clear(self)
+        self._sub_selection = ''
+
                     
 
 class Biome_Brush( region_brush):

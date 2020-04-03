@@ -105,6 +105,8 @@ class editor_gui(QMainWindow):
         self.ui.riv_but_astart.clicked.connect( self.river_as )
         self.ui.riv_but_aend.clicked.connect( self.river_ae )
         self.ui.riv_but_delete.clicked.connect( self.river_delete )
+        self.ui.river_trib_back_but.clicked.connect( self.river_back )
+        self.ui.river_trib_back_but.setEnabled(False)
 
         #biome painter buttons
         self.ui.bio_name_but_gen.clicked.connect( self.biome_name_gen )
@@ -312,9 +314,15 @@ class editor_gui(QMainWindow):
         if self.river_writer.sub_selection == '':
             self.ui.riv_but_pend.setEnabled(True)
             self.ui.riv_but_aend.setEnabled(True)
+            self.ui.river_trib_back_but.setEnabled(False)
         else:
             self.ui.riv_but_pend.setEnabled(False)
             self.ui.riv_but_aend.setEnabled(False)
+            self.ui.river_trib_back_but.setEnabled(True)
+
+    def river_back(self):
+        self.river_writer.sub_select( self.river_writer.sub_selection[:-1] )
+        self.river_update_gui()
 
     def river_ps(self):
         self.river_writer.pop_selected_start()
@@ -323,10 +331,15 @@ class editor_gui(QMainWindow):
         self.river_writer.pop_selected_end()
 
     def river_as(self):
-        self.river_writer.prepare( 4 )
+        self.scene._active.drop()
+        self.scene._active=self.river_writer
+        print("was in state {}".format(self.river_writer._state))
+        self.river_writer.prepare( 5 )
 
     def river_ae(self):
-        self.river_writer.prepare( 3)
+        self.scene._active.drop()
+        self.scene._active=self.river_writer
+        self.river_writer.prepare( 3 )
 
     def river_delete(self):
         self.river_writer.delete_selected()
@@ -413,10 +426,11 @@ class editor_gui(QMainWindow):
         self.hide()
         
         self.region_control.clear()
-        self.selected_rid = None
-
         self.writer_control.clear()
+
         self.scene._held = None
+
+        self.river_writer.clear()
 
 
     def save_map(self):

@@ -305,7 +305,8 @@ class path_brush(basic_tool):
         # state 0 - not doing anything
         #       1 - preparing to draw a road or river. Showing the river/road icon
         #       2 - currently adding to a new road or river. 
-        #       3 - adding to end existing path
+        #       3 - adding to existing path's end
+        #       4 - adding to existing path's start
         self._state = 0
 
         self._drawn_icon = None
@@ -391,6 +392,9 @@ class path_brush(basic_tool):
 
         self._state = setting
 
+    def get_alt_from_point(self, event):
+        raise NotImplementedError("This method should be reimplemented in a derived class")
+
     def where_to_from(self, event):
         # the stepsize is dependent on whether we're going center to center
         # or vertex to vertex
@@ -417,7 +421,11 @@ class path_brush(basic_tool):
                 self._state = 0
                 self.select_pid( None )
         elif self._state in self._extra_states:
-            return
+            from_point = self.get_alt_from_point(event)
+            if from_point is None:
+                self._state = 0
+                self.select_pid( None )
+
         else:
             raise NotImplementedError("Unexpected state {}".format(self._state))
             
@@ -476,8 +484,8 @@ class path_brush(basic_tool):
                 where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( Point(event.scenePos().x(),event.scenePos().y() )))
                 
 
-            self._drawn_icon.setX( where.x ) #-(self._icon_size)/2 )
-            self._drawn_icon.setY( where.y ) #-(self._icon_size)/2 )
+            self._drawn_icon.setX( where.x )
+            self._drawn_icon.setY( where.y ) 
         elif (self._state==2 or self._state==3 or self._state==4):
             if self._drawn_icon is None:
                 self._drawn_icon = self.parent.scene.addPixmap( self._icon )
@@ -496,7 +504,7 @@ class path_brush(basic_tool):
             self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
                  
         elif self._state in self._extra_states:
-            return
+            pass
         else:
             raise NotImplementedError("{} Reached unexpected state {}".format(self, self._state))
     # update the position of the river icon
@@ -546,7 +554,7 @@ class path_brush(basic_tool):
                 self.draw_path( self._selected_pid)
 
         elif self._state in self._extra_states:
-            return
+            pass
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
@@ -584,7 +592,6 @@ class path_brush(basic_tool):
 
         elif self._state in self._extra_states:
             pass
-
         else:
             raise NotImplementedError("Reached unexpected state {}".format(self._state))
 
@@ -649,7 +656,7 @@ class path_brush(basic_tool):
     def clear(self):
         for pID in self._drawn_paths:
             self.parent.scene.removeItem( self._drawn_paths[pID])
-            del self._drawn_paths 
+            self._drawn_paths = {}
 
 class QEntityItem(QtGui.QStandardItem):
     """
