@@ -129,7 +129,7 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = (colors.ocean[0]*0.8, colors.ocean[1]*0.8, colors.ocean[2]*0.8)
+        self.color = (134, 183,207)
 
         self.width = 1
 
@@ -386,6 +386,9 @@ class Biome(Region):
         Region.__init__(self, hex_id, parent)
 
 
+class Detail_Brush( basic_tool ):
+    def __init__(self,parent):
+        basic_tool.__init__(self, parent)
 
 
 class River_Brush( path_brush ):
@@ -878,7 +881,7 @@ class OHex(Hex):
         self._biodiversity     = 1.0
         self._rainfall_base    = 0.0
         self._altitude_base    = 1.0
-        self._temperature_base = 1.0
+        self._temperature_base = 0.0
         self._is_land          = True
         self.biome             = ""
         self.on_road           = None
@@ -890,80 +893,5 @@ class OHex(Hex):
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
-
-
-class hcolor:
-    """
-    Just a utility used to hold a bunch of colors 
-    """
-    def __init__(self):
-        self.ocean = (100,173,209)
-        self.grassland = (149,207,68)
-        self.forest = (36, 94, 25)
-        self.arctic = (171,224,224)
-        self.tundra = (47,105,89)
-        self.mountain = (158,140,96)
-        self.ridge = (99,88,60)
-        self.desert = (230,178,110)
-        self.rainforest = (22,77,57)
-        self.savanah = (170, 186, 87)
-        self.wetlands = (30,110,84)
-colors = hcolor()
-
-
-# Tons of hex templates... 
-def Ocean_Hex(center, radius):
-    temp = OHex(center, radius)
-    temp.fill = colors.ocean
-    temp._temperature_base = 0.5
-    temp._rainfall_base    = 1.0
-    temp._biodiversity     = 1.0
-    temp._altitude_base    = 0.0
-    temp._is_land          = False
-    return(temp) 
-
-def Grassland_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.grassland
-    temp._is_land = True
-    return(temp)
-
-def Forest_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.forest
-    temp._is_land = True
-    return(temp)
-
-def Mountain_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.mountain
-    temp.genkey = '01000000'
-    temp._is_land = True
-    return(temp)
-
-def Arctic_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.arctic
-    temp._temperature_base = 0.0
-    temp._rainfall_base    = 0.0
-    temp._altitude_base    = 0.0
-    temp._is_land          = True
-    return(temp)
-
-def Desert_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.desert
-    temp._temperature_base = 1.0
-    temp._rainfall_base    = 0.0
-    temp._altitude_base    = 0.0
-    temp._is_land          = True
-    return(temp)
-
-def Ridge_Hex(center, radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.ridge
-    temp.genkey = '11000000'
-    temp._is_land = True
-    return(temp)
 
 
