@@ -188,7 +188,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         for it in range(len(all_verts) - which):
                             ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
                             for ID in ids:
-                                main_map.catalogue[ID].fill = colors.ocean
+                                main_map.catalogue[ID].fill = (134, 183, 207)
                                 main_map.catalogue[ID]._altitude_base = 0.0
                                 main_map.catalogue[ID]._is_land = False
                                 main_map.catalogue[ID].biome = "lake"

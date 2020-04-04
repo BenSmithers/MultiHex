@@ -1,6 +1,5 @@
 from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
-from MultiHex.map_types.overland import OHex as Hex
 from MultiHex.generator.util import *
 
 from numpy import arccos 
@@ -12,7 +11,7 @@ import os
 import json
 
 def make_basic_hex(arg1, arg2):
-    new_one = Hex(arg1, arg2)
+    new_one = OHex(arg1, arg2)
     new_one._biodiversity = 0.0
     new_one._rainfall_base = 0.0
     new_one._temperature_base = 0.0

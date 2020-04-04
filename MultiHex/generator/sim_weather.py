@@ -1,6 +1,7 @@
 from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
+from MultiHex.generator.noise import perlinize
 
 from numpy import arccos, histogram, linspace
 from math import exp, floor, sqrt, e, pi, sin
@@ -295,6 +296,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     print("Performing {} round of Rainfall Smoothing".format(n_rounds))
     for i in range(n_rounds):
         smooth(['rain'], sim)
+
+    perlinize(attr='_temperature_base')
+
 
     
 

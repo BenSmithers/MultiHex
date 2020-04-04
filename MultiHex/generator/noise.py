@@ -48,7 +48,7 @@ def _save_texture(obj,which='rectangular'):
     where = os.path.join(os.path.dirname(__file__),'.texture.npy')
     save( where, obj)
 
-def _load_texture():
+def load_texture():
     """
     Loads the saved texture and verifies that it is valid before returning it
     """
@@ -77,7 +77,7 @@ def _dot_grid_gradient( gridx, gridy, posx, posy, texture):
    
     return( dx*texture[gridx][gridy][0] + dy*texture[gridx][gridy][1] )
 
-def _generate_gradients( size = 128 ):
+def generate_gradients( size = 128 ):
     """
     Generates a square grid with a unit-vector at each vertex, and saves it to a numpy file. 
     """
@@ -90,7 +90,10 @@ def _generate_gradients( size = 128 ):
         for j in range(size):
             grads[i][j][1] = sqrt( 1- grads[i][j][0] )
 
+    # save it and return it
     _save_texture( grads, 'gradient')
+
+    return( grads )
 
 
 
@@ -174,16 +177,16 @@ def sample_noise(x_pos, y_pos, xsize=None, ysize=None, texture=None, algorithm='
     # optionally, the user can pass the texture itself to minimize IO
     if texture is None:
         try:
-            texture = _load_texture()
+            texture = load_texture()
         except IOError:
             print("File not found while sampling. Generating...")
             if algorithm=='rectangular':
                 _generate_perlin_texture()
             elif algorithm=='gradient':
-                _generate_gradients()
+                generate_gradients()
             else:
                 raise NotImplementedError("Unsupported algorithm: {}".format(algorithm))
-            texture = _load_texture()
+            texture = load_texture()
     if not _is_valid_texture(texture, algorithm):
         raise ValueError("Something was wrong with the specified texture")
 
@@ -258,11 +261,11 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
         _generate_perlin_texture()
     elif algorithm=='gradient':
         print("Generating Gradients")
-        _generate_gradients()
+        generate_gradients()
     else:
         raise NotImplementedError("Unsupported algorithm {}".format(algorithm))
     # then grab it into an object to minimize IO later on
-    texture = _load_texture()
+    texture = load_texture()
     for HexID in main_map.catalogue:
         this_hex = main_map.catalogue[HexID]
         cent = this_hex.center

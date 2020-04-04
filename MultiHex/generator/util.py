@@ -1,19 +1,22 @@
 #!/usr/bin/python3.6
 
 from math import exp
-from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd
+from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd, Hex
 from MultiHex.map_types.overland import River
 
 import random
-import os # used by the biomator 
+import os # used by the Climatizer 
 import pickle
-import json # used by the biomator
+import json # used by the Climatizer
 from numpy import save, load, min, max, ndarray
 from numpy.random import rand
 #                  Prepare Utilities
 # =====================================================
 
 def get_tileset_params(tileset = "standard"):
+    if not isinstance(tileset, str):
+        raise TypeError("Passed tileset should be {}, not {}".format(str, type(tileset)))
+
     loc = os.path.join(os.path.dirname(__file__), '..' ,'resources', 'tilesets.json')
     file_object = open( loc, 'r')
     config = json.load( file_object )
@@ -33,7 +36,7 @@ def get_tileset_params(tileset = "standard"):
     return( parameters )
     # this is a length of strings. It tells the object what to access in the Hexes
 
-class biomator:
+class Climatizer:
     def __init__(self, tileset = "standard"):
 
         loc = os.path.join(os.path.dirname(__file__), '..' ,'resources', 'tilesets.json')
@@ -42,8 +45,8 @@ class biomator:
         self.config = json.load( file_object )
         file_object.close()
 
-        if tileset not in config:
-            raise IOError("Tileset {} not in fileset folder".format(tileset))
+        if tileset not in self.config:
+            raise IOError("Tileset {} not in `tilesets.json` file".format(tileset))
 
         # this is a length of strings. It tells the object what to access in the Hexes
         self.parameters = get_tileset_params(tileset)
@@ -65,7 +68,7 @@ class biomator:
 
         # build a point for these parameters 
         testing = PointNd( parameters )
-        distance = 10.
+        distance = 100.
         curr_pt = None
         super = ""
         sub = ""
@@ -82,6 +85,7 @@ class biomator:
                     curr_pt = new
                     super = super_type
                     sub = sub_type
+                    distance = distance_between( testing, new)
                     continue
 
                 # calculate at distance depending on whether we treat this as a "ray" or a point in space
@@ -100,8 +104,18 @@ class biomator:
 
         return( super, sub )
 
-    def apply_biome_to_hex( self, target ):
-        temp  =[ getattr(target, param) for param in self.parameters ]
+    def apply_climate_to_hex( self, target ):
+        """
+        Uses the Climatizer's configuration to assign a new fill and "climate" to the Hex
+        """
+        if not isinstance(target, Hex):
+            raise TypeError("Expected {}, got {}".format(Hex, type(target)))
+
+        temp  = [ getattr(target, param) for param in self.parameters ]
+        for iter in range(len(temp)):
+            if isinstance(temp[iter], bool):
+                temp[iter] = int(temp[iter])*10.
+
         super, sub = self.get_sup_sub( temp )
 
         target.fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
@@ -121,7 +135,7 @@ def distance_between( point1, point2):
     new = point1 - point2
     return( new.magnitude )
 
-def distance_from_biome_ray( point1, ray):
+def distance_from_climate_ray( point1, ray):
     if not isinstance(point1, PointNd):
         raise TypeError("Expected type {}, got {}".format(Point3d, type(point1)))
     if not isinstance(ray, PointNd):
@@ -300,15 +314,16 @@ def fetch_synonyms(what):
     Description: Takes in a string and returns a list containing the string and several synonyms.
     """
     switcher = {
-        "grassland": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
+        "prarie": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
         "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
         "mountain": ["Mountains", "Peaks", "Crags"],
-        "forest": ["Forest", "Woods", "Woodlands", "Backwoods"],
-        "rainforest": ["Darkwoods","Tangle", "Rainforest", "Wilds", "Jungle"],
-        "arctic": ["Boreal","Frost","Arctic"],
-        "tundra": ["Tundra"],
+        "ridge":["Ridge"],
+        "wetland": ["Swamp","Bog", "Fen", "Marsh"],
+        "gentle forest": ["Forest", "Woods", "Woodlands", "Backwoods"],
+        "dark forest": ["Darkwoods","Tangle", "Rainforest", "Wilds", "Jungle"],
+        "scrub":["Wastes", "Scrubland","Flats","Expanse","Rot"],
+        "tundra": ["Boreal","Frost","Arctic"],
         "river": ["Creek","River","Stream", "Rapids"],
-        "wetlands":["Bog", "Fen", "Swamp", "Marsh"],
         "savanah":["Savanah"]
     }
 
