@@ -3,13 +3,15 @@
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import clicker_control, QEntityItem
 from MultiHex.map_types.overland import OHex_Brush, Biome_Brush, River_Brush, ol_clicker_control
-from MultiHex.generator.util import get_tileset_params, create_name
+from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
+from MultiHex.generator.noise import sample_noise, generate_gradients
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
 
 from MultiHex.guis.terrain_editor_gui import editor_gui_window
+from MultiHex.guis.confirm_inject import Ui_Dialog as confirm_ui
 from MultiHex.about_class import about_dialog
 
 import sys # basic command line interface 
@@ -18,7 +20,17 @@ import json # used to handle tileses
 
 screen_ratio = 0.8
 
-  
+class ConfirmationDialog(QDialog):
+    def __init__(self, parent=None, warning=''):
+        QDialog.__init__(self,parent)
+        self.ui=confirm_ui()
+        self.ui.setupUi(self)
+
+        if warning!='':
+            if not isinstance(warning, str):
+                raise TypeError("Optional arg 'warning' must be {}, not {}".format(str,type(warning)))
+            self.ui.label_2.setText(warning)
+
 
 class editor_gui(QMainWindow):
     """
@@ -201,10 +213,63 @@ class editor_gui(QMainWindow):
         pass
 
     def det_inject_button(self):
-        pass
+        """
+        This button injects perlin noise into the Hexmap. 
+        It uses the current state of the drop-down menu to decide which attribute to inject into
+
+        It asks for confirmation before doing this. 
+        """
+        dialog = ConfirmationDialog(self)
+        result = dialog.exec_() 
+        if result==1:
+            print("Injecting")
+
+            combo_status = self.ui.det_noise_combo.currentText()
+            attribute = ''
+            if combo_status == 'Altitude':
+                attribute = '_altitude_base'
+            elif combo_status == 'Rainfall':
+                attribute = '_rainfall_base'
+            elif combo_status == 'Temperature':
+                attribute = '_temperature_base'
+            else:
+                raise NotImplementedError("Somehow got '{}' from combo box.".format(combo_status))
+
+            # we aren't using the perlinize function, since that tries to load/save the whole map 
+            # first generate a texture file
+            texture = generate_gradients()
+            
+            # apply the noise
+            for hexID in self.main_map.catalogue:
+                center = self.main_map.catalogue[hexID].center
+                scale = (0.9+self.ui.det_mag_spin.value())
+
+                new_value = getattr( self.main_map.catalogue[hexID], attribute) \
+                        + scale*sample_noise(center.x, center.y, 1.1*self.main_map.dimensions[0],\
+                        1.1*self.main_map.dimensions[1], texture)
+
+                setattr( self.main_map.catalogue[hexID], attribute, new_value)
+
+                # apply the relevant heatmep
+
 
     def det_color_button(self):
-        pass
+        # make a Climatizer
+        note = "This will take a few minutes. MultiHex may seem unresponsive. This process is irreversible"
+        dialog = ConfirmationDialog(self, note)
+        result = dialog.exec_() 
+
+        if result==0:
+            return
+        this_climate = Climatizer( self.main_map.tileset )
+        for hexID in self.main_map.catalogue:
+            if self.main_map.catalogue[hexID].biome=='mountain':
+                continue
+
+            this_climate.apply_climate_to_hex( self.main_map.catalogue[hexID] )
+            self.main_map.catalogue[hexID].rescale_color()
+            self.writer_control.redraw_hex(hexID)
+
 
     def det_apply_button(self):
         # build the dictionary to adjut the hex
@@ -346,48 +411,52 @@ class editor_gui(QMainWindow):
         self.river_update_list()
 
     def biome_name_gen(self):
-        if self.region_control.selected_rid is None:
+        if self.region_control.selected is None:
             return
 
-        first = self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].ids[0]
+        first = self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected].ids[0]
 
         new_one = create_name( self.main_map.catalogue[first].biome )
         self.ui.bio_name_edit.setText( new_one )
 
     def biome_apply(self):
-        if self.region_control.selected_rid is None:
+        if self.region_control.selected is None:
             pass
         else:
-            self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].name = self.ui.bio_name_edit.text()
-            self.region_control.redraw_region_text( self.region_control.selected_rid)
+            self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected].name = self.ui.bio_name_edit.text()
+            self.region_control.redraw_region_text( self.region_control.selected)
 
     def biome_update_gui(self):
-        if self.region_control.selected_rid is None:
+        if self.region_control.selected is None:
             self.ui.bio_name_edit.setText("")
             self.ui.bio_color_combo.setEnabled(False)
         else:
-            self.ui.bio_name_edit.setText(self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].name)
+            self.ui.bio_name_edit.setText(self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected].name)
             self.ui.bio_color_combo.setEnabled(True)
 
     def biome_color_button(self):
-        if self.region_control.selected_rid is None:
+        if self.region_control.selected is None:
             pass
         else:
-            old_one = self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].color
+            old_one = self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected].color
             qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
             new_color = QColorDialog.getColor(initial = qt_old_one, parent=self)
 
             if new_color.isValid():
-                self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected_rid].color = (new_color.red(), new_color.green(), new_color.blue())
-                self.region_control.redraw_region(self.region_control.selected_rid)
+                self.main_map.rid_catalogue[self.region_control.r_layer][self.region_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
+                self.region_control.redraw_region(self.region_control.selected)
             else:
                 print("pass")
     
     def biome_delete(self):
-        if self.region_control.selected_rid is None:
+        if self.region_control.selected is None:
             pass
         else:
-            self.main_map.remove_region( self.region_control.selected_rid, self.region_control.r_layer)
+            self.main_map.remove_region( self.region_control.selected, self.region_control.r_layer)
+
+
+        self.region_control.redraw_region( self.region_control.selected )
+        self.region_control.select(None)
 
     def menu_open(self):
         pass

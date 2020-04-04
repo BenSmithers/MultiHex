@@ -1,4 +1,5 @@
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QMainWindow
 from PyQt5 import QtGui, QtCore
 
 
@@ -17,7 +18,10 @@ class basic_tool:
     Prototype a basic tool 
     """
     def __init__(self, parent=None):
-        pass
+        if not (isinstance(parent, QMainWindow) or (parent is None)):
+            raise TypeError("Parent should be of type {}, not {}".format(clicker_control, type(parent)))
+        self.parent = parent
+
     def primary_mouse_depressed(self,event):
         """
         Called when the right mouse button is depressed 
@@ -94,8 +98,6 @@ class Basic_Brush(basic_tool):
         self._color = (0,0,0)
         self.QBrush = QtGui.QBrush()
         self.QPen   = QtGui.QPen()
-
-        self.parent = parent
 
         self._selected = None
 
@@ -298,8 +300,7 @@ class path_brush(basic_tool):
     Basic tool implementation for drawing Path objects like rivers and roads
     """
     def __init__(self, parent, vertex_mode=False):
-
-        self.parent = parent
+        basic_tool.__init__(self, parent)
 
         # state variable! 
         # state 0 - not doing anything
@@ -678,7 +679,7 @@ class entity_brush(basic_tool):
     Basic tool implementaion for adding and editing entities on the map! 
     """
     def __init__(self, parent):
-        self.parent = parent
+        basic_tool.__init__(self, parent)
 
         # list of drawn Qt Items. objects indexed with relevant eID
         self._drawn_entities = {}
@@ -1163,29 +1164,32 @@ class hex_brush(Basic_Brush):
                     self.redraw_hex( neighbor )
                 except NameError:
                     pass
-    def redraw_hex(self, hex_id):
-        try:
-            # if this hex has been drawn, redraw it! 
-            if hex_id in self.drawn_hexes:
-                self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
-                del self.drawn_hexes[hex_id]
+    def redraw_hex(self, hex_id, use_param_as_color=''):
+        # if this hex has been drawn, redraw it! 
+        if hex_id in self.drawn_hexes:
+            self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
+            del self.drawn_hexes[hex_id]
 
-            # get the pen ready (does the outlines)
-            # may raise key error 
-            this_hex = self.parent.main_map.catalogue[ hex_id ]
+        if hex_id not in self.parent.main_map.catalogue:
+            return
+
+        this_hex = self.parent.main_map.catalogue[ hex_id ]
+        if use_param_as_color=='':
             self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
-            self.QBrush.setStyle(1)
- 
-            self.QPen.setWidth(self.pen_size)
-            self.QPen.setStyle(self.pen_style)
-
             self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
-            self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex._vertices )), pen=self.QPen, brush=self.QBrush) 
-            self.drawn_hexes[hex_id].setZValue(-1)
+        else:
+            self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
+            self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
 
-        except KeyError: #happens if told to redraw a hex that isn't there 
-            #print("key error")
-            pass
+        self.QBrush.setStyle(1)
+        self.QPen.setWidth(self.pen_size)
+        self.QPen.setStyle(self.pen_style)
+
+        
+        self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex.vertices )), pen=self.QPen, brush=self.QBrush) 
+        self.drawn_hexes[hex_id].setZValue(-1)
+
+
 
     
     def toggle_brush_size(self):
@@ -1227,7 +1231,6 @@ class region_brush(Basic_Brush):
         @ param parent - the gui object that will hold this 
         """
         self.start = Point(0.0, 0.0)
-        self.selected_rid = None
 
         # parent should be a pointer to the gui object that has this brush 
         self.parent = parent
@@ -1254,6 +1257,16 @@ class region_brush(Basic_Brush):
         self.small_font = False
         self.default_name = "Region"
 
+    def select(self, event):
+        """
+        Extends the parent class `select' function to apply the Brush color appropriately. 
+        """
+        Basic_Brush.select(self, event)
+
+        if self.selected is not None:
+            self.set_color(self.parent.main_map.rid_catalogue[self.r_layer][self.selected].color)
+        else:
+            self.set_color((255,255,255))
 
     def set_brush_size( self, size ):
         if not type(size)==int: 
@@ -1267,17 +1280,26 @@ class region_brush(Basic_Brush):
         else:
             raise ValueError("Can't set brush size to {}".format(size))
 
+    def secondary_mouse_held(self, event):
+        """
+        Do the same thing as if the mouse was released
+        """
+        self.secondary_mouse_released(event)
+
     def secondary_mouse_released(self, event):
         """
-        Selects the region under the cursor. If no region is there, deselect whatever region is active 
+        If in mode 1, and a region is selected, remove the region under the cursor
+
+        if no region is selected, return to state 0
         """
 
-        # sets the state to 0, drops any selection
-
-        self.selected_rid = None
-        self.set_state(0)
-              
-
+        if self.state==0:
+            return
+        else:
+            if self.selected is None:
+                self.set_state(0)
+            else:
+                self.reg_remove( event )
 
     def primary_mouse_held(self, event):
         self.primary_mouse_released( event )
@@ -1296,9 +1318,9 @@ class region_brush(Basic_Brush):
             this_id = self.parent.main_map.get_id_from_point( here )
 
             if this_id not in self.parent.main_map.id_map[self.r_layer]:
-                self.selected_rid = None
+                self.select(None)
             else:
-                self.selected_rid = self.parent.main_map.id_map[self.r_layer][this_id]
+                self.select(self.parent.main_map.id_map[self.r_layer][this_id])
                     
 
         else:
@@ -1336,40 +1358,40 @@ class region_brush(Basic_Brush):
             return
 
 
-        if self.selected_rid is None:
+        if self.selected is None:
             # if the hex here is not mapped to a registered region, 
             if (loc_id not in self.parent.main_map.id_map[self.r_layer]):
                 # make a new region here, set it to the active region, and draw it
                 new_reg = self._type( loc_id, self.parent.main_map )
                                 
                 # get the newely created rid, set it to active 
-                self.selected_rid = self.parent.main_map.register_new_region( new_reg, self.r_layer )
-                new_reg.name = self.default_name +" "+ str( self.selected_rid )
+                self.select( self.parent.main_map.register_new_region( new_reg, self.r_layer ) )
+                new_reg.name = self.default_name +" "+ str( self.selected )
 
                 # self.parent.main_map.id_map( loc_id )
                 
                 if self._brush_size == 2:
                     # build a new region around this one
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        self.parent.main_map.add_to_region( self.selected_rid, ID, self.r_layer )
+                        self.parent.main_map.add_to_region( self.selected, ID, self.r_layer )
 
-                self.redraw_region( self.selected_rid )
+                self.redraw_region( self.selected )
             else:
                 # no active region, but the hex here belongs to a region. 
                 # set this hexes' region to the active one 
-                self.selected_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
+                self.select( self.parent.main_map.id_map[self.r_layer][ loc_id ] )
         else:
             if self._brush_size==1:
                 try:
                     # try adding it
                     # if it can't, it raises a RegionMergeError exception
-                    other_rid = self.parent.main_map.add_to_region(self.selected_rid, loc_id, self.r_layer )
+                    other_rid = self.parent.main_map.add_to_region(self.selected , loc_id, self.r_layer )
                     
                     if (other_rid!=-1) and (other_rid is not None): 
                         # add_to_region returns an rid if it removes a hex from another region.
                         # it returns -1, it didn't remove anything from anywhere 
                         self.redraw_region( other_rid )
-                    self.redraw_region( self.selected_rid )
+                    self.redraw_region( self.selected )
                 except RegionMergeError:
                     pass
                 except RegionPopError:
@@ -1390,8 +1412,8 @@ class region_brush(Basic_Brush):
 
                     # now merge the regions
                     try: 
-                        self.parent.main_map.merge_regions( self.selected_rid, new_rid , self.r_layer)
-                        self.redraw_region( self.selected_rid )
+                        self.parent.main_map.merge_regions( self.selected , new_rid , self.r_layer)
+                        self.redraw_region( self.selected )
                     except RegionMergeError:
                         # delete that region, remove it
                         self.parent.main_map.remove_region( new_rid , self.r_layer )
@@ -1472,7 +1494,7 @@ class region_brush(Basic_Brush):
 
         @param rid  - region id of region whose name should be redrawn
         """
-        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
+        
 
         if rid in self._drawn_names:
             self.parent.scene.removeItem( self._drawn_names[ rid ] )
@@ -1481,8 +1503,15 @@ class region_brush(Basic_Brush):
         if not self.draw_names:
             return
 
+        if rid not in self.parent.main_map.rid_catalogue[self.r_layer]:
+            return
+
+        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
+
         if reg_obj.name=="":
             return
+        
+        
 
         dname = reg_obj.name.split(" ")
         mult_factor = 1
