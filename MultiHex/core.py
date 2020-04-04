@@ -29,11 +29,7 @@ map_version = "0.3"
 
 
 def is_number(object):
-    try:
-        a= 5+object
-        return(True)
-    except TypeError:
-        return(False)
+    return( isinstance(object, int) or isinstance(object,float) )
 
 class Point:
     """
@@ -59,6 +55,11 @@ class Point:
         self._acalculated   = False
         self._angle         = 0.0
 
+    @property
+    def coords(self):
+        built = [ value for value in self._coords]
+        return(built)
+
     def normalize(self):
         for element in range(len(self._coords)):
             self._coords[element] /= self.magnitude
@@ -70,12 +71,11 @@ class Point:
         """
         Used to add a point to another one through vector addition 
         """
-        if (type(obj)!=self.__class__):
-            raise TypeError("Cannot add type {} to Point object".format(type(obj)) )        
+        if not isinstance(obj, Point):
+            raise TypeError("Cannot add type {} to Point object".format(type(obj)) )
 
         new = self.__class__()
-        for component in range(len(self._coords)):
-            new._coords[component]  = self._coords[component] + obj._coords[component]
+        new._coords = [ self._coords[component] + obj._coords[component] for component in range(len(self._coords))]
         return( new )
 
     def __sub__(self, obj):
@@ -91,20 +91,26 @@ class Point:
         """
         if is_number(obj):
             new = self.__class__()
-            for comp in range(len(self._coords)):
-                new._coords[comp] = obj*self._coords[comp]
+            new._coords = [obj*coord for coord in self.coords]
             return( new )
-        elif type(obj)==self.__class__:
+        elif isinstance(obj, Point):
             value = 0.0
             for comp in range(len(self._coords)):
-                value += self._coords[comp]*obj._coords[comp]
+                # support dotting a high-dimensionality Point with one in a lower dimension
+                if comp>=len(obj._coords):
+                    break
+                else:
+                    value += self._coords[comp]*obj._coords[comp]
             return( value)
         else:
             raise TypeError("Cannot multiply type {} with Point object".format(type(obj)))
 
     def __eq__(self, obj):
-        if type(obj)==self.__class__:
+        if isinstance(obj, Point):
             is_same = True
+            if len(self._coords)!=len(obj._coords):
+                return(False)
+
             for comp in range(len(self._coords)):
                 is_same &= abs(self._coords[comp] - obj._coords[comp])<0.01
                 if not is_same:
@@ -207,18 +213,37 @@ class PointNd( Point ):
 
     Does not allow for easy access functions like .z 
     """
-    def __init__(self, coords):
-        Point.__init__(0,0)
+    def __init__(self, *coords):
+        Point.__init__(self, 0,0)
 
-        if not isinstance( coords, list):
+        if not (isinstance( coords, list) or isinstance(coords,tuple)):
             raise Exception("Coordinates need to be specified as {}, got {}".format(list, type(coords)))
-        for entry in coords:
-            if not (insinstance( entry, float) or isinstance( entry, int )):
+
+        # if we receive a single list-like argument ([x,y,z,w,...]), parse it as our coordinates 
+        if len(coords)==1 and (isinstance(coords[0],list) or isinstance(coords[0],tuple)):
+            self._coords = coords[0]
+        else:
+            # otherwise the arguments were passed variable-style (x,y,z,w,...) and we parse that list as our coordinates
+            self._coords = coords
+
+        for entry in self.coords:
+            if not (isinstance( entry, float) or isinstance( entry, int )):
                 raise TypeError("Each coordinate should be number-like, got {}".format( type(entry)))
-        if len(coords)<2:
-            raise ValueError("Need at least two coordinates! Just use a scalar...")
+
         
-        self._coords = coords
+
+
+    def __str__(self):
+        out = ""
+        for comp in self.coords:
+            if out!="":
+                out = out+", "
+            out+="{:.2f}".format(comp)
+
+        return("("+out+")")
+
+
+
 
 default_p = Point(0.0,0.0)
 rthree = sqrt(3)
@@ -239,17 +264,11 @@ class Hex:
         
         self.outline= (240,240,240)
         self.fill   = (100,100,100) 
-        self._vertices = [ center for i in range(6) ]
 
         # used in procedural generation
         self.genkey            = '00000000'
 
-        self._vertices[0] = self._center + Point( -0.5, 0.5*rthree)*self._radius
-        self._vertices[1] = self._center + Point(  0.5, 0.5*rthree)*self._radius
-        self._vertices[2] = self._center + Point(  1.0, 0.0)*self._radius
-        self._vertices[3] = self._center + Point(  0.5,-0.5*rthree)*self._radius
-        self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
-        self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
+
 
 
     @property
@@ -303,7 +322,7 @@ def _update_to_0_2(which):
     # update all the verices on the hexes... and their centers
     for hexid in which.catalogue:
         for i in range(6):
-            update_point( which.catalogue[hexid]._vertices[i] )
+            #update_point( which.catalogue[hexid]._vertices[i] )
             update_point( which.catalogue[hexid]._center )
     # update the perimeter of all regions
     for r_layer in which.rid_catalogue:
