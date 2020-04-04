@@ -7,7 +7,15 @@
     "types": {
       "ocean": {
         "ocean": {
-          "color": [ 113, 119, 227 ],
+          "color": [ 122, 177, 204 ],
+          "_altitude_base": -0.15,
+          "_rainfall_base": 1.0,
+          "_temperature_base": 0.5,
+          "_is_land": 0.0,
+          "is_ray": true
+        },
+        "shallows": {
+          "color": [ 134, 183, 207 ],
           "_altitude_base": 0.0,
           "_rainfall_base": 1.0,
           "_temperature_base": 0.5,
@@ -17,52 +25,52 @@
       },
       "forest": {
         "dark forest": {
-          "color": [ 5, 26, 13 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "color": [ 50, 87, 48 ],
+          "_altitude_base": 0.5,
+          "_rainfall_base": 0.9,
+          "_temperature_base": 0.6,
           "_is_land": 10.0,
           "is_ray": true
         },
         "gentle forest": {
-          "color": [ 51, 145, 68 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "color": [ 65, 115, 62 ],
+          "_altitude_base": 0.5,
+          "_rainfall_base": 0.7,
+          "_temperature_base": 0.4,
           "_is_land": 10.0,
           "is_ray": true
         },
-        "fey forest": {
-          "color": [ 68, 199, 133 ],
+        "wetland": {
+          "color": [ 76, 133, 94 ],
           "_altitude_base": 0.0,
           "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "_temperature_base": 0.9,
           "_is_land": 10.0,
           "is_ray": true
         }
       },
       "grasslands": {
         "prarie": {
-          "color": [ 165, 217, 52 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "color": [ 155, 181, 114 ],
+          "_altitude_base": 0.3,
+          "_rainfall_base": 0.6,
+          "_temperature_base": 0.5,
           "_is_land": 10.0,
           "is_ray": true
         },
         "scrub": {
-          "color": [ 165, 217, 52 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "color": [ 198, 207, 134 ],
+          "_altitude_base": 0.8,
+          "_rainfall_base": 0.5,
+          "_temperature_base": 0.5,
           "_is_land": 10.0,
           "is_ray": true
         },
-        "savannah": {
-          "color": [ 201, 214, 114 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+        "savanah": {
+          "color": [ 175, 181, 114 ],
+          "_altitude_base": 0.5,
+          "_rainfall_base": 0.1,
+          "_temperature_base": 0.8,
           "_is_land": 10.0,
           "is_ray": true
         }
@@ -70,51 +78,35 @@
       "barren": {
         "tundra": {
           "color": [ 156, 213, 214 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "_altitude_base": 0.5,
+          "_rainfall_base": 0.0,
+          "_temperature_base": 0.0,
           "_is_land": 10.0,
           "is_ray": true
         },
         "desert": {
           "color": [ 207, 182, 116 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+          "_altitude_base": 0.5,
+          "_rainfall_base": 0.1,
+          "_temperature_base": 0.9,
           "_is_land": 10.0,
           "is_ray": true
         }
       },
-      "wetlands": {
-        "bog": {
-          "color": [ 62, 97, 86 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+      "mountains": {
+        "ridge": {
+          "color": [ 99, 88, 60 ],
+          "_altitude_base": 1.5,
+          "_rainfall_base": 0.5,
+          "_temperature_base": 0.2,
           "_is_land": 10.0,
           "is_ray": true
         },
-        "marsh": {
-          "color": [ 122, 194, 163 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
-          "_is_land": 10.0,
-          "is_ray": true
-        },
-        "fen": {
-          "color": [ 38, 158, 106 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
-          "_is_land": 10.0,
-          "is_ray": true
-        },
-        "swamp": {
-          "color": [ 77, 105, 93 ],
-          "_altitude_base": 0.0,
-          "_rainfall_base": 1.0,
-          "_temperature_base": 1.0,
+        "mountain": {
+          "color": [ 158, 140, 96 ],
+          "_altitude_base": 1.3,
+          "_rainfall_base": 0.5,
+          "_temperature_base": 0.2,
           "_is_land": 10.0,
           "is_ray": true
         }
