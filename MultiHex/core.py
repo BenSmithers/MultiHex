@@ -845,39 +845,51 @@ class Hexmap:
         self._active_id = id
         self.catalogue[self._active_id].outline = '#f00'
     
-    def get_hex_neighbors(self, ID):
+    def get_hex_neighbors(self, ID, radius=1):
         """
         Calculates the IDs of a given Hexes' neighbors
         NOTE: Neighbors not guaranteed to exist! 
 
         @param ID - ID of center
+        @param radius - how far out from which to collect neighbors 
 
         @returns a LIST of IDs 
         """
+        if not isinstance(radius,int):
+            raise TypeError("Arg 'radius' must be {}, got {}".format(int, type(radius)))
 
         # convert the id to a bit string
         x_id, y_id, grid = deconstruct_id(ID)
 
-
-        neighbors = []
+        neighbors = [0 for i in range(radius*6)]
 
         # returns IDs starting from up and to the left, and going around clockwise 
-        if grid:
-            neighbors.append(construct_id(x_id-1, y_id,   not grid) )
-            neighbors.append(construct_id(x_id, y_id+1, grid) )
-            neighbors.append(construct_id(x_id,   y_id,   not grid) )
-            neighbors.append(construct_id(x_id,   y_id-1, not grid) )
-            neighbors.append(construct_id(x_id, y_id-1, grid) )
-            neighbors.append(construct_id(x_id-1, y_id-1, not grid) )
+        if radius==1:
+            if grid:
+                neighbors[0]=construct_id(x_id-1, y_id,   not grid) 
+                neighbors[1]=construct_id(x_id, y_id+1, grid) 
+                neighbors[2]=construct_id(x_id,   y_id,   not grid) 
+                neighbors[3]=construct_id(x_id,   y_id-1, not grid) 
+                neighbors[4]=construct_id(x_id, y_id-1, grid) 
+                neighbors[5]=construct_id(x_id-1, y_id-1, not grid)
+            else:
+                neighbors[0]=construct_id(x_id,   y_id+1,   not grid) 
+                neighbors[1]=construct_id(x_id,   y_id+1, grid) 
+                neighbors[2]=construct_id(x_id+1, y_id+1,   not grid) 
+                neighbors[3]=construct_id(x_id+1, y_id,     not grid) 
+                neighbors[4]=construct_id(x_id,   y_id-1, grid) 
+                neighbors[5]=construct_id(x_id,   y_id,     not grid) 
+            return(neighbors)    
         else:
-            neighbors.append(construct_id(x_id,   y_id+1,   not grid) )
-            neighbors.append(construct_id(x_id,   y_id+1, grid) )
-            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
-            neighbors.append(construct_id(x_id+1, y_id,     not grid) )
-            neighbors.append(construct_id(x_id,   y_id-1, grid) )
-            neighbors.append(construct_id(x_id,   y_id,     not grid) )
-
-        return(neighbors)    
+            if radius >= 2:
+                to_ignore = self.get_hex_neighbors(ID, radius-2)
+            else:
+                to_ignore = [ID]
+            to_loop_over = self.get_hex_neighbors(ID, radius-1)
+            keep = []
+            for hexID in to_loop_over:
+                keep = keep + list(filter( lambda entry: ((entry not in to_loop_over) and (entry not in to_ignore) and (entry not in keep)) ,self.get_hex_neighbors(hexID) ))
+            return(keep)
 
     def get_neighbor_outline(self, ID, size=1):
         """
