@@ -2,7 +2,7 @@
 
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import clicker_control, QEntityItem
-from MultiHex.map_types.overland import OHex_Brush, Biome_Brush, River_Brush, ol_clicker_control
+from MultiHex.map_types.overland import OHex_Brush, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
 from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
 from MultiHex.generator.noise import sample_noise, generate_gradients
 
@@ -10,6 +10,7 @@ from MultiHex.generator.noise import sample_noise, generate_gradients
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
 
+# define GUI elements
 from MultiHex.guis.terrain_editor_gui import editor_gui_window
 from MultiHex.guis.confirm_inject import Ui_Dialog as confirm_ui
 from MultiHex.about_class import about_dialog
@@ -62,6 +63,8 @@ class editor_gui(QMainWindow):
         self.writer_control = OHex_Brush(self)
         self.region_control = Biome_Brush(self)
         self.river_writer = River_Brush(self)
+        self.detail_control = Detail_Brush(self)
+        self.climatizer = Climatizer( "standard" )
         
         
         self.scene._active = self.writer_control
@@ -86,6 +89,8 @@ class editor_gui(QMainWindow):
         self.ui.det_but_noise.clicked.connect( self.det_inject_button )
         self.ui.det_but_color.clicked.connect( self.det_color_button )
         self.ui.det_apply_button.clicked.connect( self.det_apply_button )
+        self.ui.det_Brush_spin.valueChanged.connect(self.det_brush_size_change)
+        self.detail_control.set_configuring("_altitude_base")
 
         # Hexbar toolbox connections
         self.ui.hex_type_combo.currentIndexChanged.connect( self.hex_comboBox_select )
@@ -180,7 +185,7 @@ class editor_gui(QMainWindow):
 
     def tb_detailer(self):
         self.scene._active.drop()
-
+        self.scene._active = self.detail_control
         self.ui.toolBox.setCurrentIndex(0)
 
     def tb_hex_brush(self):
@@ -209,8 +214,23 @@ class editor_gui(QMainWindow):
         self.scene._active = self.region_control
         self.region_control.set_state( 0 )
 
+    def det_brush_size_change(self):
+        new_radius = self.ui.det_Brush_spin.value()
+        self.detail_control.set_radius(new_radius)
+
     def det_comboBox_select(self):
-        pass
+        combo_status = self.ui.det_noise_combo.currentText()
+        attribute = ''
+        if combo_status == 'Altitude':
+            attribute = '_altitude_base'
+        elif combo_status == 'Rainfall':
+            attribute = '_rainfall_base'
+        elif combo_status == 'Temperature':
+            attribute = '_temperature_base'
+        else:
+            raise NotImplementedError("Somehow got '{}' from combo box.".format(combo_status))
+
+        self.detail_control.set_configuring( attribute )
 
     def det_inject_button(self):
         """
@@ -261,12 +281,12 @@ class editor_gui(QMainWindow):
 
         if result==0:
             return
-        this_climate = Climatizer( self.main_map.tileset )
+        
         for hexID in self.main_map.catalogue:
             if self.main_map.catalogue[hexID].biome=='mountain':
                 continue
 
-            this_climate.apply_climate_to_hex( self.main_map.catalogue[hexID] )
+            self.climatizer.apply_climate_to_hex( self.main_map.catalogue[hexID] )
             self.main_map.catalogue[hexID].rescale_color()
             self.writer_control.redraw_hex(hexID)
 

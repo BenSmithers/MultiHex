@@ -390,6 +390,113 @@ class Detail_Brush( basic_tool ):
     def __init__(self,parent):
         basic_tool.__init__(self, parent)
 
+        self._hover_circle = None #qt object for seleciton
+        self._location = None
+        self._radius = 1
+
+        self.pen = QtGui.QPen()
+        self.brush = QtGui.QBrush()
+        self.brush.setStyle(1)
+
+        self.pen.setColor(QtGui.QColor(183, 114, 194,150))
+        self.brush.setColor(QtGui.QColor(183, 114, 194, 50))
+
+        self._magnitude = 0.05
+
+        self._configuring = ""
+
+    @property
+    def configuring(self):
+        return(self._configuring )
+
+    def set_configuring(self, conf):
+        if not isinstance(conf, str):
+            raise TypeError("Argument must be {}, got {}".format(str, type(conf)))
+
+        self._configuring = conf
+        print("now configuring {}".format(self._configuring))
+
+    def set_magnitude(self, new):
+        if not isinstance(new, int):
+            raise TypeError("Expected {}, got {}".format(int, type(new)))
+        self._magnitude = min(new, 1.0)
+
+        if new>1.0:
+            print("Warn! Received illegal magnitude {}, set to 1.0".format(new))
+        
+    @property
+    def magnitude(self):
+        return(self._magnitude)
+
+    def set_radius(self, new_val):
+        if not isinstance(new_val, int):
+            raise TypeError("Expected {}, got {}".format(int, type(new_val)))
+        self._radius = new_val
+
+    @property 
+    def radius(self):
+        return(self._radius)
+
+    def mouse_moved(self, event):
+        """
+        moved the selection circle to the mouse
+        """
+        place = Point( event.scenePos().x(), event.scenePos().y() )
+        center_id = self.parent.main_map.get_id_from_point(place)
+        real_place = self.parent.main_map.get_point_from_id(center_id)
+
+        if center_id!=self._location:
+            if self._hover_circle is not None:
+                self.parent.scene.removeItem(self._hover_circle)
+
+            eff_rad = self.parent.main_map.drawscale*(2*self._radius)
+            self._hover_circle = self.parent.scene.addEllipse(real_place.x-eff_rad , real_place.y-eff_rad, 2*eff_rad, 2*eff_rad , pen=self.pen, brush=self.brush)
+
+    def primary_mouse_held(self, event):
+        self.primary_mouse_released(event)
+
+    def secondary_mouse_held(self, event):
+        self.secondary_mouse_released(event)
+
+    def primary_mouse_released(self, event):
+        self.brushy_brushy(event, 1)
+
+    def secondary_mouse_released(self, event):
+        self.brushy_brushy(event, -1)
+
+    def brushy_brushy( self, event, sign=1):
+        if self.configuring=="":
+            return
+
+        place = Point( event.scenePos().x(), event.scenePos().y() )
+        center_id = self.parent.main_map.get_id_from_point(place)
+
+        if center_id in self.parent.main_map.catalogue:
+            setattr(self.parent.main_map.catalogue[center_id], self.configuring, getattr(self.parent.main_map.catalogue[center_id], self.configuring) + sign*self.magnitude)
+            self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[center_id])
+            self.parent.main_map.catalogue[center_id].rescale_color()
+            self.parent.writer_control.redraw_hex(center_id)
+
+        reduced = self.magnitude
+        iter = 1
+        while iter <= self.radius:
+            reduced *= 2./3
+            neighbors = self.parent.main_map.get_hex_neighbors(center_id, iter)
+            for each in neighbors:
+                if each in self.parent.main_map.catalogue:
+                    setattr(self.parent.main_map.catalogue[each], self.configuring, getattr(self.parent.main_map.catalogue[each], self.configuring) + sign*reduced)
+                    self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
+                    self.parent.main_map.catalogue[each].rescale_color()
+                    self.parent.writer_control.redraw_hex(each)
+            iter+=1
+
+    def drop(self):
+        if self._hover_circle is not None:
+            self.parent.scene.removeItem(self._hover_circle)
+            self._hover_circle = None
+
+        self._location = None
+
 
 class River_Brush( path_brush ):
     def __init__(self, parent):
