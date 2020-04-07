@@ -53,7 +53,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
 
     x_step          = 0.2*main_map._drawscale
-    evap_rate       = rain_rate*e
+    evap_rate       = 10.*rain_rate*e
 
     def get_rate( reservoir , pressure ):
         """
