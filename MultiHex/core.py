@@ -24,7 +24,7 @@ Objects:
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
-multihex_version = "0.1.1"
+multihex_version = "0.2.0"
 map_version = "0.3"
 
 
@@ -857,6 +857,8 @@ class Hexmap:
         """
         if not isinstance(radius,int):
             raise TypeError("Arg 'radius' must be {}, got {}".format(int, type(radius)))
+        if radius<1:
+            raise ValueError("Invalid radius {}".format(0))
 
         # convert the id to a bit string
         x_id, y_id, grid = deconstruct_id(ID)
@@ -881,15 +883,13 @@ class Hexmap:
                 neighbors[5]=construct_id(x_id,   y_id,     not grid) 
             return(neighbors)    
         else:
-            if radius >= 2:
-                to_ignore = self.get_hex_neighbors(ID, radius-2)
-            else:
-                to_ignore = [ID]
-            to_loop_over = self.get_hex_neighbors(ID, radius-1)
-            keep = []
-            for hexID in to_loop_over:
-                keep = keep + list(filter( lambda entry: ((entry not in to_loop_over) and (entry not in to_ignore) and (entry not in keep)) ,self.get_hex_neighbors(hexID) ))
-            return(keep)
+            
+            center = self.get_point_from_id(ID)
+            angles = [ float(iter)*2*pi/len(neighbors) for iter in range(len(neighbors)) ]
+            for iter in range(len(neighbors)):
+                step= Point(sin(angles[iter]) , cos(angles[iter]))*self.drawscale*(rthree*radius)
+                neighbors[iter] = self.get_id_from_point( Point( center.x + step.x, center.y+ step.y)  )
+            return(neighbors)
 
     def get_neighbor_outline(self, ID, size=1):
         """
