@@ -417,8 +417,8 @@ class Detail_Brush( basic_tool ):
         print("now configuring {}".format(self._configuring))
 
     def set_magnitude(self, new):
-        if not isinstance(new, int):
-            raise TypeError("Expected {}, got {}".format(int, type(new)))
+        if not isinstance(new, float):
+            raise TypeError("Expected {}, got {}".format(float, type(new)))
         self._magnitude = min(new, 1.0)
 
         if new>1.0:
@@ -449,7 +449,7 @@ class Detail_Brush( basic_tool ):
             if self._hover_circle is not None:
                 self.parent.scene.removeItem(self._hover_circle)
 
-            eff_rad = self.parent.main_map.drawscale*(2*self._radius)
+            eff_rad = self.parent.main_map.drawscale*(max(2*self._radius, 1))
             self._hover_circle = self.parent.scene.addEllipse(real_place.x-eff_rad , real_place.y-eff_rad, 2*eff_rad, 2*eff_rad , pen=self.pen, brush=self.brush)
 
     def primary_mouse_held(self, event):
@@ -484,7 +484,8 @@ class Detail_Brush( basic_tool ):
             neighbors = self.parent.main_map.get_hex_neighbors(center_id, iter)
             for each in neighbors:
                 if each in self.parent.main_map.catalogue:
-                    setattr(self.parent.main_map.catalogue[each], self.configuring, getattr(self.parent.main_map.catalogue[each], self.configuring) + sign*reduced)
+                    new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalogue[each], self.configuring) + sign*reduced))
+                    setattr(self.parent.main_map.catalogue[each], self.configuring, new_value)
                     self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
                     self.parent.main_map.catalogue[each].rescale_color()
                     self.parent.writer_control.redraw_hex(each)
@@ -964,6 +965,17 @@ class OHex_Brush( hex_brush ):
         else:
             if which._altitude_base > 0:
                 which._altitude_base = 0
+
+    def get_color_for_param_overwrite(self,parameter_name, parameter_value):
+        if parameter_name=="_altitude_base":
+            return(QtGui.QColor( 50, max(0,min(230 - 100*parameter_value,255)), max(0,min(255,(130 + 100*parameter_value)))))
+        elif parameter_name=="_rainfall_base":
+            return(QtGui.QColor( max(0,min(255,230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
+        elif parameter_name=="_temperature_base":
+            return(QtGui.QColor( max(0,min(255,255 - 155*parameter_value)), 200, max(0,min(255,155 + 100*parameter_value))))
+        else:
+            # default to red->green
+            return(QtGui.QColor(max(0,min(255, 230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
 
     # DIE
     def drop(self):

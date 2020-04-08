@@ -1009,6 +1009,8 @@ class hex_brush(Basic_Brush):
         # start it out as transparent until we actually choose a color/param
         self.QPen.setColor(QtGui.QColor(0,0,0,0))
 
+        self.use_param_as_color=''
+
     def set_params( self, obj ):
         assert( isinstance(obj, dict) )
 
@@ -1164,7 +1166,17 @@ class hex_brush(Basic_Brush):
                     self.redraw_hex( neighbor )
                 except NameError:
                     pass
-    def redraw_hex(self, hex_id, use_param_as_color=''):
+
+    def get_color_for_param_overwrite(self, parameter_name, parameter_value):
+        """
+        This is to be used for the heatmaps
+
+        It returns a QColor for a given parameter and its name. This should be implemented in derived classes! 
+        """
+        raise NotImplementedError("Use a derived class!")
+        return( QtGui.QColor(0,0,0) )
+
+    def redraw_hex(self, hex_id):
         # if this hex has been drawn, redraw it! 
         if hex_id in self.drawn_hexes:
             self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
@@ -1174,12 +1186,12 @@ class hex_brush(Basic_Brush):
             return
 
         this_hex = self.parent.main_map.catalogue[ hex_id ]
-        if use_param_as_color=='':
+        if self.use_param_as_color=='':
             self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
             self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
         else:
-            self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
-            self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
+            self.QPen.setColor(self.get_color_for_param_overwrite(self.use_param_as_color, getattr(this_hex, self.use_param_as_color)))
+            self.QBrush.setColor(self.get_color_for_param_overwrite(self.use_param_as_color, getattr(this_hex, self.use_param_as_color)))
 
         self.QBrush.setStyle(1)
         self.QPen.setWidth(self.pen_size)
@@ -1189,9 +1201,6 @@ class hex_brush(Basic_Brush):
         self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex.vertices )), pen=self.QPen, brush=self.QBrush) 
         self.drawn_hexes[hex_id].setZValue(-1)
 
-
-
-    
     def toggle_brush_size(self):
         """
         Only here to support the outdated ridge gui 

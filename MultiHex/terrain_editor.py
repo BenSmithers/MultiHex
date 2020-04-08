@@ -90,7 +90,11 @@ class editor_gui(QMainWindow):
         self.ui.det_but_color.clicked.connect( self.det_color_button )
         self.ui.det_apply_button.clicked.connect( self.det_apply_button )
         self.ui.det_Brush_spin.valueChanged.connect(self.det_brush_size_change)
+        self.ui.det_mag_spin.valueChanged.connect(self.det_mag_changed)
         self.detail_control.set_configuring("_altitude_base")
+        self.ui.det_close_heatmap.clicked.connect(self.det_clear_heatmap)
+        self.ui.det_close_heatmap.setEnabled(False)
+        
 
         # Hexbar toolbox connections
         self.ui.hex_type_combo.currentIndexChanged.connect( self.hex_comboBox_select )
@@ -217,6 +221,10 @@ class editor_gui(QMainWindow):
     def det_brush_size_change(self):
         new_radius = self.ui.det_Brush_spin.value()
         self.detail_control.set_radius(new_radius)
+
+    def det_mag_changed(self):
+        new_magnitude = self.ui.det_mag_spin.value()/20.0
+        self.detail_control.set_magnitude( new_magnitude )
 
     def det_comboBox_select(self):
         combo_status = self.ui.det_noise_combo.currentText()
@@ -495,13 +503,33 @@ class editor_gui(QMainWindow):
         pass
 
     def menu_heatmap_altitude(self):
-        pass
+        self.scene._active.drop()
+        self.scene._active = self.detail_control
+        self.ui.toolBox.setCurrentIndex(0)
+        self.writer_control.use_param_as_color = '_altitude_base'
+        self._redraw_hexes()
+        self.ui.det_close_heatmap.setEnabled(True)
 
     def menu_heatmap_temperature(self):
-        pass
+        self.scene._active.drop()
+        self.scene._active = self.detail_control
+        self.ui.toolBox.setCurrentIndex(0)
+        self.writer_control.use_param_as_color = '_temperature_base'
+        self._redraw_hexes()
+        self.ui.det_close_heatmap.setEnabled(True)
 
     def menu_heatmap_rainfall(self):
-        pass
+        self.scene._active.drop()
+        self.scene._active = self.detail_control
+        self.ui.toolBox.setCurrentIndex(0)
+        self.writer_control.use_param_as_color = '_rainfall_base'
+        self._redraw_hexes()
+        self.ui.det_close_heatmap.setEnabled(True)
+
+    def det_clear_heatmap(self):
+        self.writer_control.use_param_as_color = ''
+        self._redraw_hexes()
+        self.ui.det_close_heatmap.setEnabled(False)
 
     def menu_help(self):
         dialog = about_dialog(self)
