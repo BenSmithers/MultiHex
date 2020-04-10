@@ -31,3 +31,8 @@ Python_v/~$Plans.docx
 
 # documentation files
 *.html
+
+# visual studio stuff
+.idea/*
+.vs/*
+MultiHex/.vs/
