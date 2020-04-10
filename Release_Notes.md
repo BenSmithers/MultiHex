@@ -11,6 +11,8 @@ The tilesets and climate system are parameter-agnostic to allow for easier expan
 
 * Added a system for injecting perlin noise into any parameter of the map
 
+* Added "Detailer" brush for raising/lowering temperatures, altitudes, rainfall patterns 
+
 * Biome border colors can be chosen from a colorpicker 
 
 * Climates can be recalculated
@@ -19,17 +21,21 @@ The tilesets and climate system are parameter-agnostic to allow for easier expan
 
 **Minor**
 
+* Added (beta) Heatmaps for any Hex property
+
 * Added a clock system for use in the map usability update 
 
 * Added 3D and ND Points. Smallest dimensionality should be used to save space! 
 
 * Added some unit tests. A future update should add more. 
 
-* Better support for more Hex climates /  colors! 
-
 * Biome names can be auto-generated in the editor
 
 ### Changes
+
+* Better support for more Hex climates /  colors! 
+
+* Changed the controls for the region brushes 
 
 * Hexes climates are now determined through a method 
 
