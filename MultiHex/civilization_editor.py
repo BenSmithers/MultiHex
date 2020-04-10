@@ -321,7 +321,7 @@ class editor_gui(QMainWindow):
         self.set_update_selection( self.entity_control.selected )
 
         # redraw the hex ( the icon may have changed )
-        self.entity_control.redraw_entities_at_hex( self.entity_control.selected_hex ) 
+        self.entity_control.redraw_entities_at_hex( self.main_map.eid_catalogue[self.entity_control.selected].location ) 
 
     def set_update_ward_info(self, eID, ward = None):
         """
@@ -545,6 +545,7 @@ class editor_gui(QMainWindow):
     def county_list_item_clicked(self, index):
         item = self.ui.county_list_entry.itemFromIndex(index)
         self.entity_control.select_entity( item.eID )
+        # self.entity_control.select_hex( self.main_map.eid_catalogue[item.eID] )
         self.ui.toolBox.setCurrentIndex( 1 )
         self.set_update_selection( item.eID )
 

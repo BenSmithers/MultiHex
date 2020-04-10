@@ -727,6 +727,11 @@ class entity_brush(basic_tool):
 
         self._settlement = Settlement
     
+    def select_hex(self, which):
+        if not isinstance( which, int):
+            raise TypeError("")
+        self._selected_hex = which
+
     @property
     def selected_hex(self):
         copy = self._selected_hex
@@ -902,7 +907,7 @@ class entity_brush(basic_tool):
         if hID == -1:
             return
         if hID not in self.parent.main_map.eid_map:
-            raise ValueError("HexID {} has no entry in {}".format(hID))
+            raise ValueError("HexID {} has no entry in eID map: {}".format(hID, self.parent.main_map.eid_map[hID]))
 
         eIDs = self.parent.main_map.eid_map[hID]
         
