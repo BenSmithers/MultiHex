@@ -145,8 +145,10 @@ class editor_gui(QMainWindow):
         self.ui.actionRainfall.triggered.connect( self.menu_heatmap_rainfall )
         self.ui.actionBiome_Names.triggered.connect( self.menu_view_biome_name )
         self.ui.actionBiome_Borders.triggered.connect( self.menu_view_biome_border )
+        self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
         self.ui.actionBiome_Names.setChecked(True)
         self.ui.actionBiome_Borders.setChecked(True)
+        self.ui.actionRivers.setChecked(True)
 
         self.ui.actionRivers.triggered.connect( self.menu_view_rivers )
 
@@ -306,7 +308,9 @@ class editor_gui(QMainWindow):
                     "_rainfall_base": self.ui.det_rain_slide.value()/100.,
                     "_temperature_base": self.ui.det_temp_slide.value()/100.
             }
-        self.writer_control( self.main_map.catalogue[self.writer_control.selected] , params )
+        self.writer_control.adjust_hex( self.main_map.catalogue[self.writer_control.selected] , params )
+        self.climatizer.apply_climate_to_hex( self.main_map.catalogue[self.writer_control.selected])
+        self.writer_control.redraw_hex( self.writer_control.selected )
 
     def hex_comboBox_select(self):
         """
@@ -500,7 +504,9 @@ class editor_gui(QMainWindow):
         self._redraw_biomes()
 
     def menu_view_rivers(self):
-        pass
+        state =  self.ui.actionRivers.isChecked()
+        self.river_writer._drawing = state
+        self.river_writer.redraw_rivers()
 
     def menu_heatmap_altitude(self):
         self.scene._active.drop()

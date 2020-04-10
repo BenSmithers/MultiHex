@@ -481,7 +481,7 @@ class editor_gui(QMainWindow):
         self.county_control.set_state( 0 )
 
     def county_update_with_selected(self):
-        this_rid = self.county_control.selected_rid
+        this_rid = self.county_control.selected
         self.ui.county_list_entry.clear()
 
         if this_rid is None:
@@ -528,7 +528,7 @@ class editor_gui(QMainWindow):
             self.county_control.redraw_region( this_rid )
 
     def county_apply(self):
-        this_rid = self.county_control.selected_rid
+        this_rid = self.county_control.selected
 
         if this_rid is None:
             return
@@ -552,7 +552,7 @@ class editor_gui(QMainWindow):
         self.scene._active = self.entity_control
 
     def county_kingdom_button(self):
-        this_rid = self.county_control.selected_rid
+        this_rid = self.county_control.selected
 
         if this_rid is None:
             pass
@@ -574,7 +574,7 @@ class editor_gui(QMainWindow):
         item = self.ui.nation_list_entry.itemFromIndex(index)
         this_county = item.eID
 
-        self.county_control.selected_rid = item.eID
+        self.county_control.select( item.eID )
         self.ui.toolBox.setCurrentIndex(3)
         self.county_update_with_selected()
 

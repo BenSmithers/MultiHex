@@ -684,21 +684,27 @@ class River_Brush( path_brush ):
         # before calling the original implementation, we remove the drawn river recursively!
         assert(isinstance( pID, int) or (pID is None))
 
+        if pID in self.parent.main_map.path_catalog[self._path_key]:
+            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+        else:
+            return
+
+        
+
         if pID in self._drawn_paths:
+
+            if this_path.tributaries is not None:
+                self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
+
             self.river_remove_item( self._drawn_paths[pID] )
             del self._drawn_paths[pID]
 
+        
         # if there's a sub-selection, make sure not to draw the base part blue 
         blue = self.sub_selection!=''
         path_brush.draw_path(self, pID, blue)
 
-        try:
-            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
-        except KeyError:
-            return
 
-        if this_path.tributaries is not None:
-            self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
 
     def river_remove_item( self, which ):
         """
@@ -716,7 +722,15 @@ class River_Brush( path_brush ):
         assert( isinstance( river, River))
        
         # color, style, already set by original call to the draw function! 
+        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
+        if river.tributaries[0].tributaries is not None:
+            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
+        if river.tributaries[1].tributaries is not None:
+            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
 
+
+        if not self.drawing:
+            return
 
         trib1 = self._qtpath_type()
         outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[0].vertices  ) )
@@ -745,12 +759,6 @@ class River_Brush( path_brush ):
 
 
         tributary_objs = ( first , second )
-
-        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
-        if river.tributaries[0].tributaries is not None:
-            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
-        if river.tributaries[1].tributaries is not None:
-            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
 
         # set the z-value of the rivers
         tributary_objs[0].setZValue(river.z_level)
@@ -808,17 +816,9 @@ class County_Brush( region_brush ):
     def secondary_mouse_released(self, event):
         region_brush.secondary_mouse_released( self, event )
 
-        self.parent.county_update_with_selected()
-
     def primary_mouse_released(self, event):
-        if self.selected_rid is not None:
-            if self.selector_mode:
-                self.selector_mode = False
-            else:
-                self.selector_mode = True
-        else:
-            self.selected_rid = None
-            self.selector_mode = True
+        region_brush.primary_mouse_released(self, event)
+        self.parent.county_update_with_selected()
 
 class Nation_Brush( basic_tool ):
     def __init__(self, parent):
@@ -952,11 +952,11 @@ class OHex_Brush( hex_brush ):
 
         self._river_drawn = []
 
-    def adjust_hex(self, which):
+    def adjust_hex(self, which, params):
         """
-        OHex brush specific. Land shouldn't be made beneath sea level and ocean shouldn't be above it! 
+        Sets the specified Hex to the specified parameters
         """
-        hex_brush.adjust_hex(self, which)
+        hex_brush.adjust_hex(self, which, params)
 
         which._is_land = bool(which._is_land)
         if which._is_land:

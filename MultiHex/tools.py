@@ -341,6 +341,12 @@ class path_brush(basic_tool):
         self._drawn_paths = { }
 
         self._extra_states = []
+
+        self._drawing = True
+
+    @property 
+    def drawing(self):
+        return(self._drawing)
     
     @property
     def selected_pid(self):
@@ -612,9 +618,12 @@ class path_brush(basic_tool):
             self.parent.scene.removeItem( self._drawn_paths[pID])
             del self._drawn_paths[pID]
 
-        try:
+        if not self.drawing:
+            return
+
+        if pID in self.parent.main_map.path_catalog[self._path_key]:
             this_path = self.parent.main_map.path_catalog[self._path_key][pID]
-        except KeyError:
+        else:
             return
 
         self.QBrush.setStyle(0)
