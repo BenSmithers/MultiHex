@@ -43,12 +43,12 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             # set those hexes to river borders 
             try:
                 main_map.catalogue[cw_id].river_border[0] = True
-                main_map.catalogue[cw_id]._rainfall_base = min( 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1 )
+                main_map.catalogue[cw_id]._rainfall_base = min([ 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1] )
             except KeyError:
                 pass
             try:
                 main_map.catalogue[ccw_id].river_border[1] = True
-                main_map.catalogue[ccw_id]._rainfall_base = min( 1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 )
+                main_map.catalogue[ccw_id]._rainfall_base = min( [1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 ])
             except KeyError:
                 pass
 
@@ -70,24 +70,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             return( point==river.start() or point_hits_source(point, river.tributaries[0]) or point_hits_source(point, river.tributaries[1] ))
         else:
             return( point==river.start() )
-    
-    def point_on_river( point, river ):
-        """
-        returns whether or not the Point `point` is somewhere on the River object `river`
-
-        @param point    - the Point...
-        @param river    - the River... 
-        """
-
-        assert( isinstance( point, Point))
-        assert( isinstance( river, River))
-
-        if river.tributaries is not None:
-            # see if the point is on the river body, or one of the tributaries. Call this function on each of the tributaries 
-            return( (point in river.vertices) or (point_on_river( point, river.tributaries[0])) or (point_on_river( point, river.tributaries[1] )))
-        else:
-
-            return( point in river.vertices )
         
 
     def make_river():
@@ -185,22 +167,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     dir_weights[it] = dir_weights[it]/3. 
                 
                 which_index = dir_weights.index( min(dir_weights) )
-               
-
-                #                   Check if hiting START of other river
-                # ========================================================================
-
-                
-                # before setting the river border bools, we should see if we're about to hit the end of another river...
-                bad = False
-                for pID in main_map.path_catalog['rivers']:
-                    # check if the new point is the source of this river 
-                    if point_hits_source( verts[which_index], main_map.path_catalog['rivers'][pID] ):
-                        bad = True
-                        break
-                if bad:
-                    # if it did, we just give up on this river. 
-                    return(None) 
 
 
                 
@@ -222,7 +188,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         for it in range(len(all_verts) - which):
                             ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
                             for ID in ids:
-                                main_map.catalogue[ID].fill = colors.ocean
+                                main_map.catalogue[ID].fill = (134, 183, 207)
                                 main_map.catalogue[ID]._altitude_base = 0.0
                                 main_map.catalogue[ID]._is_land = False
                                 main_map.catalogue[ID].biome = "lake"
@@ -234,13 +200,16 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         for it in range(len(all_verts)-which):
                             ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it])
                             for ID in ids:
-                                main_map.catalogue[ID]._altitude_base = min( 1.0, 1.2*main_map.catalogue[ID]._altitude_base)
+                                main_map.catalogue[ID]._altitude_base = min( [1.0, 1.2*main_map.catalogue[ID]._altitude_base])
                                 main_map.catalogue[ID].river_border = [False, False, False]
                                 
                                 neighbors = main_map.get_hex_neighbors( ID )
                                 for neighbor in neighbors:
-                                    main_map.catalogue[neighbor]._altitude_base = min( 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base)
-                                    main_map.catalogue[neighbor].river_border = [False, False, False]
+                                    try:
+                                        main_map.catalogue[neighbor]._altitude_base = min([ 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base])
+                                        main_map.catalogue[neighbor].river_border = [False, False, False]
+                                    except KeyError:
+                                        pass
                         return( None )
 
                                     
@@ -281,7 +250,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
             else:
                 raise ValueError("Unexpected vertex type found? {} of type {}".format(v_type, type(v_type)))
-        if (len(new_river.vertices)!=0) or (new_river.tributaries is not None):
+        if (len(new_river.vertices)>1) or (len(new_river.vertices)!=0 and (new_river.tributaries is not None)):
             return( new_river )
         else:
             return( None )

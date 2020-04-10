@@ -1,4 +1,61 @@
-## January XX 2020
+## April XX 2020
+
+### Additions
+
+**Major:**
+
+* Hexmaps are now updated as new features are added. There are chained functions for loading old Hexmaps and uploading them to the newest version. 
+
+* A tilesets file has been added describing Hex climates; these specify a color and central values for attributes describing the climate. 
+The tilesets and climate system are parameter-agnostic to allow for easier expansion to other tilesets or map types
+
+* Added a system for injecting perlin noise into any parameter of the map
+
+* Added "Detailer" brush for raising/lowering temperatures, altitudes, rainfall patterns 
+
+* Biome border colors can be chosen from a colorpicker 
+
+* Climates can be recalculated
+
+* Users can now draw rivers and tributaries 
+
+**Minor**
+
+* Added (beta) Heatmaps for any Hex property
+
+* Added a clock system for use in the map usability update 
+
+* Added 3D and ND Points. Smallest dimensionality should be used to save space! 
+
+* Added some unit tests. A future update should add more. 
+
+* Biome names can be auto-generated in the editor
+
+### Changes
+
+* Better support for more Hex climates /  colors! 
+
+* Changed the controls for the region brushes 
+
+* Hexes climates are now determined through a method 
+
+* User can choose a biome's color
+
+* more docstrings were added
+
+* More code reuse! 
+
+* User can toggle whether biome names/borders are shown 
+
+* Added script for generating docs
+
+* New button icons! 
+
+### Fixes
+
+* fixed bug where rivers would be accepted with length 1 and no tributaries
+
+## January 20 2020
 
 ### Additions
 

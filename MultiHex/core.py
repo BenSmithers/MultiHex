@@ -24,13 +24,12 @@ Objects:
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
+multihex_version = "0.2.0"
+map_version = "0.4"
+
 
 def is_number(object):
-    try:
-        a= 5+object
-        return(True)
-    except TypeError:
-        return(False)
+    return( isinstance(object, int) or isinstance(object,float) )
 
 class Point:
     """
@@ -40,16 +39,15 @@ class Point:
     @y          - y component of vector
     @magnitude  - length of this vector
     """
-    def __init__(self, ex =0.0, why=0.0):
-        if not is_number(ex):
-            raise TypeError("Expected type {} for arg 'ex', received {}".format(float, type(ex)))
-        if not is_number(why):
-            raise TypeError("Expected type {} for arg 'why', received {}".format(float, type(why)))
+    def __init__(self, x =0.0, y=0.0):
+        if not is_number(x):
+            raise TypeError("Expected type {} for arg 'x', received {}".format(float, type(x)))
+        if not is_number(y):
+            raise TypeError("Expected type {} for arg 'y', received {}".format(float, type(y)))
 
         # protected vector components
-        self._x = ex
-        self._y = why
-        
+        self._coords = [x,y]
+
         # use the bool so that we only have to calculate the magnitude once 
         self._mcalculated   = False
         self._magnitude     = 0.0
@@ -57,9 +55,14 @@ class Point:
         self._acalculated   = False
         self._angle         = 0.0
 
+    @property
+    def coords(self):
+        built = [ value for value in self._coords]
+        return(built)
+
     def normalize(self):
-        self._x /= self.magnitude
-        self._y /= self.magnitude
+        for element in range(len(self._coords)):
+            self._coords[element] /= self.magnitude
 
         self._magnitude = 1.0
 
@@ -68,56 +71,80 @@ class Point:
         """
         Used to add a point to another one through vector addition 
         """
-        if (type(obj)!=Point):
-            raise TypeError("Cannot add type {} to Point object".format(type(obj)) ) 
-        new = Point( self.x + obj.x, self.y + obj.y)
+        if not isinstance(obj, Point):
+            raise TypeError("Cannot add type {} to Point object".format(type(obj)) )
+
+        new = self.__class__()
+        new._coords = [ self._coords[component] + obj._coords[component] for component in range(len(self._coords))]
         return( new )
+
     def __sub__(self, obj):
         """
         Same as addition, but for subtraction
         """
-        if (type(obj)!=Point):
-            raise TypeError("Cannot subtract type {} from Point object".format(type(obj))) 
-        new = Point( self.x - obj.x, self.y - obj.y)
+        new = self + (obj*-1)
         return( new )
+
     def __mul__(self, obj):
         """
         Calculate the inner product of two vector-points, or scale one vector-point by a scalar. 
         """
         if is_number(obj):
-            return( Point( self.x*obj, self.y*obj ))
-        elif type(obj)==Point:
-            return( self.x*obj.x + self.y*obj.y )
+            new = self.__class__()
+            new._coords = [obj*coord for coord in self.coords]
+            return( new )
+        elif isinstance(obj, Point):
+            value = 0.0
+            for comp in range(len(self._coords)):
+                # support dotting a high-dimensionality Point with one in a lower dimension
+                if comp>=len(obj._coords):
+                    break
+                else:
+                    value += self._coords[comp]*obj._coords[comp]
+            return( value)
         else:
             raise TypeError("Cannot multiply type {} with Point object".format(type(obj)))
+
     def __eq__(self, obj):
-        if type(obj)==Point:
-            return( abs(self.x-obj.x)<0.01  and abs(self.y-obj.y)<0.01 )
+        if isinstance(obj, Point):
+            is_same = True
+            if len(self._coords)!=len(obj._coords):
+                return(False)
+
+            for comp in range(len(self._coords)):
+                is_same &= abs(self._coords[comp] - obj._coords[comp])<0.01
+                if not is_same:
+                    return(False)
+            return( is_same )
         else:
             return(False)
     def __truediv__(self, obj):
         if not is_number(obj):
             raise TypeError("Cannot divide Point by object of type '{}'".format(type(obj)))
         else:
-            return( Point( self.x/obj, self.y/obj ) )
+            return( self*(1./obj) )
     
     def __pow__(self, obj):
         if not is_number(obj):
             raise TypeError("Cannot raise vector to a non-number power")
         else:
             # returns a scalar! 
-            return( self.x**obj + self.y**obj )
+            partial_sum = 0.0
+            for comp in range(len(self._coords)):
+                partial_sum += self._coords[comp]**obj
+
+            return( partial_sum )
 
     # functions used to access vector components
 
     @property
     def x(self):
-        copy = self._x
+        copy = self._coords[0]
         return( copy )
 
     @property
     def y(self):
-        copy = self._y
+        copy = self._coords[1]
         return( copy )
 
     @property
@@ -128,14 +155,14 @@ class Point:
         if cls._mcalculated:
             return( cls._magnitude )
         else:
-            cls._magnitude = sqrt( cls.x**2 + cls.y**2 )
+            cls._magnitude = sqrt( cls**2 )
             cls._mcalculated = True
             return(cls._magnitude)
     
     @property
     def angle(cls):
         """
-        returns the angle of the vector as measured from the x-axis. Calculates only once
+        returns the planar angle of the vector as measured from the x-axis. Calculates only once
         """
         if cls._acalculated:
             return( cls._angle )
@@ -162,6 +189,62 @@ class Point:
     def __repr__(self):
         return("Point({},{})".format(self.x,self.y))
 
+class Point3d(Point):
+    """
+    Implements the 2D point but now in 3D. 
+    
+    Distinct so as to save memory 
+    """
+    def __init__(self, x=0., y=0., z=0.):
+        Point.__init__(self, x, y)
+        if not is_number(z):
+            raise TypeError("Expected type {} for arg 'z', received {}".format(float, type(z)))
+        self._coords.append(z)
+
+    @property
+    def z(self):
+        copy = self._coords[2]
+        return( copy )
+        
+
+class PointNd( Point ):
+    """
+    Implements the 2D point but now with arbitrary dimensionality
+
+    Does not allow for easy access functions like .z 
+    """
+    def __init__(self, *coords):
+        Point.__init__(self, 0,0)
+
+        if not (isinstance( coords, list) or isinstance(coords,tuple)):
+            raise Exception("Coordinates need to be specified as {}, got {}".format(list, type(coords)))
+
+        # if we receive a single list-like argument ([x,y,z,w,...]), parse it as our coordinates 
+        if len(coords)==1 and (isinstance(coords[0],list) or isinstance(coords[0],tuple)):
+            self._coords = coords[0]
+        else:
+            # otherwise the arguments were passed variable-style (x,y,z,w,...) and we parse that list as our coordinates
+            self._coords = coords
+
+        for entry in self.coords:
+            if not (isinstance( entry, float) or isinstance( entry, int )):
+                raise TypeError("Each coordinate should be number-like, got {}".format( type(entry)))
+
+        
+
+
+    def __str__(self):
+        out = ""
+        for comp in self.coords:
+            if out!="":
+                out = out+", "
+            out+="{:.2f}".format(comp)
+
+        return("("+out+")")
+
+
+
+
 default_p = Point(0.0,0.0)
 rthree = sqrt(3)
 
@@ -181,17 +264,11 @@ class Hex:
         
         self.outline= (240,240,240)
         self.fill   = (100,100,100) 
-        self._vertices = [ center for i in range(6) ]
 
         # used in procedural generation
         self.genkey            = '00000000'
 
-        self._vertices[0] = self._center + Point( -0.5, 0.5*rthree)*self._radius
-        self._vertices[1] = self._center + Point(  0.5, 0.5*rthree)*self._radius
-        self._vertices[2] = self._center + Point(  1.0, 0.0)*self._radius
-        self._vertices[3] = self._center + Point(  0.5,-0.5*rthree)*self._radius
-        self._vertices[4] = self._center + Point( -0.5,-0.5*rthree)*self._radius
-        self._vertices[5] = self._center + Point( -1.0, 0.0)*self._radius
+
 
 
     @property
@@ -226,6 +303,86 @@ class Hex:
     
 
 
+def _update_to_0_1( which ):
+    """
+    Updates hexmap from before version numbering to the first numbered version 
+    """
+    which._version = "0.1"
+    which.__class__ = Hexmap
+    _update_to_0_2(which)
+def _update_to_0_2(which):
+    def update_point( this ):
+        setattr( this, "_coords", [this._x, this._y ])
+        this.__class__ = Point
+
+    which._version = "0.2"
+    # go to every hex, update it to use the new point
+    update_point( which.draw_relative_to)
+    update_point( which.origin_shift )
+    # update all the verices on the hexes... and their centers
+    for hexid in which.catalogue:
+        for i in range(6):
+            #update_point( which.catalogue[hexid]._vertices[i] )
+            update_point( which.catalogue[hexid]._center )
+    # update the perimeter of all regions
+    for r_layer in which.rid_catalogue:
+        for rid in which.rid_catalogue[r_layer]:
+            for vert in range(len(which.rid_catalogue[r_layer][rid].perimeter)):
+                update_point( which.rid_catalogue[r_layer][rid].perimeter[vert] )
+            # update the enclaves
+            for enclave in which.rid_catalogue[r_layer][rid].enclaves:
+                for vert in enclave:
+                    update_point(vert)
+
+    def update_path( this_one):
+        for vert in range(len( this_one._vertices)):
+            update_point( this_one._vertices[vert] )
+        if hasattr( this_one, "tributaries"):
+            if this_one.tributaries is not None:
+                update_path( this_one.tributaries[0] )
+                update_path( this_one.tributaries[1] )
+
+    # update the vertices on all the paths. Rivers have tributaries, so we update those (recursively)
+    for p_layer in which.path_catalog:
+        for pid in which.path_catalog[p_layer]:
+            update_path( which.path_catalog[p_layer][pid] )
+    _update_to_0_3(which)
+
+def _update_to_0_3(which):
+    which._version = "0.3"
+    which.__class__ = Hexmap
+    setattr( which, "_tileset", "standard")
+    _update_to_0_4(which)
+
+def _update_to_0_4(which):
+    # need to update the hexes, the points
+    
+    # update hexes
+    which._version = "0.4"
+    for hexID in which.catalogue:
+        del which.catalogue[hexID]._vertices
+
+
+def _update_save(which):
+    """
+    This function figures out the version mismatch of the given Hexmap and applies necessary updates
+    """
+    assert( isinstance( which, Hexmap ))
+    print("Updating Map")
+    if not hasattr( which, "_version"):
+        _update_to_0_1( which )
+        
+    elif which.version < map_version:
+        if which._version == "0.1":
+            _update_to_0_2( which )
+        if which._version == "0.2":
+            _update_to_0_3(which)
+
+    elif which.version > map_version:
+        raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
+    
+    print("Updated map to version {}. You should save!".format(map_version))
+    
 
 def save_map(h_map, filename):
     h_map.drawn_hexes = {}
@@ -243,6 +400,13 @@ def load_map(filename):
     file_object = open(filename, 'rb')
     hex_pickle = pickle.load(file_object)
     file_object.close()
+
+    # need to make sure that the loaded hexmap is up to date! 
+    if not hasattr(hex_pickle, "_version"):
+        _update_save( hex_pickle )
+    elif hex_pickle.version != map_version:
+        _update_save( hex_pickle )
+
     return( hex_pickle )
 
 
@@ -296,6 +460,34 @@ class Hexmap:
         self._zoom      = 1.0
         self.draw_relative_to = Point(0.0,0.0)
         self.origin_shift     = Point(0.0,0.0)
+
+        self._tileset = "standard"
+        self._version = map_version 
+
+    @property
+    def tileset(self):
+        return(self._tileset)
+    
+    def set_tileset(self, new):
+        """
+        Change the map's tileset to one of the definitions in the tilesets json file
+        """
+        if not isinstance(new,str):
+            raise TypeError("Expected {}, got {}".format(str, type(new)))
+
+        loc = os.path.join(os.path.dirname(__file__) ,'resources', 'tilesets.json')
+        file_object = open( loc, 'r')
+        config = json.load( file_object )
+        file_object.close()
+
+        if new not in config:
+            raise ValueError("Unrecognized tileset {}".format(new))
+
+        self._tileset = new
+
+    @property 
+    def version(self):
+        return( self._version )
 
     @property 
     def drawscale(self):
@@ -629,7 +821,7 @@ class Hexmap:
     def register_hex(self, target_hex, new_id ):
         assert( target_hex._radius == self.drawscale )
         if not isinstance(target_hex, Hex):
-            raise TypeError("Cannot register non-hexes, dumb dumb!")
+            raise TypeError("Can only register {} objects".format(Hex))
 
         if new_id in self.catalogue:
             raise NameError()
@@ -666,39 +858,51 @@ class Hexmap:
         self._active_id = id
         self.catalogue[self._active_id].outline = '#f00'
     
-    def get_hex_neighbors(self, ID):
+    def get_hex_neighbors(self, ID, radius=1):
         """
         Calculates the IDs of a given Hexes' neighbors
         NOTE: Neighbors not guaranteed to exist! 
 
         @param ID - ID of center
+        @param radius - how far out from which to collect neighbors 
 
         @returns a LIST of IDs 
         """
+        if not isinstance(radius,int):
+            raise TypeError("Arg 'radius' must be {}, got {}".format(int, type(radius)))
+        if radius<1:
+            raise ValueError("Invalid radius {}".format(0))
 
         # convert the id to a bit string
         x_id, y_id, grid = deconstruct_id(ID)
 
-
-        neighbors = []
+        neighbors = [0 for i in range(radius*6)]
 
         # returns IDs starting from up and to the left, and going around clockwise 
-        if grid:
-            neighbors.append(construct_id(x_id-1, y_id,   not grid) )
-            neighbors.append(construct_id(x_id, y_id+1, grid) )
-            neighbors.append(construct_id(x_id,   y_id,   not grid) )
-            neighbors.append(construct_id(x_id,   y_id-1, not grid) )
-            neighbors.append(construct_id(x_id, y_id-1, grid) )
-            neighbors.append(construct_id(x_id-1, y_id-1, not grid) )
+        if radius==1:
+            if grid:
+                neighbors[0]=construct_id(x_id-1, y_id,   not grid) 
+                neighbors[1]=construct_id(x_id, y_id+1, grid) 
+                neighbors[2]=construct_id(x_id,   y_id,   not grid) 
+                neighbors[3]=construct_id(x_id,   y_id-1, not grid) 
+                neighbors[4]=construct_id(x_id, y_id-1, grid) 
+                neighbors[5]=construct_id(x_id-1, y_id-1, not grid)
+            else:
+                neighbors[0]=construct_id(x_id,   y_id+1,   not grid) 
+                neighbors[1]=construct_id(x_id,   y_id+1, grid) 
+                neighbors[2]=construct_id(x_id+1, y_id+1,   not grid) 
+                neighbors[3]=construct_id(x_id+1, y_id,     not grid) 
+                neighbors[4]=construct_id(x_id,   y_id-1, grid) 
+                neighbors[5]=construct_id(x_id,   y_id,     not grid) 
+            return(neighbors)    
         else:
-            neighbors.append(construct_id(x_id,   y_id+1,   not grid) )
-            neighbors.append(construct_id(x_id,   y_id+1, grid) )
-            neighbors.append(construct_id(x_id+1, y_id+1,   not grid) )
-            neighbors.append(construct_id(x_id+1, y_id,     not grid) )
-            neighbors.append(construct_id(x_id,   y_id-1, grid) )
-            neighbors.append(construct_id(x_id,   y_id,     not grid) )
-
-        return(neighbors)    
+            
+            center = self.get_point_from_id(ID)
+            angles = [ float(iter)*2*pi/len(neighbors) for iter in range(len(neighbors)) ]
+            for iter in range(len(neighbors)):
+                step= Point(sin(angles[iter]) , cos(angles[iter]))*self.drawscale*(rthree*radius)
+                neighbors[iter] = self.get_id_from_point( Point( center.x + step.x, center.y+ step.y)  )
+            return(neighbors)
 
     def get_neighbor_outline(self, ID, size=1):
         """
@@ -763,11 +967,10 @@ class Hexmap:
             raise TypeError("Expected type {} for 'vertex', received {}".format(Point, type(vertex)))
         
         if v_type is None:
-            print("this shouldn't be called either")
-            l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
-            l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
-            r_up    = self.get_id_from_point( place+Point(  0.25*self.drawscale,   rthree*0.25*self.drawscale ))
-            r_down  = self.get_id_from_point( place+Point(  0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            l_up    = self.get_id_from_point( vertex+Point( -0.5*self.drawscale,   rthree*0.25*self.drawscale ))
+            l_down  = self.get_id_from_point( vertex+Point( -0.5*self.drawscale,-1*rthree*0.25*self.drawscale ))
+            r_up    = self.get_id_from_point( vertex+Point(  0.5*self.drawscale,   rthree*0.25*self.drawscale ))
+            r_down  = self.get_id_from_point( vertex+Point(  0.5*self.drawscale,-1*rthree*0.25*self.drawscale ))
 
             if l_up==l_down:
                 v_type = 2

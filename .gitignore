@@ -11,6 +11,9 @@ Python_v/~$Plans.docx
 
 *.ui
 
+# numpy files
+*.npy
+
 # vim swap files
 *.swp
 
@@ -25,3 +28,11 @@ Python_v/~$Plans.docx
 
 # Compiled documentation
 *.pdf
+
+# documentation files
+*.html
+
+# visual studio stuff
+.idea/*
+.vs/*
+MultiHex/.vs/

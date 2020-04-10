@@ -1,6 +1,7 @@
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
+from MultiHex.generator.noise import perlinize
 
 from numpy import arccos 
 from numpy import histogram
@@ -93,8 +94,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     ids_to_propagate.pop(0)
                     continue
 
-                new_hex = Mountain_Hex( center, main_map._drawscale)
+                new_hex = OHex( center, main_map._drawscale)
                 new_hex.genkey = '01000000'
+                new_hex._altitude_base = 1.0
                 
                 alt_shift = parent._altitude_base - rnd.gauss(0.25, 0.05)
                 if alt_shift < 0.2:
@@ -145,10 +147,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         new_alt = parent._altitude_base - rnd.gauss(water_spread, water_width)
 
                     if new_alt > 0:
-                        new_hex = Grassland_Hex( center,main_map._drawscale )
+                        new_hex = OHex( center,main_map._drawscale )
                         new_hex._is_land = True
                     else:
-                        new_hex = Ocean_Hex( center, main_map._drawscale)
+                        new_hex = OHex( center, main_map._drawscale)
                         new_hex._is_land = False
                         new_hex.name = "ocean"
 
@@ -168,6 +170,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     # this process usually leaves the map super gross looking, so I do some smoothing where I just average the elevation around the hex
     for i in range( n_rounds ):
         smooth( ['alt'], sim )
+
+    perlinize()
 
 if __name__=='__main__':
     generate('cont')

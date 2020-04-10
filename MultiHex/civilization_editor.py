@@ -2,20 +2,20 @@
 
 # civilization gui
 from MultiHex.guis.civ_gui import editor_gui_window
-from MultiHex.guis.about_gui import Ui_Dialog as about_MHX
 
 # MultiHex objects
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.objects import Icons
 from MultiHex.tools import clicker_control, basic_tool, QEntityItem
-from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush
+from MultiHex.map_types.overland import Town, OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush
 
 # need these to define all the interfaces between the canvas and the user
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog
 
-# ward dialog gui
+# ward dialog gui, about gui
 from MultiHex.guis.ward_dialog import Ui_Dialog as ward_ui
+from MultiHex.about_class import about_dialog
 
 import sys # basic command line interface 
 import os  # basic file-checking, detecting os
@@ -50,6 +50,7 @@ class editor_gui(QMainWindow):
         self.entity_control = OEntity_Brush(self)
         self.writer_control = OHex_Brush(self)
         self.path_control = Road_Brush(self)
+        self.river_control = River_Brush(self)
         self.biome_control = Biome_Brush(self, civmode=True)
         self.county_control = County_Brush( self )
         self.county_control.small_font = False
@@ -208,6 +209,7 @@ class editor_gui(QMainWindow):
 
     def road_delete(self):
         self.path_control.delete_selected()
+        self.road_update_list()
 
     def road_update_list( self ):
         self.ui.road_list_entry.clear()
@@ -319,7 +321,7 @@ class editor_gui(QMainWindow):
         self.set_update_selection( self.entity_control.selected )
 
         # redraw the hex ( the icon may have changed )
-        self.entity_control.redraw_entities_at_hex( self.entity_control.selected_hex ) 
+        self.entity_control.redraw_entities_at_hex( self.main_map.eid_catalogue[self.entity_control.selected].location ) 
 
     def set_update_ward_info(self, eID, ward = None):
         """
@@ -461,7 +463,7 @@ class editor_gui(QMainWindow):
         self.ui.toolBox.setCurrentIndex( 3 )
         self.scene._active.drop()
         self.scene._active = self.county_control 
-        self.county_control.selector_mode = False
+        self.county_control.set_state( 1 )
 
     def entity_selector_toolbar(self):
         """
@@ -476,10 +478,10 @@ class editor_gui(QMainWindow):
         self.ui.toolBox.setCurrentIndex(3)
         self.scene._active.drop()
         self.scene._active = self.county_control
-        self.county_control.selector_mode = True
+        self.county_control.set_state( 0 )
 
     def county_update_with_selected(self):
-        this_rid = self.county_control.selected_rid
+        this_rid = self.county_control.selected
         self.ui.county_list_entry.clear()
 
         if this_rid is None:
@@ -526,7 +528,7 @@ class editor_gui(QMainWindow):
             self.county_control.redraw_region( this_rid )
 
     def county_apply(self):
-        this_rid = self.county_control.selected_rid
+        this_rid = self.county_control.selected
 
         if this_rid is None:
             return
@@ -543,6 +545,7 @@ class editor_gui(QMainWindow):
     def county_list_item_clicked(self, index):
         item = self.ui.county_list_entry.itemFromIndex(index)
         self.entity_control.select_entity( item.eID )
+        # self.entity_control.select_hex( self.main_map.eid_catalogue[item.eID] )
         self.ui.toolBox.setCurrentIndex( 1 )
         self.set_update_selection( item.eID )
 
@@ -550,7 +553,7 @@ class editor_gui(QMainWindow):
         self.scene._active = self.entity_control
 
     def county_kingdom_button(self):
-        this_rid = self.county_control.selected_rid
+        this_rid = self.county_control.selected
 
         if this_rid is None:
             pass
@@ -572,7 +575,7 @@ class editor_gui(QMainWindow):
         item = self.ui.nation_list_entry.itemFromIndex(index)
         this_county = item.eID
 
-        self.county_control.selected_rid = item.eID
+        self.county_control.select( item.eID )
         self.ui.toolBox.setCurrentIndex(3)
         self.county_update_with_selected()
 
@@ -703,7 +706,7 @@ class editor_gui(QMainWindow):
 
         # draw all the counties and roads and crap
         print("Drawing rivers...",end='')
-        self.writer_control.redraw_rivers()
+        self.river_control.redraw_rivers()
         print(" done")
         print("Drawing everything else...",end='')
         self._redraw_entities()
@@ -729,12 +732,6 @@ class editor_gui(QMainWindow):
         if 'county' in self.main_map.rid_catalogue :
             for rid in self.main_map.rid_catalogue['county']:
                 self.county_control.redraw_region( rid )
-
-class about_dialog(QDialog):
-    def __init__(self, parent):
-        super(about_dialog, self).__init__(parent)
-        self.ui = about_MHX()
-        self.ui.setupUi(self)
 
 class ward_dialog(QDialog):
     def __init__(self,parent, which, setting):

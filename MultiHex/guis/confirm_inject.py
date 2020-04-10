@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'aboutMHX.ui'
+# Form implementation generated from reading ui file 'confirm_inject.ui'
 #
 # Created by: PyQt5 UI code generator 5.10.1
 #
@@ -8,34 +8,26 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from MultiHex.core import multihex_version
-
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(453, 279)
+        Dialog.resize(380, 164)
         self.verticalLayout = QtWidgets.QVBoxLayout(Dialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.label = QtWidgets.QLabel(Dialog)
         font = QtGui.QFont()
-        font.setFamily("LaTeX")
-        font.setPointSize(20)
-        font.setBold(True)
-        font.setItalic(False)
-        font.setUnderline(False)
-        font.setWeight(75)
-        font.setKerning(True)
+        font.setPointSize(24)
         self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
         self.verticalLayout.addWidget(self.label)
         self.label_2 = QtWidgets.QLabel(Dialog)
-        self.label_2.setAlignment(QtCore.Qt.AlignCenter)
+        self.label_2.setAlignment(QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft|QtCore.Qt.AlignTop)
         self.label_2.setObjectName("label_2")
         self.verticalLayout.addWidget(self.label_2)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.No|QtWidgets.QDialogButtonBox.Yes)
         self.buttonBox.setObjectName("buttonBox")
         self.verticalLayout.addWidget(self.buttonBox)
 
@@ -47,6 +39,6 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
-        self.label.setText(_translate("Dialog", "MultiHex"))
-        self.label_2.setText(_translate("Dialog", "Version {}\n".format(multihex_version)+"\n"+"by Ben Smithers\n"+" with Ross McGuyer"))
+        self.label.setText(_translate("Dialog", "Are You Sure?"))
+        self.label_2.setText(_translate("Dialog", "Injecting noise is irreversible! This cannot be undone. "))
 

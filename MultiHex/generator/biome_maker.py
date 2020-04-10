@@ -17,91 +17,6 @@ Uses some simple thresholds to determine what kind of Hex a given Hex is
 Is it a forest? A Desert? Let's find out! 
 """
 
-colors = hcolor()
-
-def apply_biome_to_hex( target ):
-    """
-    Assigns a hex its biome and its color. Requires an entry in the 'hcolor' object in the overland map type script with an attribute name corresponding to the biome name in the 'names' table above
-
-    @param target   - the hex
-    """
-    # each entry has endcaps: 0.0 and 1.0
-    # arctic, temperate, hot
-    temperature_thresholds = [0.0 , 0.08, 0.92, 1.0]
-    # arid, temperate, moist,  wet 
-    rainfall_thresholds = [0.0, 0.2, 0.4 , 0.8, 1.0]
-    # no dependence 
-    altitude_thresholds = [0.0, 0.4, 1.0 ]
-
-    #        temp: cold ---> hot 
-    #       dry 
-    #         |
-    # Rain:   |
-    #         V
-    #       Rainy
-    #
-    # Plus one extra dimension for the altitude dependence 
-
-    names = [ # lowlands
-              # cold      temperate     hot 
-            [[ "arctic", "grassland", "desert"],    # dry
-             [ "arctic", "grassland", "savanah"],   # temperate
-             [ "arctic", "grassland", "grassland"], # moist 
-             [ "tundra", "forest",  "rainforest"]], # hot
-              # highlands
-            [[ "arctic", "grassland","grassland"],
-             [ "tundra", "forest", "grassland"],
-             [ "tundra", "forest", "forest"],
-             [ "tundra", "forest", "forest"]]
-            ]
-
-    assert( len(names)      == ( len(altitude_thresholds)-1 ) )
-    assert( len(names[0])   == ( len(rainfall_thresholds)-1 ) )
-    assert( len(names[0][0])== ( len(temperature_thresholds)-1))
-  
-    # oceans, ridges, and mountains aren't restricted to the same rules
-    if not target._is_land:
-        target.fill = colors.ocean
-        target.biome= "ocean"
-        return
-    if target.genkey[0]=='1':
-        target.fill = colors.ridge
-        target.biome = "mountain"
-        return
-    if target.genkey[1]=='1':
-        target.fill = colors.mountain
-        target.biome = "mountain"
-        return
-
-    def get_index( target, thresholds, hex_quantity):
-        """
-        Takes a hex and one of the thresholds (rain, altitude, or temperature). Returns which range the hex falls in
-
-        @param target       - the Hex
-        @param thresholds   - the set of thresholds
-        @param hex_quantity - the string name of the Hexes quantity to test against
-        """
-
-        index = 0
-        if target._rainfall_base <= thresholds[0]:
-            index = 0
-        elif target._rainfall_base >= thresholds[-1]:
-            index = -1 
-        else:
-            while (thresholds[index] < getattr( target, hex_quantity) ):
-                index += 1
-            index -= 1
-        return( index )
-
-    rain_index          = get_index( target, rainfall_thresholds, "_rainfall_base" )
-    temperature_index   = get_index( target, temperature_thresholds, "_temperature_base" )
-    altitude_index      = get_index( target, altitude_thresholds, "_altitude_base" )
-    
-    target.biome = names[ altitude_index ][rain_index][temperature_index]
-    try:
-        target.fill = getattr( colors, target.biome )
-    except AttributeError:
-        target.fill = (0.0, 0.0, 0.0 )
 
 def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
 
@@ -117,27 +32,37 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         dimensions = config[size]['mountains']['dimensions']
         config = config[size]['regions']
 
-
-    # these aren't used, obviously. 
-    # will want to swap these out for the threshholds used 
-    n_regions       = config['n_regions']
-    reg_size        = config['reg_size']
     
-
+    # load the HexMap
     main_map = load_map( sim )
     
-    #                     Set Arctic Circle
+    #                  ASSIGN COLORS AND CLIMATE 
     # ===========================================================
 
-    # if tempterature < 0.1 --> arctic circle
-
-
+    # explicitly setting tileset to keep up appearances 
+    this_climatizer = Climatizer(tileset="standard")
 
     for ID in main_map.catalogue:
-        apply_biome_to_hex( main_map.catalogue[ID] )
-        if main_map.catalogue[ID].biome!="mountain":
-            main_map.catalogue[ID].rescale_color()
+        if main_map.catalogue[ID].genkey[0]=='1':
+            main_map.catalogue[ID].fill = (99,88,60)
+            main_map.catalogue[ID].biome = "mountain"
+            continue
+        if main_map.catalogue[ID].genkey[1]=='1':
+            main_map.catalogue[ID].fill = (158,140,96)
+            main_map.catalogue[ID].biome = "mountain"
+            continue
+      
+        this_climatizer.apply_climate_to_hex( main_map.catalogue[ID] )
+        main_map.catalogue[ID].rescale_color()
 
+
+    #                      MAKE BIOMES (REGIONS)
+    # ===========================================================
+
+    n_regions       = config['n_regions']
+    reg_size        = config['reg_size']
+
+    # are faster at adding things to the sides 
     from collections import deque
     r_layer = 'biome'
     main_map.rid_catalogue[r_layer] = {}

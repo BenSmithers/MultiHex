@@ -1,15 +1,17 @@
 from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
+from MultiHex.generator.noise import perlinize
 
-from numpy import arccos 
-from numpy import histogram
+from numpy import arccos, histogram, linspace
 from math import exp, floor, sqrt, e, pi, sin
 
 import random as rnd
 import os
 import json
+import sys
 
+from collections import deque
 
 """
 Runs a toy weather model to get a rainfall map of the world
@@ -51,7 +53,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         n_cloud_units = int( 2.*dimensions[1] / ( main_map._drawscale*rthree) )
 
     x_step          = 0.2*main_map._drawscale
-    evap_rate       = rain_rate*e
+    evap_rate       = 10.*rain_rate*e
 
     def get_rate( reservoir , pressure ):
         """
@@ -196,22 +198,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             if size=='cont':
                 clouds_east[index] = [new_cloud_east[index][0], new_cloud_east[index][1]]
 
-        if plotting:
-            plot_it = [[clouds[index][0] for index in range(len(clouds))], [clouds[index][1]  for index in range(len(clouds)) ], [ index_to_y(index) for index in range(len(clouds))] ]
-            plt.figure(1)
-            plt.clf()
-            plt.plot(plot_it[2], plot_it[0],'d')
-            plt.title("Rainfall!")
-            plt.ylim([0,105])
-            plt.show()
-            plt.figure(2)
-            plt.clf()
-            plt.title("Cloud Loc")
-            plt.plot(plot_it[1], plot_it[2] )
-            plt.xlim([0, dimensions[0]])
-            plt.show()#block=False)
-            plt.pause(0.05)
-
     # maintain a %complete notice in the CLI while stepping the clouds forward
     percentages = [False for i in range(9)] 
 
@@ -230,14 +216,12 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         # step the cloud forward
         step()
 
-    if plotting:
-        plt.close()
 
     #               Calculate Rainfal Statistics
     # ======================================================
 
     
-    from collections import deque
+
     rains = deque([])
 
     # set rainy thing
@@ -282,18 +266,18 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 break
 
         if which==len(edges):
-            this_hex._rainfall_base = 1.0
-        if which==0:
+            main_map.catalogue[ID]._rainfall_base = 1.0
+        elif which==0:
             # somehow this is beneath the binned region. Should be impossible
-            this_hex._rainfall_base = 0.0
-        
-        which -= 1
-        try:        
-            main_map.catalogue[ID]._rainfall_base = percentiles[which]
-        except IndexError:
-            print( "ID: {}".format(ID))
-            print( "which: {} of {}".format(which, len(percentiles)))
-            sys.exit()        
+            main_map.catalogue[ID]._rainfall_base = 0.0
+        else: 
+            which -= 1
+            try:        
+                main_map.catalogue[ID]._rainfall_base = percentiles[which]
+            except IndexError:
+                print( "ID: {}".format(ID))
+                print( "which: {} of {}".format(which, len(percentiles)))
+                sys.exit()        
 
     print("Applying Sunlight Gradient")
     for ID in main_map.catalogue:
@@ -312,6 +296,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     print("Performing {} round of Rainfall Smoothing".format(n_rounds))
     for i in range(n_rounds):
         smooth(['rain'], sim)
+
+    perlinize(attr='_temperature_base')
+
 
     
 

@@ -2,9 +2,10 @@ from MultiHex.core import Hex, Point, Region, Path, Hexmap
 from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.objects import Settlement, Government
-from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool
+from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
 
 from PyQt5 import QtGui
+from PyQt5.QtWidgets import QGraphicsPathItem
 
 """
 Implements the overland map type, its brushes, and its hexes 
@@ -21,6 +22,59 @@ Entries:
 """
 
 default_p = Point(0.0,0.0)
+
+def point_on_river( point, river ):
+    """
+    returns whether or not the Point `point` is somewhere on the River object `river`
+
+    @param point    - the Point...
+    @param river    - the River... 
+    """
+
+    assert( isinstance( point, Point))
+    assert( isinstance( river, River))
+
+    if river.tributaries is not None:
+        # see if the point is on the river body, or one of the tributaries. Call this function on each of the tributaries 
+        return( (point in river.vertices) or (point_on_river( point, river.tributaries[0])) or (point_on_river( point, river.tributaries[1] )))
+    else:
+
+        return( point in river.vertices )
+
+class ol_clicker_control( clicker_control ):
+    """
+    Implements the "clicker_control", which is itself a QtScene
+
+    This is used so that when a QPainterRiver is registered, the returned 
+    QtPathItem is of a special type that has a tribs object too
+    """
+    def __init__(self, parent=None, master = None):
+        clicker_control.__init__(self, parent, master)
+
+    def addPath(self, new_path, pen=QtGui.QPen(), brush=QtGui.QBrush() ):
+        obj = clicker_control.addPath( self, new_path, pen, brush)
+
+        if isinstance(new_path, QPainterRiver):
+            setattr(obj, 'tribs', new_path.tribs)
+
+        return(obj)
+
+
+class QPainterRiver( QtGui.QPainterPath ):
+    """
+    Derived class of the QPainterPath which simply adds a "tribs" attribute
+    """
+    def __init__(self, tribs=None):
+        QtGui.QPainterPath.__init__(self)
+
+        if tribs is not None:
+            if not isinstance(tribs, tuple):
+                raise TypeError("Should be {}, not {}".format(tuple, type(tribs)))
+            if len(tribs)!=2:
+                raise ValueError("Should be len {}, not {}".format(2, len(tribs)))
+
+        self.tribs = tribs
+
 
 class Town( Settlement ):
     """
@@ -75,12 +129,13 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = (colors.ocean[0]*0.8, colors.ocean[1]*0.8, colors.ocean[2]*0.8)
+        self.color = (134, 183,207)
 
         self.width = 1
 
         # by default, should have none
         self.tributaries = None
+        self.tributary_objs = None
 
         self._max_len = 20
         
@@ -88,9 +143,9 @@ class River(Path):
 
     def join_with( self, other ):
         """
-        Joins with the other river! 
+        Looks and tries to see if the river 'other' merges with the self or one the self's tributaries
 
-        Other river must connect to this one 
+        Returns an integer: 0 for successful merge, 1 for no merge 
         """
         if not isinstance( other, River ):
             raise TypeError("Cannot join with object of type {}".format(type(other)))
@@ -98,18 +153,40 @@ class River(Path):
         # make sure these rivers are join-able. One river needs to have its end point on the other! 
         if other.end() not in self._vertices:
             # try joining with its tributaries 
-            if other.tributaries is not None:
+            if self.tributaries is not None:
+                prior0 = self.tributaries[0].width
+                prior1 = self.tributaries[1].width
                 error_code = self.tributaries[0].join_with( other )
                 if error_code == 0:
+                    self.width += self.tributaries[0].width - prior0
                     return(0)
                 error_code = self.tributaries[1].join_with( other )
                 if error_code == 0:
+                    self.width += self.tributaries[1].width - prior1
                     return(0) 
                 
                 # failed to join other river with itself or its tributaries 
                 return( 1 )
             else:
                 return( 1)
+
+        # we know they meet somewhere
+        # check if they are end-to-end
+        if self.end()==other.start():
+            self._vertices = self._vertices + other.vertices
+            return(0)
+        elif other.end()==self.start():
+            self._vertices = other.vertices + self.vertices
+            self.tributaries = other.tributaries
+            return(0)
+        elif self.end()==other.end():
+            # if they meet end-to-end (weird)... reverse the appened one
+            self._vertices = self._vertices + other.vertices[::-1]
+            return(0)
+        elif self.start()==other.start():
+            #take the other, reverse it, append to the start
+            self._vertices = other.vertices[::-1] + self._vertices
+            return(0)
 
         # other one ends in this one
         tributary_1 = other
@@ -309,6 +386,117 @@ class Biome(Region):
         Region.__init__(self, hex_id, parent)
 
 
+class Detail_Brush( basic_tool ):
+    def __init__(self,parent):
+        basic_tool.__init__(self, parent)
+
+        self._hover_circle = None #qt object for seleciton
+        self._location = None
+        self._radius = 1
+
+        self.pen = QtGui.QPen()
+        self.brush = QtGui.QBrush()
+        self.brush.setStyle(1)
+
+        self.pen.setColor(QtGui.QColor(183, 114, 194,150))
+        self.brush.setColor(QtGui.QColor(183, 114, 194, 50))
+
+        self._magnitude = 0.05
+
+        self._configuring = ""
+
+    @property
+    def configuring(self):
+        return(self._configuring )
+
+    def set_configuring(self, conf):
+        if not isinstance(conf, str):
+            raise TypeError("Argument must be {}, got {}".format(str, type(conf)))
+
+        self._configuring = conf
+        print("now configuring {}".format(self._configuring))
+
+    def set_magnitude(self, new):
+        if not isinstance(new, float):
+            raise TypeError("Expected {}, got {}".format(float, type(new)))
+        self._magnitude = min(new, 1.0)
+
+        if new>1.0:
+            print("Warn! Received illegal magnitude {}, set to 1.0".format(new))
+        
+    @property
+    def magnitude(self):
+        return(self._magnitude)
+
+    def set_radius(self, new_val):
+        if not isinstance(new_val, int):
+            raise TypeError("Expected {}, got {}".format(int, type(new_val)))
+        self._radius = new_val
+
+    @property 
+    def radius(self):
+        return(self._radius)
+
+    def mouse_moved(self, event):
+        """
+        moved the selection circle to the mouse
+        """
+        place = Point( event.scenePos().x(), event.scenePos().y() )
+        center_id = self.parent.main_map.get_id_from_point(place)
+        real_place = self.parent.main_map.get_point_from_id(center_id)
+
+        if center_id!=self._location:
+            if self._hover_circle is not None:
+                self.parent.scene.removeItem(self._hover_circle)
+
+            eff_rad = self.parent.main_map.drawscale*(max(2*self._radius, 1))
+            self._hover_circle = self.parent.scene.addEllipse(real_place.x-eff_rad , real_place.y-eff_rad, 2*eff_rad, 2*eff_rad , pen=self.pen, brush=self.brush)
+
+    def primary_mouse_held(self, event):
+        self.primary_mouse_released(event)
+
+    def secondary_mouse_held(self, event):
+        self.secondary_mouse_released(event)
+
+    def primary_mouse_released(self, event):
+        self.brushy_brushy(event, 1)
+
+    def secondary_mouse_released(self, event):
+        self.brushy_brushy(event, -1)
+
+    def brushy_brushy( self, event, sign=1):
+        if self.configuring=="":
+            return
+
+        place = Point( event.scenePos().x(), event.scenePos().y() )
+        center_id = self.parent.main_map.get_id_from_point(place)
+
+        if center_id in self.parent.main_map.catalogue:
+            setattr(self.parent.main_map.catalogue[center_id], self.configuring, getattr(self.parent.main_map.catalogue[center_id], self.configuring) + sign*self.magnitude)
+            self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[center_id])
+            self.parent.main_map.catalogue[center_id].rescale_color()
+            self.parent.writer_control.redraw_hex(center_id)
+
+        reduced = self.magnitude
+        iter = 1
+        while iter <= self.radius:
+            reduced *= 2./3
+            neighbors = self.parent.main_map.get_hex_neighbors(center_id, iter)
+            for each in neighbors:
+                if each in self.parent.main_map.catalogue:
+                    new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalogue[each], self.configuring) + sign*reduced))
+                    setattr(self.parent.main_map.catalogue[each], self.configuring, new_value)
+                    self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
+                    self.parent.main_map.catalogue[each].rescale_color()
+                    self.parent.writer_control.redraw_hex(each)
+            iter+=1
+
+    def drop(self):
+        if self._hover_circle is not None:
+            self.parent.scene.removeItem(self._hover_circle)
+            self._hover_circle = None
+
+        self._location = None
 
 
 class River_Brush( path_brush ):
@@ -317,6 +505,284 @@ class River_Brush( path_brush ):
         self._creating = River
 
         self._path_key = "rivers"
+
+        # zeros and ones to select a tributary to a river
+        self._sub_selection = ''
+
+        self._qtpath_type = QPainterRiver
+
+        self._extra_states = [5] # adding to a river's tributary's start 
+    
+    @property
+    def sub_selection(self):
+        return( self._sub_selection )
+
+    def sub_select(self, sub):
+        if not isinstance(sub, str):
+            raise TypeError("Sub selection should be {}, not {}".format(str, type(sub)))
+
+        for part in sub:
+            if not (part=='0' or part=='1'):
+                raise ValueError("Error in sub-selection. Encountered {}".format(part))
+
+        self._sub_selection = sub
+        self.draw_path( self.selected_pid )
+
+
+    def _dive(self,river, key):
+        assert(isinstance(key, str))
+        assert(isinstance(river, River))
+
+        if len(key)==1:
+            return( river.tributaries[ int(key[0]) ] )
+        else:
+            return( self._dive( river.tributaries[int(key[0])], key[1:] ))
+
+
+    def get_sub_selection(self):
+        """
+        Returns the river object based on the sub-selection
+        """
+        if self.selected_pid is None:
+            return(None)
+        if self.sub_selection == '':
+            return(self.parent.main_map.path_catalog[self._path_key][self.selected_pid])
+        else:
+            return( self._dive(self.parent.main_map.path_catalog[self._path_key][self.selected_pid], self.sub_selection) )
+
+    def pop_selected_start(self):
+        """
+        Pops off the end of the selected tributary or registered river
+        """
+        if self.sub_selection=='':
+            path_brush.pop_selected_start()
+        else:
+            # get the sub selection
+            this_riv = self.get_sub_selection()
+            if this_riv is not None:
+                this_riv.trim_at(1, False )
+                if len(this_riv.vertices)==1:
+                    # this river now has no length
+                    former = self.sub_selection
+
+                    # get its parent
+                    self.sub_select(former[:-1])
+                    parent = self.get_sub_selection()
+
+                    # the width will get changed a little bit
+                    new_width = parent.width - this_riv.width
+
+                    # get the other tributary 
+                    if former[-1]==0:
+                        what_to_add = parent.tributaries[1]
+                    else:
+                        what_to_add = parent.tributaries[0]
+
+                    result = parent.join_with(what_to_add)
+                    if result==1:
+                        raise Exception("Failed to join rivers when it should've succeded!")
+                    parent.width = new_width
+                self.draw_path( self.selected_pid )
+
+
+    def select_pid(self, pID=None):
+        path_brush.select_pid( self, pID)
+        self.sub_select('')
+
+    def get_alt_from_point(self, event):
+        return( self.get_sub_selection().start() )
+
+    def primary_mouse_released(self, event):
+        """
+        As usual, call the normal mouse-click function
+        But then check for intersections with a new river, and if one is found merge! 
+        """
+        path_brush.primary_mouse_released( self, event)
+        if self._state==0 or self._state==1:
+            return
+        if self._state==2: # see if this WIP river will merge
+            for pid in self.parent.main_map.path_catalog[self._path_key]:
+                result = self.parent.main_map.path_catalog[self._path_key][pid].join_with( self._wip_path )
+                if result == 0:
+                    self._wip_path = None 
+                    if self._wip_path_object is not None:
+                        self.parent.scene.removeItem( self._wip_path_object)
+                        self._wip_path_object = None 
+
+                    self.prepare(0)
+                    self.draw_path( pid )
+                    break
+        elif self._state==3: 
+            #adding to start
+            # try joining the active river with other ones 
+            selected_river = self.get_sub_selection()
+
+            
+            for pid in self.parent.main_map.path_catalog[self._path_key]:
+                if pid==self.selected_pid:
+                    continue
+                result = self.parent.main_map.path_catalog[self._path_key][pid].join_with( selected_river )
+                if result == 0:
+
+                    self.parent.main_map.unregister_path( self.selected_pid, 'rivers')
+                    self.prepare(0)
+                    self.draw_path(self.selected_pid)
+                    self.draw_path(pid)
+                    self.select_pid(None)
+                    self.sub_select('')
+                    self.parent.river_update_gui()
+                    print("merge")
+                    return
+
+        elif self._state==4: # adding to end
+            return
+        elif self._state==5:
+            where, from_point = self.where_to_from(event)
+
+            which = self.get_sub_selection()
+            which.add_to_start(where)
+            self.draw_path(self.selected_pid)
+
+        else:
+            raise NotImplementedError("Unexpected state {} encountered".format(self._state))
+
+    def mouse_moved(self, event):
+        path_brush.mouse_moved(self, event)
+        #print("mouse moved state {}".format(self._state))
+        if self._state==5:
+            if self._drawn_icon is None:
+                self._drawn_icon = self.parent.scene.addPixmap( self._icon )
+                self._drawn_icon.setZValue(20)
+
+            self._drawn_icon.setX( event.scenePos().x() )
+            self._drawn_icon.setY( event.scenePos().y() )
+
+            where, from_point = self.where_to_from(event)
+
+            if self._step_object is not None:
+                self.parent.scene.removeItem( self._step_object )
+            
+            path = self._qtpath_type()
+            path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw([ from_point, where])) )
+            self._step_object = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+
+    def secondary_mouse_released(self, event):
+        path_brush.secondary_mouse_released(self, event)
+        
+        if self._state==5:
+            self.draw_path( self._selected_pid )
+            self.select_pid(None )
+            self._state = 0
+
+        self.parent.river_update_list()
+        
+
+    def draw_path( self, pID):
+        """
+        Draw the path using the original implementaitno, then draw the tributaries 
+        """
+        # before calling the original implementation, we remove the drawn river recursively!
+        assert(isinstance( pID, int) or (pID is None))
+
+        if pID in self.parent.main_map.path_catalog[self._path_key]:
+            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+        else:
+            return
+
+        
+
+        if pID in self._drawn_paths:
+
+            if this_path.tributaries is not None:
+                self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
+
+            self.river_remove_item( self._drawn_paths[pID] )
+            del self._drawn_paths[pID]
+
+        
+        # if there's a sub-selection, make sure not to draw the base part blue 
+        blue = self.sub_selection!=''
+        path_brush.draw_path(self, pID, blue)
+
+
+
+    def river_remove_item( self, which ):
+        """
+        Recursively removes a QPainterRiver and its child tributatry items 
+        """
+        assert( isinstance(which, QGraphicsPathItem))
+        self.parent.scene.removeItem( which )
+
+        if which.tribs is not None:
+            self.river_remove_item( which.tribs[0] )
+            self.river_remove_item( which.tribs[1] )
+            
+
+    def draw_tribs(self, river, depth, is_selected):
+        assert( isinstance( river, River))
+       
+        # color, style, already set by original call to the draw function! 
+        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
+        if river.tributaries[0].tributaries is not None:
+            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
+        if river.tributaries[1].tributaries is not None:
+            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
+
+
+        if not self.drawing:
+            return
+
+        trib1 = self._qtpath_type()
+        outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[0].vertices  ) )
+        trib1.addPolygon(outline)
+
+        
+        trib2 = self._qtpath_type()
+        outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.tributaries[1].vertices  ) )
+        trib2.addPolygon(outline)
+
+        # draw both of the tributaries using the appropriate width, saving the QRiverItem
+        if is_selected and self.sub_selection==depth+'0':
+            self.QPen.setColor(self._selected_color)
+        else:
+            self.QPen.setColor(QtGui.QColor(river.tributaries[0].color[0],river.tributaries[0].color[1],river.tributaries[0].color[2]  ))
+        self.QPen.setWidth(3 + river.tributaries[0].width)
+        first =self.parent.scene.addPath( trib1, pen=self.QPen, brush=self.QBrush)
+
+        if is_selected and self.sub_selection==depth+'1':
+            self.QPen.setColor(self._selected_color)
+        else:
+            self.QPen.setColor(QtGui.QColor(river.tributaries[1].color[0],river.tributaries[1].color[1],river.tributaries[1].color[2]  ))
+
+        self.QPen.setWidth(3 + river.tributaries[1].width)
+        second = self.parent.scene.addPath( trib2, pen=self.QPen, brush=self.QBrush)
+
+
+        tributary_objs = ( first , second )
+
+        # set the z-value of the rivers
+        tributary_objs[0].setZValue(river.z_level)
+        tributary_objs[1].setZValue(river.z_level)
+
+        # return a tuple of the objects 
+        return tributary_objs
+
+    def redraw_rivers( self ):
+        """
+        all the rivers
+        """
+        # self._river_drawn
+
+
+        if 'rivers' in self.parent.main_map.path_catalog:
+            for pID in self.parent.main_map.path_catalog['rivers'].keys():
+                assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
+                self.draw_path( pID )
+    def clear(self):
+        path_brush.clear(self)
+        self._sub_selection = ''
+
+                    
 
 class Biome_Brush( region_brush):
     def __init__(self, parent, civmode = False):
@@ -327,14 +793,13 @@ class Biome_Brush( region_brush):
         self.small_font = civmode
         self._type = Biome
 
+    def primary_mouse_released(self, event):
+        region_brush.primary_mouse_released(self, event)
+        self.parent.biome_update_gui()
+     
     def secondary_mouse_released(self, event):
         region_brush.secondary_mouse_released(self, event)
-
-        if self.selected_rid is None:
-            self.parent.ui.RegEdit.setText("")
-        else:
-            self.parent.ui.RegEdit.setText(self.parent.main_map.rid_catalogue[self.r_layer][self.selected_rid].name)
-
+        self.parent.biome_update_gui()
 
 class County_Brush( region_brush ):
     def __init__(self, parent):
@@ -348,20 +813,12 @@ class County_Brush( region_brush ):
 
         self.in_nation = None
 
-    def primary_mouse_released(self, event):
-        region_brush.primary_mouse_released( self, event )
-
-        self.parent.county_update_with_selected()
-
     def secondary_mouse_released(self, event):
-        if self.selected_rid is not None:
-            if self.selector_mode:
-                self.selector_mode = False
-            else:
-                self.selector_mode = True
-        else:
-            self.selected_rid = None
-            self.selector_mode = True
+        region_brush.secondary_mouse_released( self, event )
+
+    def primary_mouse_released(self, event):
+        region_brush.primary_mouse_released(self, event)
+        self.parent.county_update_with_selected()
 
 class Nation_Brush( basic_tool ):
     def __init__(self, parent):
@@ -476,6 +933,10 @@ class Road_Brush( path_brush ):
 
         self._path_key = "roads"
 
+    def secondary_mouse_released(self, event):
+        path_brush.secondary_mouse_released(self, event)
+        self.parent.road_update_list()
+
 
 class OEntity_Brush( entity_brush ):
     def __init__(self, parent):
@@ -485,82 +946,42 @@ class OEntity_Brush( entity_brush ):
 class OHex_Brush( hex_brush ):
     def __init__(self, parent):
         hex_brush.__init__(self, parent)
-        self._brush_type = Grassland_Hex
+        self._brush_type = OHex
+
+        self._skip_params = ["_altitude_base"]
 
         self._river_drawn = []
 
-    def redraw_rivers( self ):
+    def adjust_hex(self, which, params):
         """
-        all the rivers
+        Sets the specified Hex to the specified parameters
         """
-        # self._river_drawn
+        hex_brush.adjust_hex(self, which, params)
 
-        def draw_river(river):
+        which._is_land = bool(which._is_land)
+        if which._is_land:
+            if which._altitude_base < 0:
+                which._altitude_base = 0.
+        else:
+            if which._altitude_base > 0:
+                which._altitude_base = 0
 
-            if river.tributaries is not None:
-                draw_river( river.tributaries[0] )
-                draw_river( river.tributaries[1] )
+    def get_color_for_param_overwrite(self,parameter_name, parameter_value):
+        if parameter_name=="_altitude_base":
+            return(QtGui.QColor( 50, max(0,min(230 - 100*parameter_value,255)), max(0,min(255,(130 + 100*parameter_value)))))
+        elif parameter_name=="_rainfall_base":
+            return(QtGui.QColor( max(0,min(255,230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
+        elif parameter_name=="_temperature_base":
+            return(QtGui.QColor( max(0,min(255,255 - 155*parameter_value)), 200, max(0,min(255,155 + 100*parameter_value))))
+        else:
+            # default to red->green
+            return(QtGui.QColor(max(0,min(255, 230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
 
-            self.QBrush.setStyle(0)
-            self.QPen.setStyle(1)
-            self.QPen.setWidth(3 + river.width)
-            self.QPen.setColor( QtGui.QColor( river.color[0], river.color[1], river.color[2] ) )
-            path = QtGui.QPainterPath()
-            outline = QtGui.QPolygonF( self.parent.main_map.points_to_draw( river.vertices  ) )
-            path.addPolygon(outline)
-            self._river_drawn.append(self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush))
-            self._river_drawn[-1].setZValue(2)
-
-        if 'rivers' in self.parent.main_map.path_catalog:
-            for pID in self.parent.main_map.path_catalog['rivers']:
-                assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
-                draw_river( self.parent.main_map.path_catalog['rivers'][pID] )
-
-    def update_selection(self):
-        self.set_sliders( self._selected_id )
-
-    # set the sliders! 
-    def set_sliders(self, this_id ):
-# set the sliders 
-        self.parent.ui.rainfall.setValue(    max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._rainfall_base*100    )))) 
-        self.parent.ui.temperature.setValue( max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._temperature_base*100 ))))
-        self.parent.ui.biodiversity.setValue(max( 0, min( 100, int(self.parent.main_map.catalogue[this_id]._biodiversity*100     ))))
-
-    # these functions will be called to scale a selected hexes' properties using the sliders 
-    def rainfall(self, value):
-        if self.selected_id is not None:
-            self.parent.main_map.catalogue[self._selected_id]._rainfall_base = float(value)/100.
-    def temperature(self, value):
-        if self.selected_id is not None:
-            self.parent.main_map.catalogue[self._selected_id]._temperature_base = float(value)/100.
-    def biodiversity(self, value):
-        if self.selected_id is not None:
-            self.parent.main_map.catalogue[self._selected_id]._biodiversity_base = float(value)/100.
-    
-    # What kind of template to use when drawing 
-    def switch_forest(self):
-        self._brush_type = Forest_Hex
-    def switch_grass(self):
-        self._brush_type = Grassland_Hex
-    def switch_mountain(self):
-        self._brush_type = Mountain_Hex
-    def switch_desert(self):
-        self._brush_type = Desert_Hex
-    def switch_ocean(self):
-        self._brush_type = Ocean_Hex
-    def switch_arctic(self):
-        self._brush_type = Arctic_Hex
-    def switch_ridge(self):
-        self._brush_type = Ridge_Hex
-    
     # DIE
     def drop(self):
         if self.parent.main_map._outline is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
-        if self._selected_out is not None:
-            self.parent.scene.removeItem( self._selected_out )
-            self._selected_out = None
         self._selected_id = None
 
  
@@ -579,7 +1000,7 @@ class OHex(Hex):
         self._biodiversity     = 1.0
         self._rainfall_base    = 0.0
         self._altitude_base    = 1.0
-        self._temperature_base = 1.0
+        self._temperature_base = 0.0
         self._is_land          = True
         self.biome             = ""
         self.on_road           = None
@@ -591,80 +1012,5 @@ class OHex(Hex):
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
-
-
-class hcolor:
-    """
-    Just a utility used to hold a bunch of colors 
-    """
-    def __init__(self):
-        self.ocean = (100,173,209)
-        self.grassland = (149,207,68)
-        self.forest = (36, 94, 25)
-        self.arctic = (171,224,224)
-        self.tundra = (47,105,89)
-        self.mountain = (158,140,96)
-        self.ridge = (99,88,60)
-        self.desert = (230,178,110)
-        self.rainforest = (22,77,57)
-        self.savanah = (170, 186, 87)
-        self.wetlands = (30,110,84)
-colors = hcolor()
-
-
-# Tons of hex templates... 
-def Ocean_Hex(center, radius):
-    temp = OHex(center, radius)
-    temp.fill = colors.ocean
-    temp._temperature_base = 0.5
-    temp._rainfall_base    = 1.0
-    temp._biodiversity     = 1.0
-    temp._altitude_base    = 0.0
-    temp._is_land          = False
-    return(temp) 
-
-def Grassland_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.grassland
-    temp._is_land = True
-    return(temp)
-
-def Forest_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.forest
-    temp._is_land = True
-    return(temp)
-
-def Mountain_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.mountain
-    temp.genkey = '01000000'
-    temp._is_land = True
-    return(temp)
-
-def Arctic_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.arctic
-    temp._temperature_base = 0.0
-    temp._rainfall_base    = 0.0
-    temp._altitude_base    = 0.0
-    temp._is_land          = True
-    return(temp)
-
-def Desert_Hex(center,radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.desert
-    temp._temperature_base = 1.0
-    temp._rainfall_base    = 0.0
-    temp._altitude_base    = 0.0
-    temp._is_land          = True
-    return(temp)
-
-def Ridge_Hex(center, radius):
-    temp = OHex( center, radius )
-    temp.fill = colors.ridge
-    temp.genkey = '11000000'
-    temp._is_land = True
-    return(temp)
 
 
