@@ -25,7 +25,7 @@ Objects:
 """
 
 multihex_version = "0.2.0"
-map_version = "0.3"
+map_version = "0.4"
 
 
 def is_number(object):
@@ -329,6 +329,10 @@ def _update_to_0_2(which):
         for rid in which.rid_catalogue[r_layer]:
             for vert in range(len(which.rid_catalogue[r_layer][rid].perimeter)):
                 update_point( which.rid_catalogue[r_layer][rid].perimeter[vert] )
+            # update the enclaves
+            for enclave in which.rid_catalogue[r_layer][rid].enclaves:
+                for vert in enclave:
+                    update_point(vert)
 
     def update_path( this_one):
         for vert in range(len( this_one._vertices)):
@@ -348,6 +352,15 @@ def _update_to_0_3(which):
     which._version = "0.3"
     which.__class__ = Hexmap
     setattr( which, "_tileset", "standard")
+    _update_to_0_4(which)
+
+def _update_to_0_4(which):
+    # need to update the hexes, the points
+    
+    # update hexes
+    which._version = "0.4"
+    for hexID in which.catalogue:
+        del which.catalogue[hexID]._vertices
 
 
 def _update_save(which):
