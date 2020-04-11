@@ -96,7 +96,7 @@ class main_gui(QMainWindow):
             if self.setting==0:
                 print("new blank map of name {}".format(self.new_name))
             elif self.setting==1:
-                print("Opening ridge emaker, name {}".format(self.new_name))
+                print("Opening ridge maker, name {}".format(self.new_name))
                 print(type(self.new_name))
                 self.ridge_ui.save_name = self.new_name
                 self.hide()
