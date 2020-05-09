@@ -271,8 +271,6 @@ class Hex:
         self.genkey            = '00000000'
 
 
-
-
     @property
     def center(self):
         return( Point( self._center.x, self._center.y) )
@@ -298,7 +296,11 @@ class Hex:
     def reset_color(self):
         pass
             
-   
+    def __eq__(self, other):
+        same = self.center==other.center and self.radius==other.radius \
+            and self.outline==other.outline and self.fill==other.fill
+        return(same)
+
     def __repr__(self):
         return("{}@{}".format(self.__clas__, self.id))
 
@@ -821,9 +823,11 @@ class Hexmap:
             pass
 
     def register_hex(self, target_hex, new_id ):
-        assert( target_hex._radius == self.drawscale )
         if not isinstance(target_hex, Hex):
             raise TypeError("Can only register {} objects".format(Hex))
+        assert( target_hex._radius == self.drawscale )
+        if not isinstance(new_id, int):
+            raise TypeError("ID must be {} type, not {}".format(int, type(new_id)))
 
         if new_id in self.catalogue:
             raise NameError()
