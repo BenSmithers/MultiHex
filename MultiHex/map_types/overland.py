@@ -952,7 +952,7 @@ class OHex_Brush( hex_brush ):
 
         self._river_drawn = []
 
-    def adjust_hex(self, which, params):
+    def adjust_hex(self, which, params=None):
         """
         Sets the specified Hex to the specified parameters
         """
@@ -1007,6 +1007,42 @@ class OHex(Hex):
 
         # CW downstream , CCW downstream, runs through
         self.river_border = [ False ,False , False]
+
+    @property
+    def biodiversity(self):
+        return(self._biodiversity)
+
+    @property
+    def rainfall(self):
+        return(self._rainfall_base)
+
+    @property
+    def altitude(self):
+        return(self._altitude_base)
+
+    @property
+    def temperature(self):
+        return(self._temperature_base)
+
+    def set_biodiversity(self, what):
+        if not (isinstance(what,float) or isinstance(what, int)):
+            raise TypeError("Expected type {}, got {}".format(float, type(what)))
+        self._biodiversity = what
+
+    def set_rainfall_base(self, what):
+        if not (isinstance(what,float) or isinstance(what, int)):
+            raise TypeError("Expected type {}, got {}".format(float, type(what)))
+        self._rainfall_base = what
+
+    def set_altitude(self, what):
+        if not (isinstance(what,float) or isinstance(what, int)):
+            raise TypeError("Expected type {}, got {}".format(float, type(what)))
+        self._altitude_base = what
+
+    def set_temperature(self, what):
+        if not (isinstance(what,float) or isinstance(what, int)):
+            raise TypeError("Expected type {}, got {}".format(float, type(what)))
+        self._temperature_base = what
         
     def rescale_color(self):
         self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),

@@ -137,16 +137,9 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
     # choose a direction the ridgeline will preferably go, and spread around that direction
 
-
-
-
-    
-            
-
-          
-
-    if not os.path.isdir(os.path.join(os.path.dirname(__file__), '..', 'saves')):
-        os.mkdir(os.path.join( os.path.dirname(__file__), '..','saves'))
+    path, filename = os.path.split(sim)
+    if not os.path.isdir(path):
+        os.mkdir(path)
 
     save_map( main_map, sim )
 

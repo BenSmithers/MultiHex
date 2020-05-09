@@ -24,7 +24,7 @@ Objects:
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
-multihex_version = "0.2.0"
+multihex_version = "0.2.1"
 map_version = "0.4"
 
 
@@ -399,8 +399,6 @@ def save_map(h_map, filename):
     file_object.close()
 
 def load_map(filename):
-    if type(filename)==tuple:
-        print(filename)
     file_object = open(filename, 'rb')
     hex_pickle = pickle.load(file_object)
     file_object.close()
