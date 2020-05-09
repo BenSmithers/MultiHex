@@ -256,8 +256,10 @@ class Hex:
     @ rescale_color         - recalculates the color based off of the current color and altitude
     """
     def __init__(self, center=default_p, radius=1.0 ):
-        if type(center)!=Point:
-            raise TypeError("Aarg 'center' must be of type {}, received {}".format( Point, type(center)))
+        if not isinstance(center, Point):
+            raise TypeError("Arg 'center' must be of type {}, received {}".format( Point, type(center)))
+        if not (isinstance(radius, float) or isinstance(radius, int)):
+            raise TypeError("Arg 'radius' must be {}, received {}".format(float, type(radius)))
         
         self._center = center
         self._radius = radius
@@ -1717,10 +1719,13 @@ class Path:
     
     def trim_at( self, where, keep_upper=False):
         """
-        trims the path at 'where'
+        Trims the path just before the 'where' entry.
+
+        If "keep_upper" is False we keep the "start--> /" half
+        If "keep_upper" is true we keep the  "which-->end" half
 
         @param where        - type Int or Point. If Int, trims the path at the vertex indexed by `where', else trims the path at the vertex `where`
-        @param keep_upper   - type Bool. Keeps   
+        @param keep_upper   - type Bool. start--->where if "keep_upper" is True 
         """
 
         p_type = False 
@@ -1739,6 +1744,10 @@ class Path:
                 which_index = self._vertices.index( where )
             except ValueError:
                 raise ValueError("Point {} is not in list of vertices for obj {}".format(where, type(self)))
+
+        # make sure it's not trying to trim at too long of a point
+        if which_index>= len(self._vertices):
+            raise ValueError("Index {} invalid, only {} Points on Path.".format(which_index, len(self._vertices)))
 
         
         # this leaves the self-intersect point there. Good!
