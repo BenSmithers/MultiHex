@@ -770,6 +770,9 @@ class entity_brush(basic_tool):
         assert( isinstance(ent_type, int))
         self._placing = ent_type 
 
+        if not self._loaded:
+            self.load_assets()
+
         if self._ghosted_placement is not None:
             self.parent.scene.removeItem(self._ghosted_placement)
             self._ghosted_placement = None 
@@ -825,7 +828,7 @@ class entity_brush(basic_tool):
         Called when a new hex is selected, OR this hex has changed (like new entities). Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
         """
         
-        self._menu = self.parent.ui.toolBox.currentIndex()
+        self._menu = self.parent.ui.contextPane.currentIndex()
 
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )
@@ -835,7 +838,7 @@ class entity_brush(basic_tool):
 
         if self._menu == 0:
             # tell the gui to update the proper menu
-            self.parent.loc_update_selection( self._selected_hex )
+            self.parent.extra_ui.loc_update_selection( self._selected_hex )
         elif self._menu==1:
             # get eIDs at this hex
             settlement_eid = None
@@ -846,7 +849,7 @@ class entity_brush(basic_tool):
                     if isinstance( self.parent.main_map.eid_catalogue[eID] , self._settlement ):
                         settlement_eid = eID
             self._selected_eid = settlement_eid
-            self.parent.set_update_selection( settlement_eid )
+            self.parent.extra_ui.set_update_selection( settlement_eid )
         else:
             pass
 
@@ -855,12 +858,12 @@ class entity_brush(basic_tool):
         """
         Called when a new /entity/ is selected. Chooses and updates the proper menu
         """
-        self._menu = self.parent.ui.toolBox.currentIndex()
+        self._menu = self.parent.ui.contextPane.currentIndex()
 
         if self._menu == 0:
-            self.parent.loc_update_name_text( self._selected_eid )
+            self.parent.extra_ui.loc_update_name_text( self._selected_eid )
         elif self._menu==1:
-            self.parent.set_update_selection( self._selected_eid )
+            self.parent.extra_ui.set_update_selection( self._selected_eid )
 
     def primary_mouse_released( self, event ):
         """

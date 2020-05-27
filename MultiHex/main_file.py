@@ -10,6 +10,7 @@ from MultiHex.guis.main_gui import main_gui
 
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import basic_tool
+from MultiHex.objects import Icons
 from MultiHex.map_types.overland import OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
 from MultiHex.about_class import about_dialog
 from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
@@ -65,6 +66,8 @@ class main_window(QMainWindow):
         self.config = json.load( file_object )
         file_object.close()
         self.params = []
+
+        self.icons = Icons()
 
     def smart_ui_chooser(self):
         self.switch_to_terrain()
