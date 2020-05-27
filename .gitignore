@@ -36,3 +36,8 @@ Python_v/~$Plans.docx
 .idea/*
 .vs/*
 MultiHex/.vs/
+
+MultiHex/dist
+MultiHex/build
+
+Windows\ Release/
