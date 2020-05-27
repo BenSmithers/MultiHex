@@ -475,7 +475,7 @@ class Detail_Brush( basic_tool ):
             setattr(self.parent.main_map.catalogue[center_id], self.configuring, getattr(self.parent.main_map.catalogue[center_id], self.configuring) + sign*self.magnitude)
             self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[center_id])
             self.parent.main_map.catalogue[center_id].rescale_color()
-            self.parent.writer_control.redraw_hex(center_id)
+            self.parent.hex_control.redraw_hex(center_id)
 
         reduced = self.magnitude
         iter = 1
@@ -488,7 +488,7 @@ class Detail_Brush( basic_tool ):
                     setattr(self.parent.main_map.catalogue[each], self.configuring, new_value)
                     self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
                     self.parent.main_map.catalogue[each].rescale_color()
-                    self.parent.writer_control.redraw_hex(each)
+                    self.parent.hex_control.redraw_hex(each)
             iter+=1
 
     def drop(self):
@@ -630,8 +630,7 @@ class River_Brush( path_brush ):
                     self.draw_path(pid)
                     self.select_pid(None)
                     self.sub_select('')
-                    self.parent.river_update_gui()
-                    print("merge")
+                    self.parent.extra_ui.river_update_gui()
                     return
 
         elif self._state==4: # adding to end
@@ -674,7 +673,7 @@ class River_Brush( path_brush ):
             self.select_pid(None )
             self._state = 0
 
-        self.parent.river_update_list()
+        self.parent.extra_ui.river_update_list()
         
 
     def draw_path( self, pID):
@@ -795,11 +794,11 @@ class Biome_Brush( region_brush):
 
     def primary_mouse_released(self, event):
         region_brush.primary_mouse_released(self, event)
-        self.parent.biome_update_gui()
+        self.parent.extra_ui.biome_update_gui()
      
     def secondary_mouse_released(self, event):
         region_brush.secondary_mouse_released(self, event)
-        self.parent.biome_update_gui()
+        self.parent.extra_ui.biome_update_gui()
 
 class County_Brush( region_brush ):
     def __init__(self, parent):
@@ -818,7 +817,7 @@ class County_Brush( region_brush ):
 
     def primary_mouse_released(self, event):
         region_brush.primary_mouse_released(self, event)
-        self.parent.county_update_with_selected()
+        self.parent.extra_ui.county_update_with_selected()
 
 class Nation_Brush( basic_tool ):
     def __init__(self, parent):
@@ -850,7 +849,7 @@ class Nation_Brush( basic_tool ):
         else:
             raise NotImplementedError("Unrecognized state {}".format(state))
 
-        self.parent.update_state()
+        self.parent.extra_ui.update_state()
 
     def primary_mouse_released( self, event ):
         where = Point( event.scenePos().x(), event.scenePos().y() )
@@ -891,7 +890,7 @@ class Nation_Brush( basic_tool ):
                 return
             else:
                 self._selected.add_county( this_county_rid )
-                self.parent.nation_update_gui()
+                self.parent.extra_ui.nation_update_gui()
                 
         elif self._state == 3:
             if self._selected is None:
@@ -900,7 +899,7 @@ class Nation_Brush( basic_tool ):
                 return
             else:
                 self._selected.remove_county( this_county_rid )
-                self.parent.nation_update_gui()
+                self.parent.extra_ui.nation_update_gui()
 
         self.parent.county_control.redraw_region(this_county_rid)
 
@@ -935,7 +934,7 @@ class Road_Brush( path_brush ):
 
     def secondary_mouse_released(self, event):
         path_brush.secondary_mouse_released(self, event)
-        self.parent.road_update_list()
+        self.parent.extra_ui.road_update_list()
 
 
 class OEntity_Brush( entity_brush ):

@@ -295,6 +295,19 @@ class clicker_control(QGraphicsScene):
         self._active.drop()
         self._active = self.master.region_control
 
+    @property
+    def active(self):
+        return(self._active)
+
+    def select(self,which_tool):
+        if not isinstance(which_tool, basic_tool):
+            raise TypeError("Cannot use tool of type {}!".format(type(which_tool)))
+        self.drop()
+        self._active = which_tool
+
+    def drop(self):
+        self._active.drop()
+
 class path_brush(basic_tool):
     """
     Basic tool implementation for drawing Path objects like rivers and roads
@@ -1099,7 +1112,11 @@ class hex_brush(Basic_Brush):
     def select_evt(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        self.parent.det_show_selected(loc_id)
+        try:
+            self.extra_ui.det_show_selected(loc_id)
+        except AttributeError:
+            print("didn't find the thing")
+            pass
         self.select( loc_id ) #select
 
     def deselect_evt(self, event):
