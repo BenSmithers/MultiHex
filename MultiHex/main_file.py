@@ -20,6 +20,9 @@ from MultiHex.guis.terrain_editor_gui import terrain_ui
 from MultiHex.guis.civ_gui import civ_ui
 from MultiHex.guis.new_load_gui import new_load_gui
 
+#import some dialogs
+from MultiHex.new_map import basicMapDialog
+
 class main_window(QMainWindow):
     def __init__(self,parent=None):
         QWidget.__init__(self, parent)
@@ -81,6 +84,8 @@ class main_window(QMainWindow):
         self.ui.actionTerrainEditor.setChecked(True)
         self._ui_clear_function = self.extra_ui.clear_ui
 
+        self.county_control.draw_borders = False
+        self.county_control.small_font = True
 
     def switch_to_civilization(self):
         self.scene.drop()
@@ -102,7 +107,9 @@ class main_window(QMainWindow):
             dialog.exec_()
 
     def new(self):
-        pass
+        new_dialog = basicMapDialog(self)
+        new_dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        new_dialog.exec_()
 
     def open(self):
         pass
