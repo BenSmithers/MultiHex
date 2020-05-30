@@ -14,6 +14,7 @@ from MultiHex.tools import QEntityItem
 from MultiHex.guis.main_gui import main_gui
 from MultiHex.generator.noise import generate_gradients, sample_noise
 from MultiHex.generator.util import create_name
+from MultiHex.map_types.overland import Nation
 
 # these are a couple dialogs
 from MultiHex.guis.confirm_inject import Ui_Dialog as confirm_ui
@@ -807,7 +808,7 @@ class terrain_ui:
         else:
             old_one = self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color
             qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
-            new_color = QColorDialog.getColor(initial = qt_old_one, parent=self)
+            new_color = QColorDialog.getColor(initial = qt_old_one, parent=self.parent)
 
             if new_color.isValid():
                 self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
