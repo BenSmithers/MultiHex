@@ -1,37 +1,75 @@
 {
-    "cont": {
-        "land": {
-            "land_spread": 0.08,
-            "land_width": 0.04,
-            "mnt_thicc": 1.5,
-            "water_spread": 0.02,
-            "water_width": 0.01
+    "continental": {
+      "land": {
+        "values": {
+          "land_spread": 0.08,
+          "land_width": 0.04,
+          "mnt_thicc": 1.5,
+          "water_spread": 0.02,
+          "water_width": 0.01
         },
-        "mountains": {
-            "avg_range": 14.0,
-            "dimensions": [
-                6000,
-                3000
-            ],
-            "n_peaks": 11,
-            "sigma": 40,
-            "zones": 4
-        },
-        "weather": {
-            "diffusion": 0.03,
-            "pres_weight": 0.75,
-            "rain_rate": 0.007,
-            "reservoir_init": 150.0,
-            "resr_weight": 1.25
-        },
-        "regions": {
-            "n_regions":30,
-            "reg_size" :20
-        },
-        "rivers": {
-            "n_rivers":60,
-            "max_len":35
+        "desc": {
+          "land_spread": "How quickly should the lands altitude decrease as we move away from the ridgelines",
+          "land_width": "Variance in how quickly the land lowers out",
+          "mnt_thicc": "Approximate thickness of mountains around ridgelines",
+          "water_spread": "How quickly altitudes lower on the seabed",
+          "water_width": "Variance in how quickly the altitude lowers out in seabeds"
         }
+      },
+      "mountains": {
+        "values": {
+          "avg_range": 14.0,
+          "dimx": 6000,
+          "dimy": 3000,
+          "n_peaks": 11,
+          "sigma": 40,
+          "zones": 4
+        },
+        "desc": {
+          "avg_range": "Average length of generated ridgelines",
+          "dimx": "X-dimension of map",
+          "dimy": "Y-dimension of map",
+          "n_peaks": "Number of ridgelines per continent",
+          "sigma": "Size of area ridgelines are injected around a continent",
+          "zones": "Number of continents"
+        }
+      },
+      "weather": {
+        "values": {
+          "diffusion": 0.03,
+          "pres_weight": 0.75,
+          "rain_rate": 0.007,
+          "reservoir_init": 150,
+          "resr_weight": 1.25
+        },
+        "desc": {
+          "diffusion": "How quickly clouds diffuse",
+          "pres_weight": "I can't remember this one",
+          "rain_rate": "How quickly it rains over land",
+          "reservoir_init": "How much rain is in the clouds",
+          "resr_weight": "Who even knows"
+        }
+      },
+      "regions": {
+        "values": {
+          "n_regions": 30,
+          "reg_size": 20
+        },
+        "desc": {
+          "n_regions": "Number of Biomes generated",
+          "reg_size": "Approximate Size of Biomes"
+        }
+      },
+      "rivers": {
+        "values": {
+          "n_rivers": 60,
+          "max_len": 35
+        },
+        "desc": {
+          "n_rivers": "Number of rivers to generate",
+          "max_len": "Max Length of a river"
+        }
+      }
     },
     "large": {
         "land": {
@@ -43,10 +81,8 @@
         },
         "mountains": {
             "avg_range": 30.0,
-            "dimensions": [
-                3840,
-                2160
-            ],
+            "dimx": 6000,
+            "dimy": 3000,
             "mnt_thicc": 2.3,
             "n_peaks": 25,
             "sigma": 60.0
@@ -69,10 +105,8 @@
         },
         "mountains": {
             "avg_range": 30.0,
-            "dimensions": [
-                1920,
-                1080
-            ],
+            "dimx": 6000,
+            "dimy": 3000,
             "mnt_thicc": 2.3,
             "n_peaks": 15,
             "sigma": 60.0
