@@ -26,15 +26,7 @@ class advanced_map_dialog(object):
         self.scrollAreaWidgetContents.setObjectName("scrollAreaWidgetContents")
         self.formLayout = QtWidgets.QFormLayout(self.scrollAreaWidgetContents)
         self.formLayout.setObjectName("formLayout")
-        self.ex_label = QtWidgets.QLabel(self.scrollAreaWidgetContents)
-        self.ex_label.setObjectName("ex_label")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.ex_label)
-        self.ex_desc = QtWidgets.QLabel(self.scrollAreaWidgetContents)
-        self.ex_desc.setObjectName("ex_desc")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.ex_desc)
-        self.ex_spin = QtWidgets.QDoubleSpinBox(self.scrollAreaWidgetContents)
-        self.ex_spin.setObjectName("ex_spin")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.ex_spin)
+        
         self.scrollArea.setWidget(self.scrollAreaWidgetContents)
         self.verticalLayout.addWidget(self.scrollArea)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -54,7 +46,5 @@ class advanced_map_dialog(object):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "Advanced Generation"))
         self.param_combo.setItemText(0, _translate("Dialog", "Mountains"))
-        self.ex_label.setText(_translate("Dialog", "Example Label"))
-        self.ex_desc.setText(_translate("Dialog", "This is where the description will go"))
         self.pushButton.setText(_translate("Dialog", "Continue"))
 
