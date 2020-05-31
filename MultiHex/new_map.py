@@ -1,5 +1,6 @@
 from MultiHex.guis.advanced_map_generation import advanced_map_dialog
 from MultiHex.guis.basic_map_generation import basic_map_dialog
+from MultiHex.generator.full_chain import full_sim
 
 import os
 import json #open the configuration stuff
@@ -41,11 +42,14 @@ class basicMapDialog(QDialog):
         adv_dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         adv_dialog.exec_()
 
-    def button_generate(self):
+    def button_generate(self, custom=False):
         """
         Calls when the generate button is clicked. Starts the generation process.
         """
-        pass
+        if custom:
+            full_sim('custom', self.ui.fileNameEntry.text())
+        else:
+            full_sim(self.ui.gen_preset_combo.currentText(), self.ui.fileNameEntry.text())
 
     def button_quit(self):
         """
@@ -96,12 +100,17 @@ class advancedMapDialog(QDialog):
         QDialog.__init__(self,parent)
         self.ui=advanced_map_dialog()
         self.ui.setupUi(self)
+        self.parent=parent
+        self.baseline = baseline
 
         # load it in!
         self.config_loc = os.path.join(os.path.dirname(__file__),"generator","config.json")
         f = open(self.config_loc,'r')
         self.config = json.load(f)
         f.close()
+
+        self.custom_key = "custom"
+        self.load_baseline_into_custom()
 
         self.ui.param_combo.clear()
 
@@ -111,7 +120,6 @@ class advancedMapDialog(QDialog):
         if baseline not in self.config:
             self.close()
         
-        self.baseline = baseline
 
         for key in self.config[baseline]:
             nice = str(key).lower()
@@ -121,6 +129,20 @@ class advancedMapDialog(QDialog):
         self.ui.pushButton.clicked.connect(self.continue_button)
         self.ui.param_combo.currentIndexChanged.connect(self.new_dropdown_selected)
         self.new_dropdown_selected()
+
+    def load_baseline_into_custom(self):
+        """
+        Copies whatever the basline is into the custom key in the generation 'config' json file
+        """
+        self.config[self.custom_key] = self.config[self.baseline]
+
+    def write_config_file(self):
+        """
+        This dumps the current configuration into the generation config file
+        """
+        f = open(self.config_loc,'w')
+        json.dump(self.config,f,ensure_ascii=True,indent=2)
+        f.close()
 
     def new_dropdown_selected(self):
         get_key = self.ui.param_combo.currentText().lower()
@@ -132,17 +154,18 @@ class advancedMapDialog(QDialog):
         self.added_items = {}
 
         self.row_number = 0
-        for key in self.config[self.baseline][get_key]["values"]:
-            self.add_entry(key, isinstance(self.config[self.baseline][get_key]["values"][key], int))
+        for key in self.config[self.custom_key][get_key]["values"]:
+            self.add_entry(key, isinstance(self.config[self.custom_key][get_key]["values"][key], int))
 
         if self.ui.param_combo.currentIndex() == (self.ui.param_combo.count()-1):
             self.ui.pushButton.setText("Generate")
         else:
-            self.ui.pushButton.setText("Continue")
+            self.ui.pushButton.setText("Save and Continue")
 
     def add_entry(self, key, type_int):
         name = str(key).lower()
         name = name[0].upper() + name[1:]
+        subkey = self.ui.param_combo.currentText().lower()
         
         # add in the label
         self.added_items[name+"l"] = QtWidgets.QLabel(self.ui.scrollAreaWidgetContents)
@@ -155,13 +178,13 @@ class advancedMapDialog(QDialog):
             self.added_items[name] = QtWidgets.QSpinBox(self.ui.scrollAreaWidgetContents)
             self.added_items[name].setMaximum(8000)
             self.added_items[name].setMinimum(0)
-            self.added_items[name].setValue(self.config[self.baseline][self.ui.param_combo.currentText().lower()]["values"][key])
+            self.added_items[name].setValue(self.config[self.custom_key][subkey]["values"][key])
         else:
             self.added_items[name] = QtWidgets.QDoubleSpinBox(self.ui.scrollAreaWidgetContents)
             self.added_items[name].setDecimals(3)
             self.added_items[name].setSingleStep(0.01)
             self.added_items[name].setMinimum(0)
-            self.added_items[name].setValue(self.config[self.baseline][self.ui.param_combo.currentText().lower()]["values"][key])
+            self.added_items[name].setValue(self.config[self.custom_key][subkey]["values"][key])
         self.added_items[name].setObjectName(name+"spin")
         
         self.ui.formLayout.setWidget(self.row_number, QtWidgets.QFormLayout.FieldRole, self.added_items[name])
@@ -171,13 +194,22 @@ class advancedMapDialog(QDialog):
         # add the description 
         self.added_items[name+"2"] = QtWidgets.QLabel(self.ui.scrollAreaWidgetContents)
         self.added_items[name+"2"].setObjectName(name+"... desc")
-        self.added_items[name+"2"].setText(self.config[self.baseline][self.ui.param_combo.currentText().lower()]["desc"][key])
+        self.added_items[name+"2"].setText(self.config[self.custom_key][subkey]["desc"][key])
         self.ui.formLayout.setWidget(self.row_number, QtWidgets.QFormLayout.FieldRole, self.added_items[name+"2"])
 
         self.row_number+=1
 
     def continue_button(self):
         if self.ui.param_combo.currentIndex() == (self.ui.param_combo.count()-1):
-            pass
+            self.write_config_file()
+            self.parent.button_generate(True)
+            self.close()
         else:
+            # update the config stuff
+            subkey = self.ui.param_combo.currentText().lower()
+            for key in self.config[self.custom_key][subkey]["values"]:
+                name = str(key).lower()
+                name = name[0].upper() + name[1:]
+                self.config[self.custom_key][subkey]["values"][key] = self.added_items[name].value()
+
             self.ui.param_combo.setCurrentIndex(self.ui.param_combo.currentIndex()+1)
