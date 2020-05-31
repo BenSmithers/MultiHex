@@ -4,7 +4,7 @@ from MultiHex.guis.basic_map_generation import basic_map_dialog
 import os
 import json #open the configuration stuff
 
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QDialog
 
 """
@@ -71,6 +71,8 @@ class basicMapDialog(QDialog):
 
         self.ui.tileset_combo.clear()
         for key in data:
+            if str(key)=="custom":
+                continue
             nice = str(key).lower()
             nice = nice[0].upper() + nice[1:]
             self.ui.tileset_combo.addItem(nice)
@@ -90,9 +92,92 @@ class basicMapDialog(QDialog):
 
 
 class advancedMapDialog(QDialog):
-    def __init__(self,parent=None):
+    def __init__(self,parent=None,baseline="continental"):
         QDialog.__init__(self,parent)
         self.ui=advanced_map_dialog()
         self.ui.setupUi(self)
 
-    def add_new_
+        # load it in!
+        self.config_loc = os.path.join(os.path.dirname(__file__),"generator","config.json")
+        f = open(self.config_loc,'r')
+        self.config = json.load(f)
+        f.close()
+
+        self.ui.param_combo.clear()
+
+        self.added_items = {}
+        self.row_number = 0
+
+        if baseline not in self.config:
+            self.close()
+        
+        self.baseline = baseline
+
+        for key in self.config[baseline]:
+            nice = str(key).lower()
+            nice = nice[0].upper() + nice[1:]
+            self.ui.param_combo.addItem(nice)
+        
+        self.ui.pushButton.clicked.connect(self.continue_button)
+        self.ui.param_combo.currentIndexChanged.connect(self.new_dropdown_selected)
+        self.new_dropdown_selected()
+
+    def new_dropdown_selected(self):
+        get_key = self.ui.param_combo.currentText().lower()
+        # now we add some buttons
+
+        for key in self.added_items:
+            self.ui.formLayout.removeWidget( self.added_items[key] )
+            self.added_items[key].deleteLater()
+        self.added_items = {}
+
+        self.row_number = 0
+        for key in self.config[self.baseline][get_key]["values"]:
+            self.add_entry(key, isinstance(self.config[self.baseline][get_key]["values"][key], int))
+
+        if self.ui.param_combo.currentIndex() == (self.ui.param_combo.count()-1):
+            self.ui.pushButton.setText("Generate")
+        else:
+            self.ui.pushButton.setText("Continue")
+
+    def add_entry(self, key, type_int):
+        name = str(key).lower()
+        name = name[0].upper() + name[1:]
+        
+        # add in the label
+        self.added_items[name+"l"] = QtWidgets.QLabel(self.ui.scrollAreaWidgetContents)
+        self.added_items[name+"l"].setObjectName(name)
+        self.added_items[name+"l"].setText(name)
+        self.ui.formLayout.setWidget(self.row_number, QtWidgets.QFormLayout.LabelRole, self.added_items[name+"l"])
+
+        # add the value
+        if type_int:
+            self.added_items[name] = QtWidgets.QSpinBox(self.ui.scrollAreaWidgetContents)
+            self.added_items[name].setMaximum(8000)
+            self.added_items[name].setMinimum(0)
+            self.added_items[name].setValue(self.config[self.baseline][self.ui.param_combo.currentText().lower()]["values"][key])
+        else:
+            self.added_items[name] = QtWidgets.QDoubleSpinBox(self.ui.scrollAreaWidgetContents)
+            self.added_items[name].setDecimals(3)
+            self.added_items[name].setSingleStep(0.01)
+            self.added_items[name].setMinimum(0)
+            self.added_items[name].setValue(self.config[self.baseline][self.ui.param_combo.currentText().lower()]["values"][key])
+        self.added_items[name].setObjectName(name+"spin")
+        
+        self.ui.formLayout.setWidget(self.row_number, QtWidgets.QFormLayout.FieldRole, self.added_items[name])
+
+        self.row_number+=1
+
+        # add the description 
+        self.added_items[name+"2"] = QtWidgets.QLabel(self.ui.scrollAreaWidgetContents)
+        self.added_items[name+"2"].setObjectName(name+"... desc")
+        self.added_items[name+"2"].setText(self.config[self.baseline][self.ui.param_combo.currentText().lower()]["desc"][key])
+        self.ui.formLayout.setWidget(self.row_number, QtWidgets.QFormLayout.FieldRole, self.added_items[name+"2"])
+
+        self.row_number+=1
+
+    def continue_button(self):
+        if self.ui.param_combo.currentIndex() == (self.ui.param_combo.count()-1):
+            pass
+        else:
+            self.ui.param_combo.setCurrentIndex(self.ui.param_combo.currentIndex()+1)
