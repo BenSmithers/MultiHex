@@ -86,21 +86,6 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     if size=='cont':
         clouds_east = [ [reservoir_init, dimensions[0]] for i in range( n_cloud_units ) ]
 
-    
-    if plotting:
-        import matplotlib
-        matplotlib.use('TkAgg')
-        import matplotlib.pyplot as plt
-
-        plt.figure(1)
-        plt.xlim([0, dimensions[0]])
-        plt.ylim([0, dimensions[1]])
-        plt.ion()
-        plt.show()
-
-        plt.figure(2)
-        plt.ion()
-        plt.show()
 
     def step():
         # just so it knows we're modifying this thing! 
