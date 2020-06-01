@@ -307,6 +307,7 @@ class clicker_control(QGraphicsScene):
 
     def drop(self):
         self._active.drop()
+        self._active=Basic_Brush()
 
 class path_brush(basic_tool):
     """
