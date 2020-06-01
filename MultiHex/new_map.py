@@ -1,6 +1,5 @@
 from MultiHex.guis.advanced_map_generation import advanced_map_dialog
 from MultiHex.guis.basic_map_generation import basic_map_dialog
-from MultiHex.generator.full_chain import full_sim
 
 import os
 import json #open the configuration stuff
@@ -46,10 +45,9 @@ class basicMapDialog(QDialog):
         """
         Calls when the generate button is clicked. Starts the generation process.
         """
-        if custom:
-            full_sim('custom', self.ui.fileNameEntry.text())
-        else:
-            full_sim(self.ui.gen_preset_combo.currentText(), self.ui.fileNameEntry.text())
+        arg = 'custom' if custom else self.ui.gen_preset_combo.currentText()
+        self.parent.gen_params = [arg.lower(), self.ui.fileNameEntry.text()]
+        self.close()
 
     def button_quit(self):
         """

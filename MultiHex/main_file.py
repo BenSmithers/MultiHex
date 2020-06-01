@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtGui
+from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDialog, QApplication, QWidget
 
 import os
@@ -19,6 +19,8 @@ from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
 from MultiHex.guis.terrain_editor_gui import terrain_ui
 from MultiHex.guis.civ_gui import civ_ui
 from MultiHex.guis.new_load_gui import new_load_gui
+from MultiHex.generator.full_chain import full_sim
+
 
 #import some dialogs
 from MultiHex.new_map import basicMapDialog
@@ -72,6 +74,8 @@ class main_window(QMainWindow):
 
         self.icons = Icons()
 
+        self.gen_params = []
+
     def smart_ui_chooser(self):
         self.switch_to_terrain()
 
@@ -91,11 +95,13 @@ class main_window(QMainWindow):
         self.scene.drop()
         if self._ui_clear_function is not None:
             self._ui_clear_function(self.ui)
-
         self.extra_ui = civ_ui(self)
         self.ui.actionCivEditor.setChecked(True)
         self.ui.actionTerrainEditor.setChecked(False)
         self._ui_clear_function = self.extra_ui.clear_ui
+
+        self.county_control.draw_borders = True
+        self.county_control.small_font = False
 
     def show(self):
         QMainWindow.show(self)
@@ -107,20 +113,36 @@ class main_window(QMainWindow):
             dialog.exec_()
 
     def new(self):
+        """
+        This is called in order to generate a new map
+        """
         new_dialog = basicMapDialog(self)
         new_dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         new_dialog.exec_()
 
+        if self.gen_params==[]:
+            return
+        else:
+            genBar = WorldGenLoadingBar(self.gen_params[0], self.gen_params[1])
+            genBar.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+            genBar.exec_()
+            gen_params = []
+
+    def _gen_finished(self):
+        pass
+
+
     def open(self):
         pass
 
-    def load(self):
+    def load(self, filename=None):
         """
         Called when we want to load a new map
         """
-        self.filename = QFileDialog.getOpenFileName(None, 'Open HexMap', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
-        if self.filename is None:
-            return
+        if filename is None:
+            self.filename = QFileDialog.getOpenFileName(None, 'Open HexMap', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
+            if self.filename is None:
+                return
         elif not os.path.exists(self.filename): 
             # either the user chose something that doesn't exist, or they canceled 
             return
@@ -187,6 +209,46 @@ class main_window(QMainWindow):
         else:
             save_map( self.main_map, self.file_name)
     
+class WorldGenLoadingBar(QDialog):
+    def __init__(self, gen_type, filename, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.gen_type = gen_type
+        self.filename = filename
+
+        self.worldGen = None
+        self.initUi()        
+
+    def initUi(self):
+        self.vbox = QtWidgets.QVBoxLayout()
+        self.progress = QtWidgets.QProgressBar(self)
+        self.progress.setMinimum(0)
+        self.progress.setMaximum(0)
+        self.vbox.addWidget(self.progress)
+        self.setLayout(self.vbox)
+
+        self.worldGen = WorldGenerationThread(self.gen_type, self.filename)
+        self.worldGen.calculationFinished.connect(self.done)
+
+        self.worldGen.run()
+
+    def done(self, optional=None):
+        if optional is not None:
+            print(optional)
+        self.close()
+
+class WorldGenerationThread(QtCore.QThread):
+    calculationFinished = QtCore.pyqtSignal()
+    def __init__(self, gen_type, filename):
+        super().__init__()
+        self.gen_type = gen_type
+        self.filename = filename
+
+    def run(self) -> None:
+        full_sim(self.gen_type,self.filename)
+        self.calculationFinished.emit()
+
+
 class new_load_dialog(QDialog):
     def __init__(self, parent):
         super(new_load_dialog, self).__init__(parent)
