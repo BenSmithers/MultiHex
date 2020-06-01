@@ -549,7 +549,7 @@ class terrain_ui:
 
     def det_brush_size_change(self):
         new_radius = self.det_Brush_spin.value()
-        self.detail_control.set_radius(new_radius)
+        self.parent.detail_control.set_radius(new_radius)
 
     def det_mag_changed(self):
         new_magnitude = self.det_mag_spin.value()/20.0
