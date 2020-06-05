@@ -19,7 +19,6 @@ from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
 from MultiHex.guis.terrain_editor_gui import terrain_ui
 from MultiHex.guis.civ_gui import civ_ui
 from MultiHex.guis.new_load_gui import new_load_gui
-from MultiHex.generator.full_chain import full_sim
 
 
 #import some dialogs
@@ -123,10 +122,10 @@ class main_window(QMainWindow):
         if self.gen_params==[]:
             return
         else:
-            genBar = WorldGenLoadingBar(self.gen_params[0], self.gen_params[1])
+            genBar = WorldGenLoadingBar(self, self.gen_params[0], self.gen_params[1])
             genBar.setAttribute(QtCore.Qt.WA_DeleteOnClose)
             genBar.exec_()
-            gen_params = []
+            self.gen_params = []
 
     def _gen_finished(self):
         pass
@@ -141,9 +140,10 @@ class main_window(QMainWindow):
         """
         if filename is None:
             self.filename = QFileDialog.getOpenFileName(None, 'Open HexMap', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
-            if self.filename is None:
+            if self.filename is None or self.filename=='':
                 return
-        elif not os.path.exists(self.filename): 
+        
+        if not os.path.exists(self.filename): 
             # either the user chose something that doesn't exist, or they canceled 
             return
 
@@ -209,44 +209,55 @@ class main_window(QMainWindow):
         else:
             save_map( self.main_map, self.file_name)
     
-class WorldGenLoadingBar(QDialog):
-    def __init__(self, gen_type, filename, parent=None):
-        super().__init__(parent)
-        self.parent = parent
-        self.gen_type = gen_type
-        self.filename = filename
-
-        self.worldGen = None
-        self.initUi()        
-
-    def initUi(self):
-        self.vbox = QtWidgets.QVBoxLayout()
-        self.progress = QtWidgets.QProgressBar(self)
+class LoadingBarGui(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Loading")
+        self.vbox = QtWidgets.QVBoxLayout(Dialog)
+        self.progress = QtWidgets.QProgressBar(Dialog)
         self.progress.setMinimum(0)
         self.progress.setMaximum(0)
         self.vbox.addWidget(self.progress)
-        self.setLayout(self.vbox)
 
-        self.worldGen = WorldGenerationThread(self.gen_type, self.filename)
-        self.worldGen.calculationFinished.connect(self.done)
+class WorldGenLoadingBar(QDialog):
+    def __init__(self,parent, gen_type, filename):
+        QDialog.__init__(self,parent)
+        # QtCore.Qt.WindowStaysOnTopHint
+        self.ui=LoadingBarGui()
+        self.ui.setupUi(self)
+        self.parent = parent
+        self.setWindowTitle("Generating Map...")
 
-        self.worldGen.run()
-
-    def done(self, optional=None):
-        if optional is not None:
-            print(optional)
-        self.close()
-
-class WorldGenerationThread(QtCore.QThread):
-    calculationFinished = QtCore.pyqtSignal()
-    def __init__(self, gen_type, filename):
-        super().__init__()
         self.gen_type = gen_type
         self.filename = filename
 
-    def run(self) -> None:
-        full_sim(self.gen_type,self.filename)
-        self.calculationFinished.emit()
+        self.threadpool = QtCore.QThreadPool()
+        self.run()
+
+    def run(self):
+        worldGen = WorldGenerationThread(self.gen_type, self.filename)
+        worldGen.signals.signal.connect(self.finished)
+        self.threadpool.start(worldGen)
+
+    def finished(self,other=None):
+        self.close()
+
+class Signaler(QtCore.QObject):
+    signal = QtCore.pyqtSignal()
+
+class WorldGenerationThread(QtCore.QRunnable):
+    def __init__(self, gen_type, filename):
+        super(WorldGenerationThread,self).__init__()
+        self.gen_type = gen_type
+        self.filename = filename
+        self.setAutoDelete(True)
+
+        self.signals = Signaler()
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        from MultiHex.generator.full_chain import full_sim
+        self.test = full_sim(self.gen_type,self.filename)
+        self.signals.signal.emit()
 
 
 class new_load_dialog(QDialog):
