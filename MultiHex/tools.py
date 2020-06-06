@@ -644,6 +644,7 @@ class path_brush(basic_tool):
         self.QPen.setStyle(1)
         self.QPen.setWidth( 3 + this_path.width )
 
+        # we use this here so the correct type of Scene object is used for derived paths 
         path = self._qtpath_type()
         
         # if we're drawing the selected path, use red
@@ -1117,7 +1118,7 @@ class hex_brush(Basic_Brush):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
         try:
-            self.extra_ui.det_show_selected(loc_id)
+            self.parent.extra_ui.det_show_selected(loc_id)
         except AttributeError:
             print("didn't find the thing")
             pass
