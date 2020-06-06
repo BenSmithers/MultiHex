@@ -24,7 +24,7 @@ Objects:
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
-multihex_version = "0.2.1"
+multihex_version = "0.3.0"
 map_version = "0.4"
 
 
