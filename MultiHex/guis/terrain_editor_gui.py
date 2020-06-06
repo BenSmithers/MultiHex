@@ -455,7 +455,8 @@ class terrain_ui:
         self.actionBiome_Names.setChecked(True)
         self.actionBiome_Borders.setChecked(True)
         self.actionRivers.setChecked(True)
-        self.actionRivers.triggered.connect( self.menu_view_rivers )
+
+        self.river_update_list()
 
     def clear_ui(self, which_ui):
         which_ui.toolPane.removeWidget(self.tool_hex_select)
@@ -502,7 +503,7 @@ class terrain_ui:
             self.det_hexid_disp.setText( str(id) )
         else:
             self.hex_select_disp.setText("")
-            self.det_hexid_disp.setText( "")
+            self.det_hexid_disp.setText("")
 
     def det_show_selected(self, id = None):
         """
@@ -699,15 +700,15 @@ class terrain_ui:
             self.parent.river_control.select_pid(pID)
 
         self.parent.river_control.sub_select( '' )
-        self.parent.river_update_gui()
+        self.river_update_gui()
 
     def river_trib_click(self, index=None):
         """
         Called when a tributary entry is clicked on. It selects that tributary, and reupdates the tributary list
         """
         item = self.tributary_list_entry.itemFromIndex(index).eID
-        self.parent.river_control.sub_select( self.river_control.sub_selection + str(item) )
-        self.parent.river_update_gui()
+        self.parent.river_control.sub_select( self.parent.river_control.sub_selection + str(item) )
+        self.river_update_gui()
 
 
     def river_update_list(self):
@@ -761,11 +762,11 @@ class terrain_ui:
         self.parent.river_control.pop_selected_end()
 
     def river_as(self):
-        self.parent.scene.select(self.river_control)
+        self.parent.scene.select(self.parent.river_control)
         self.parent.river_control.prepare( 5 )
 
     def river_ae(self):
-        self.parent.scene.select(self.river_control)
+        self.parent.scene.select(self.parent.river_control)
         self.parent.river_control.prepare( 3 )
 
     def river_delete(self):

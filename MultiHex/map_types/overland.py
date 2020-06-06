@@ -8,7 +8,8 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
 
 """
-Implements the overland map type, its brushes, and its hexes 
+Implements the overland map type, its brushes, and its hexes.
+These are all derived from the "core" and "tools classes 
 
 Entries:
     Town            - Settlement (Entity) implementation 
@@ -125,7 +126,7 @@ class Road(Path):
 
 class River(Path):
     """
-    Implements `Path`
+    Implements `Path` for rivers, allowing rivers to be joined to make tributaries 
     """
     def __init__(self, start):
         Path.__init__(self, start)
@@ -215,6 +216,8 @@ class River(Path):
 class County(Region, Government):
     """
     Implements the Region class for Counties. 
+    Adds this "tension" property measuring discrepancies between a county's government and its constituent government 
+    Also adds ways of accessing total wealth and population
     """
 
     def __init__(self, hex_id, parent):
@@ -280,6 +283,7 @@ class County(Region, Government):
 class Nation( Government ):
     """
     A Collection of Counties. One County serves as the seat of the Nation, and that's this one. 
+    Similar to Counties, adds tension and total wealth+population
     """
     def __init__(self, parent, rID):
         """
@@ -387,6 +391,9 @@ class Biome(Region):
 
 
 class Detail_Brush( basic_tool ):
+    """
+    This tool is used to modify aspects of the hexes in bulk. 
+    """
     def __init__(self,parent):
         basic_tool.__init__(self, parent)
 
@@ -465,6 +472,9 @@ class Detail_Brush( basic_tool ):
         self.brushy_brushy(event, -1)
 
     def brushy_brushy( self, event, sign=1):
+        """
+        This is used to change temperature, rainfall, altitude, or whatever is underneath the brush
+        """
         if self.configuring=="":
             return
 
@@ -530,6 +540,9 @@ class River_Brush( path_brush ):
 
 
     def _dive(self,river, key):
+        """
+        Recursively access the river object according to the selected tributary 
+        """
         assert(isinstance(key, str))
         assert(isinstance(river, River))
 
@@ -688,20 +701,15 @@ class River_Brush( path_brush ):
         else:
             return
 
-        
-
+        # Clear everything out first. This starts from the outermost, works its way in to the delta
         if pID in self._drawn_paths:
-
-            if this_path.tributaries is not None:
-                self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
-
             self.river_remove_item( self._drawn_paths[pID] )
             del self._drawn_paths[pID]
 
-        
-        # if there's a sub-selection, make sure not to draw the base part blue 
-        blue = self.sub_selection!=''
-        path_brush.draw_path(self, pID, blue)
+        path_brush.draw_path(self, pID, self.sub_selection!='')
+
+        if this_path.tributaries is not None:
+            self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
 
 
 
@@ -719,14 +727,6 @@ class River_Brush( path_brush ):
 
     def draw_tribs(self, river, depth, is_selected):
         assert( isinstance( river, River))
-       
-        # color, style, already set by original call to the draw function! 
-        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
-        if river.tributaries[0].tributaries is not None:
-            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
-        if river.tributaries[1].tributaries is not None:
-            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
-
 
         if not self.drawing:
             return
@@ -762,6 +762,13 @@ class River_Brush( path_brush ):
         # set the z-value of the rivers
         tributary_objs[0].setZValue(river.z_level)
         tributary_objs[1].setZValue(river.z_level)
+
+        # color, style, already set by original call to the draw function! 
+        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
+        if river.tributaries[0].tributaries is not None:
+            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
+        if river.tributaries[1].tributaries is not None:
+            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
 
         # return a tuple of the objects 
         return tributary_objs
