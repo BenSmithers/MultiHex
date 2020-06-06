@@ -280,15 +280,13 @@ class terrain_ui:
         self.formLayout_3.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.bio_name_but_gen)
         self.biome_but_apply = QtWidgets.QPushButton(self.BiomePainter)
         self.biome_but_apply.setObjectName("biome_but_apply")
-        self.formLayout_3.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.biome_but_apply)
+        self.formLayout_3.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.biome_but_apply)
         self.biome_but_delete = QtWidgets.QPushButton(self.BiomePainter)
         self.biome_but_delete.setObjectName("biome_but_delete")
         self.formLayout_3.setWidget(7, QtWidgets.QFormLayout.FieldRole, self.biome_but_delete)
 
-        spacerItem5 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.formLayout_3.setItem(7, QtWidgets.QFormLayout.FieldRole, spacerItem5)
         spacerItem6 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.formLayout_3.setItem(5, QtWidgets.QFormLayout.FieldRole, spacerItem6)
+        self.formLayout_3.setItem(6, QtWidgets.QFormLayout.FieldRole, spacerItem6)
         which_ui.contextPane.addItem(self.BiomePainter, "")
 
 
