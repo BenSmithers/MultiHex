@@ -8,16 +8,15 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
+
+from MultiHex.map_types.overland import Town, Nation
+from MultiHex.objects import Icons
+from MultiHex.about_class import about_dialog
 from MultiHex.tools import QEntityItem
 
-from MultiHex.map_types.overland import Town
-from MultiHex.objects import Icons
-
-
 from MultiHex.guis.main_gui import main_gui
-
 from MultiHex.guis.ward_dialog import Ui_Dialog as ward_ui
-from MultiHex.about_class import about_dialog
+
 
 
 import os
@@ -37,35 +36,6 @@ class civ_ui:
         self.ent_select_button_0.setIconSize(QtCore.QSize(32, 32))
         self.ent_select_button_0.setObjectName("ent_select_button_0")
         which_ui.toolPane.addWidget(self.ent_select_button_0)
-        self.count_sel_button_1 = QtWidgets.QToolButton(which_ui.centralwidget)
-        self.count_sel_button_1.setMinimumSize(QtCore.QSize(40, 40))
-        self.count_sel_button_1.setToolTip("")
-        self.count_sel_button_1.setText("")
-        icon2 = QtGui.QIcon()
-        icon2.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"select_county.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.count_sel_button_1.setIcon(icon2)
-        self.count_sel_button_1.setIconSize(QtCore.QSize(32, 32))
-        self.count_sel_button_1.setObjectName("count_sel_button_1")
-        which_ui.toolPane.addWidget(self.count_sel_button_1)
-        self.county_brush = QtWidgets.QToolButton(which_ui.centralwidget)
-        self.county_brush.setToolTip("")
-        self.county_brush.setToolTipDuration(-1)
-        icon3 = QtGui.QIcon()
-        icon3.addPixmap(QtGui.QPixmap(os.path.join(art_dir, "temp.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.county_brush.setIcon(icon3)
-        self.county_brush.setIconSize(QtCore.QSize(32, 32))
-        self.county_brush.setObjectName("county_brush")
-        which_ui.toolPane.addWidget(self.county_brush)
-        self.hand_button_2 = QtWidgets.QToolButton(which_ui.centralwidget)
-        self.hand_button_2.setMinimumSize(QtCore.QSize(40, 40))
-        icon4 = QtGui.QIcon()
-        icon4.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"hand.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.hand_button_2.setIcon(icon4)
-        self.hand_button_2.setIconSize(QtCore.QSize(32, 32))
-        self.hand_button_2.setObjectName("hand_button_2")
-        which_ui.toolPane.addWidget(self.hand_button_2)
-        self.spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        which_ui.toolPane.addItem(self.spacerItem1)
         self.loc_button_1 = QtWidgets.QToolButton(which_ui.centralwidget)
         self.loc_button_1.setMinimumSize(QtCore.QSize(40, 40))
         icon5 = QtGui.QIcon()
@@ -90,6 +60,16 @@ class civ_ui:
         self.road_button_3.setIconSize(QtCore.QSize(32, 32))
         self.road_button_3.setObjectName("road_button_3")
         which_ui.toolPane.addWidget(self.road_button_3)
+        self.count_sel_button_1 = QtWidgets.QToolButton(which_ui.centralwidget)
+        self.count_sel_button_1.setMinimumSize(QtCore.QSize(40, 40))
+        self.count_sel_button_1.setToolTip("")
+        self.count_sel_button_1.setText("")
+        icon2 = QtGui.QIcon()
+        icon2.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"select_county.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        self.count_sel_button_1.setIcon(icon2)
+        self.count_sel_button_1.setIconSize(QtCore.QSize(32, 32))
+        self.count_sel_button_1.setObjectName("count_sel_button_1")
+        which_ui.toolPane.addWidget(self.count_sel_button_1)
         self.count_button_4 = QtWidgets.QToolButton(which_ui.centralwidget)
         self.count_button_4.setMinimumSize(QtCore.QSize(40, 40))
         icon8 = QtGui.QIcon()
@@ -482,8 +462,6 @@ class civ_ui:
 
         _translate = QtCore.QCoreApplication.translate
         self.ent_select_button_0.setText(_translate("MainWindow", "..."))
-        self.county_brush.setText(_translate("MainWindow", "..."))
-        self.hand_button_2.setText(_translate("MainWindow", "..."))
         self.loc_button_1.setText(_translate("MainWindow", "..."))
         self.setl_button_2.setText(_translate("MainWindow", "..."))
         self.road_button_3.setText(_translate("MainWindow", "..."))
@@ -537,7 +515,7 @@ class civ_ui:
         self.king_weal_lbl.setText(_translate("MainWindow", "Wealth: "))
         self.label_11.setText(_translate("MainWindow", "\n"
         "Counties:"))
-        self.king_count_new_but.setText(_translate("MainWindow", "Add Newself.county_brush"))
+        self.king_count_new_but.setText(_translate("MainWindow", "Add New County"))
         self.king_count_rem_but.setText(_translate("MainWindow", "Remove"))
         self.king_apply.setText(_translate("MainWindow","Apply"))
         self.king_dissolve_but.setText(_translate("MainWindow", "Dissolve"))
@@ -572,7 +550,6 @@ class civ_ui:
         #toolbar buttons
         self.ent_select_button_0.clicked.connect(  self.entity_selector_toolbar)
         self.count_sel_button_1.clicked.connect( self.county_selector_toolbar )
-        self.hand_button_2.clicked.connect( self.hand_button_toolbar )
         self.loc_button_1.clicked.connect( self.new_location_button_toolbar)
         self.setl_button_2.clicked.connect( self.new_settlement_button_toolbar )
         self.road_button_3.clicked.connect( self.new_road_button_toolbar )
@@ -627,8 +604,6 @@ class civ_ui:
     def clear_ui(self, which_ui):
         which_ui.toolPane.removeWidget(self.ent_select_button_0)
         which_ui.toolPane.removeWidget(self.count_sel_button_1)
-        which_ui.toolPane.removeWidget(self.county_brush)
-        which_ui.toolPane.removeWidget(self.hand_button_2)
         which_ui.toolPane.removeWidget(self.loc_button_1)
         which_ui.toolPane.removeWidget(self.setl_button_2)
         which_ui.toolPane.removeWidget(self.road_button_3)
@@ -636,14 +611,11 @@ class civ_ui:
 
         self.ent_select_button_0.deleteLater()
         self.count_sel_button_1.deleteLater()
-        self.county_brush.deleteLater()
-        self.hand_button_2.deleteLater()
         self.loc_button_1.deleteLater()
         self.setl_button_2.deleteLater()
         self.road_button_3.deleteLater()
         self.count_button_4.deleteLater()
 
-        which_ui.toolPane.removeItem(self.spacerItem1)
         which_ui.toolPane.removeItem(self.spacerItem2)
 
         for i in range(5):
@@ -688,7 +660,7 @@ class civ_ui:
         dialog.exec_()
 
     def road_item_clicked( self , index=None):
-        item = self.parent.road_list_entry.itemFromIndex(index)
+        item = self.road_list_entry.itemFromIndex(index)
         pID = item.eID
 
         if pID is not None:
@@ -1060,7 +1032,7 @@ class civ_ui:
         else:
             this_county = self.parent.main_map.rid_catalogue['county'][this_rid]
             if this_county.nation is None:
-                new_nation = Nation(self.main_map, this_rid)
+                new_nation = Nation(self.parent.main_map, this_rid)
                 self.parent.nation_control.select( new_nation )
             else:
                 self.parent.nation_control.select( this_county.nation )
@@ -1156,8 +1128,6 @@ class civ_ui:
     def nation_dissolve(self):
         pass
 
-    def hand_button_toolbar(self):
-        print("hand click")
 
 class ward_dialog(QDialog):
     def __init__(self,parent, which, setting):
