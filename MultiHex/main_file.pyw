@@ -76,6 +76,8 @@ class main_window(QMainWindow):
 
         self.gen_params = []
 
+        self.unsaved_changes = False
+
     def smart_ui_chooser(self):
         self.switch_to_terrain()
 
@@ -90,6 +92,10 @@ class main_window(QMainWindow):
 
         self.county_control.draw_borders = False
         self.county_control.small_font = True
+        self.biome_control.draw_borders=True 
+        self.biome_control.small_font=False
+        self._redraw_counties()
+        self._redraw_biomes()
 
     def switch_to_civilization(self):
         self.scene.drop()
@@ -102,6 +108,10 @@ class main_window(QMainWindow):
 
         self.county_control.draw_borders = True
         self.county_control.small_font = False
+        self.biome_control.draw_borders=False 
+        self.biome_control.small_font=True
+        self._redraw_counties()
+        self._redraw_biomes()
 
     def show(self):
         QMainWindow.show(self)
@@ -126,6 +136,7 @@ class main_window(QMainWindow):
             genBar = WorldGenLoadingBar(self, self.gen_params[0], self.gen_params[1])
             genBar.setAttribute(QtCore.Qt.WA_DeleteOnClose)
             genBar.exec_()
+            self.load(self.gen_params[1]) #load the new map!
             self.gen_params = []
 
     def _gen_finished(self):
@@ -200,8 +211,12 @@ class main_window(QMainWindow):
         """
         Opens a dialog to accept a filename from the user, then calls the save_map function
         """
-        self.file_name = QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
-        self.save_map()
+        temp= QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
+        if temp is not None:
+            if temp!='':
+                self.file_name=temp
+                self.save_map()
+                self.unsaved_changes = False
 
     def save_map(self):
         """
@@ -211,6 +226,7 @@ class main_window(QMainWindow):
             return
         else:
             save_map( self.main_map, self.file_name)
+            self.unsaved_changes = False
     
 class LoadingBarGui(object):
     def setupUi(self, Dialog):
