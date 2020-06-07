@@ -196,9 +196,11 @@ class Basic_Brush(basic_tool):
         self._color = color
 
     def drop(self):
+        self.set_state(0)
         if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
+        
 
     def clear(self):
         self.drop()
@@ -279,22 +281,6 @@ class clicker_control(QGraphicsScene):
  
         self._active.mouse_moved( event )
 
-
-    # in c++ these could've been templates and that would be really cool 
-    def to_hex(self):
-        """
-        We need to switch over to calling the writer control, and have the selector clean itself up. These two cleaners are used to git rid of any drawn selection outlines 
-        """
-        self._active.drop()
-        self._active = self.master.writer_control
-
-    def to_region(self):
-        """
-        same...
-        """
-        self._active.drop()
-        self._active = self.master.region_control
-
     @property
     def active(self):
         return(self._active)
@@ -302,12 +288,12 @@ class clicker_control(QGraphicsScene):
     def select(self,which_tool):
         if not isinstance(which_tool, basic_tool):
             raise TypeError("Cannot use tool of type {}!".format(type(which_tool)))
-        self.drop()
+        self._active.drop()
         self._active = which_tool
 
     def drop(self):
         self._active.drop()
-        self._active=Basic_Brush()
+        self._active=basic_tool()
 
 class path_brush(basic_tool):
     """
@@ -1132,7 +1118,6 @@ class hex_brush(Basic_Brush):
         try:
             self.parent.extra_ui.det_show_selected(loc_id)
         except AttributeError:
-            print("didn't find the thing")
             pass
         self.select( loc_id ) #select
 
@@ -1267,10 +1252,6 @@ class hex_brush(Basic_Brush):
         else:
             raise ValueError("Cannot set brush size to {}".format(size))
 
-    # DIE
-    def drop(self):
-        Basic_Brush.drop()
-    
     def clear(self):
         self.drop()
         self.drawn_hexes = {}
@@ -1474,10 +1455,6 @@ class region_brush(Basic_Brush):
                     except RegionMergeError:
                         # delete that region, remove it
                         self.parent.main_map.remove_region( new_rid , self.r_layer )
-
-                    #for ID in temp_region.ids:
-                    #    print("Failed here")
-                    #    self.parent.main_map.remove_from_region( ID )
 
     def reg_remove(self, event):
         """
