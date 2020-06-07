@@ -403,6 +403,7 @@ class path_brush(basic_tool):
     def delete_selected( self ):
         try:
             self.parent.main_map.unregister_path( self._selected_pid , self._path_key )
+            self.draw_path(self._selected_pid)
         except ValueError:
             pass
 

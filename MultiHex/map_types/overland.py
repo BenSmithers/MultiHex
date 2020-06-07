@@ -696,11 +696,6 @@ class River_Brush( path_brush ):
         # before calling the original implementation, we remove the drawn river recursively!
         assert(isinstance( pID, int) or (pID is None))
 
-        if pID in self.parent.main_map.path_catalog[self._path_key]:
-            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
-        else:
-            return
-
         # Clear everything out first. This starts from the outermost, works its way in to the delta
         if pID in self._drawn_paths:
             self.river_remove_item( self._drawn_paths[pID] )
@@ -708,8 +703,14 @@ class River_Brush( path_brush ):
 
         path_brush.draw_path(self, pID, self.sub_selection!='')
 
+        if pID in self.parent.main_map.path_catalog[self._path_key]:
+            this_path = self.parent.main_map.path_catalog[self._path_key][pID]
+        else:
+            return
+
         if this_path.tributaries is not None:
-            self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
+            if pID in self._drawn_paths:
+                self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
 
 
 
