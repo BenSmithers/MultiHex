@@ -214,7 +214,7 @@ class main_window(QMainWindow):
         temp= QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
         if temp is not None:
             if temp!='':
-                self.file_name=temp
+                self.filename=temp
                 self.save_map()
                 self.unsaved_changes = False
 
@@ -225,7 +225,7 @@ class main_window(QMainWindow):
         if self.main_map is None:
             return
         else:
-            save_map( self.main_map, self.file_name)
+            save_map( self.main_map, self.filename)
             self.unsaved_changes = False
     
 class LoadingBarGui(object):
