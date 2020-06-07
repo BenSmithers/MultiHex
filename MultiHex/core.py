@@ -550,7 +550,6 @@ class Hexmap:
         new_pID = 0
         if layer not in self.path_catalog:
             self.path_catalog[layer] = {}
-            print("Note! '{}' not in catalog. Adding... ".format(layer))
 
         while new_pID in self.path_catalog[layer]:
             new_pID += 1

@@ -544,6 +544,16 @@ class path_brush(basic_tool):
             else:
                 where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( Point(event.scenePos().x(),event.scenePos().y() )))
             
+            if self._path_key not in self.parent.main_map.path_catalog:
+                self.parent.main_map.path_catalog[self._path_key] = {}
+
+            # we check if this is the end of an existing path of this type, if it is, we start adding to the end of that one. Nice QOL feature 
+            for pID in self.parent.main_map.path_catalog[self._path_key]:
+                if where==self.parent.main_map.path_catalog[self._path_key][pID].end():
+                    self.select_pid(pID)
+                    self._state = 3
+                    return
+
             self._wip_path = self._creating(where)
             self._state = 2
 
@@ -595,17 +605,14 @@ class path_brush(basic_tool):
                 self._wip_path_object = None
 
 
-            # no river is drawn if there aren't at least 2 vertices to make a river
+            # no river is added if there aren't at least 2 vertices to make a river
             if len(self._wip_path.vertices)<=1:
                 self._wip_path = None
-                return
-
-            pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
-            self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
-            self._wip_path = None
-            self.draw_path( pID )
-            print("Registered no {}".format(pID))
-
+            else:
+                pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
+                self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
+                self._wip_path = None
+                self.draw_path( pID )
             self._state = 0
         elif self._state==3 or self._state==4:
             self.draw_path( self._selected_pid )
@@ -678,6 +685,10 @@ class path_brush(basic_tool):
         if self._drawn_icon is not None:
             self.parent.scene.removeItem( self._drawn_icon )
         self._drawn_icon = None 
+
+        temp = self.selected_pid
+        self.select_pid(None)
+        self.draw_path(temp)
         
     def clear(self):
         for pID in self._drawn_paths:
