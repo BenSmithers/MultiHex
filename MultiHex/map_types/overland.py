@@ -130,7 +130,7 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = (134, 183,207)
+        self.color = (134, 183, 207)
 
         self.width = 1
 
@@ -785,9 +785,13 @@ class River_Brush( path_brush ):
             for pID in self.parent.main_map.path_catalog['rivers'].keys():
                 assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
                 self.draw_path( pID )
+    def drop(self):
+        self.sub_select('')
+        path_brush.drop(self)
+
     def clear(self):
         path_brush.clear(self)
-        self._sub_selection = ''
+        self.drop()
 
                     
 
