@@ -305,14 +305,24 @@ class civ_ui:
         self.horizontalSlider_3.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider_3.setObjectName("horizontalSlider_3")
         self.formLayout_4.setWidget(8, QtWidgets.QFormLayout.FieldRole, self.horizontalSlider_3)
+
+        self.county_color_lbl = QtWidgets.QLabel(self.Counties)
+        self.county_color_lbl.setObjectName("county_color_lbl")
+        self.formLayout_4.setWidget(9, QtWidgets.QFormLayout.LabelRole,self.county_color_lbl)
+        self.county_color_button = QtWidgets.QPushButton(self.Counties)
+        self.county_color_button.setObjectName("county_color_button")
+        self.formLayout_4.setWidget(9,QtWidgets.QFormLayout.FieldRole,self.county_color_button)
+
         self.pushButton = QtWidgets.QPushButton(self.Counties)
         self.pushButton.setObjectName("pushButton")
-        self.formLayout_4.setWidget(9, QtWidgets.QFormLayout.SpanningRole, self.pushButton)
+        self.formLayout_4.setWidget(10, QtWidgets.QFormLayout.SpanningRole, self.pushButton)
+
+
         self.count_king_button = QtWidgets.QPushButton(self.Counties)
         self.count_king_button.setObjectName("count_king_button")
-        self.formLayout_4.setWidget(11, QtWidgets.QFormLayout.SpanningRole, self.count_king_button)
+        self.formLayout_4.setWidget(12, QtWidgets.QFormLayout.SpanningRole, self.count_king_button)
         spacerItem5 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.formLayout_4.setItem(10, QtWidgets.QFormLayout.LabelRole, spacerItem5)
+        self.formLayout_4.setItem(11, QtWidgets.QFormLayout.LabelRole, spacerItem5)
         self.label_12 = QtWidgets.QLabel(self.Counties)
         self.label_12.setObjectName("label_12")
         self.formLayout_4.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.label_12)
@@ -506,6 +516,7 @@ class civ_ui:
         self.label_2.setText(_translate("MainWindow", "Order: "))
         self.label_3.setText(_translate("MainWindow", "War: "))
         self.label_4.setText(_translate("MainWindow", "Spirit: "))
+        self.county_color_lbl.setText(_translate("MainWindow","Choose Color: "))
         self.pushButton.setText(_translate("MainWindow", "Apply"))
         self.count_king_button.setText(_translate("MainWindow", "Create New Kingdom"))
         self.label_12.setText(_translate("MainWindow", "GDG: "))
@@ -582,6 +593,7 @@ class civ_ui:
         # county tab buttons
         self.county_list_entry = QtGui.QStandardItemModel()
         self.count_city_list.setModel( self.county_list_entry)
+        self.county_color_button.clicked.connect(self.county_color_click)
         self.pushButton.clicked.connect( self.county_apply )
         self.count_king_button.clicked.connect( self.county_kingdom_button )
         self.count_city_list.clicked[QtCore.QModelIndex].connect(self.county_list_item_clicked)
@@ -948,6 +960,18 @@ class civ_ui:
         """
         self.parent.ui.contextPane.setCurrentIndex( 0 )
         self.parent.scene.select(self.parent.entity_control)
+
+    def county_color_click(self):
+        if self.parent.county_control.selected is None:
+            pass
+        else:
+            old_one = self.parent.main_map.rid_catalogue[self.parent.county_control.r_layer][self.parent.county_control.selected].color
+            qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
+            new_color = QColorDialog.getColor(initial = qt_old_one, parent=self.parent)
+
+            if new_color.isValid():
+                self.parent.main_map.rid_catalogue[self.parent.county_control.r_layer][self.parent.county_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
+                self.parent.county_control.redraw_region(self.parent.county_control.selected)
 
     def county_selector_toolbar(self):
         self.parent.ui.contextPane.setCurrentIndex(3)
