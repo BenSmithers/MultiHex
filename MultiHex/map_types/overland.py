@@ -988,12 +988,6 @@ class OHex_Brush( hex_brush ):
             # default to red->green
             return(QtGui.QColor(max(0,min(255, 230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
 
-    # DIE
-    def drop(self):
-        if self.parent.main_map._outline is not None:
-            self.parent.scene.removeItem( self._outline_obj )
-            self._outline_obj = None
-        self._selected_id = None
 
  
 
