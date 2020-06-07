@@ -78,6 +78,21 @@ class main_window(QMainWindow):
 
         self.unsaved_changes = False
 
+        # set up the save directory
+        if sys.platform=='linux':
+            basedir = os.path.join(os.path.expandvars('$HOME'),'.local','MultiHex')
+        elif sys.platform=='darwin': #macOS
+            basedir = os.path.join(os.path.expandvars('$HOME'),'MultiHex')
+        elif sys.platform=='win32' or sys.platform=='cygwin': # Windows and/or cygwin. Not actually sure if this works on cygwin
+            basedir = os.path.join(os.path.expandvars('%AppData%'),'MultiHex')
+        else:
+            raise NotImplementedError("{} is not a supported OS".format(sys.platform))
+        if not os.path.exists(basedir):
+            os.mkdir(basedir)
+        self.savedir = os.path.join(basedir, 'saves')
+        if not os.path.exists(self.savedir):
+            os.mkdir(self.savedir)
+
     def smart_ui_chooser(self):
         self.switch_to_terrain()
 
@@ -151,7 +166,7 @@ class main_window(QMainWindow):
         Called when we want to load a new map
         """
         if filename is None:
-            self.filename = QFileDialog.getOpenFileName(None, 'Open HexMap', os.path.join(os.path.dirname(__file__), "saves"), 'HexMaps (*.hexmap)')[0]
+            self.filename = QFileDialog.getOpenFileName(None, 'Open HexMap', self.savedir, 'HexMaps (*.hexmap)')[0]
             if self.filename is None or self.filename=='':
                 return
         else:
@@ -211,7 +226,8 @@ class main_window(QMainWindow):
         """
         Opens a dialog to accept a filename from the user, then calls the save_map function
         """
-        temp= QFileDialog.getSaveFileName(None, 'Save HexMap', './saves', 'HexMaps (*.hexmap)')
+        temp= QFileDialog.getSaveFileName(None, 'Save HexMap', self.savedir, 'HexMaps (*.hexmap)')[0]
+        print(temp)
         if temp is not None:
             if temp!='':
                 self.filename=temp
@@ -312,9 +328,5 @@ app_instance = main_window()
 
 if __name__=="__main__":
     # make sure the base saves folder exists 
-    try:
-        os.mkdir(os.path.join( os.path.dirname(__file__), "saves" ))
-    except FileExistsError:
-        pass
     app_instance.show()
     sys.exit(app.exec_())
