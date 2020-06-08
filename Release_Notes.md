@@ -14,6 +14,8 @@
 
 * Users can now change the color of counties (and in effect kingdoms) 
 
+* Users can add and edit map generation presets
+
 ### Changes
 
 **Major:**
@@ -29,6 +31,8 @@
 * Starting to draw a path from the end of an existing path will allow the continuing of the existing path (applies to rivers, roads)
 
 * changed structure of json file for world generation. Each parameter should have a correlated entry with its description. 
+
+* changed savefile locaiton to be %AppData%\MultiHex\saves on Windows, $HOME/MultiHex/saves on MacOS, and $HOME/.local/MultiHex/saves on Linux 
 
 ## Bug Fixes
 
