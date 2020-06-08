@@ -27,4 +27,17 @@ def full_sim( size, name ):
     ridge_onward( size, name )
 
 if __name__=='__main__':
-    full_sim( 'cont', os.path.join( os.path.dirname(__file__), '..', 'saves', 'generated.hexmap' ))
+    if sys.platform=='linux':
+        basedir = os.path.join(os.path.expandvars('$HOME'),'.local','MultiHex')
+    elif sys.platform=='darwin': #macOS
+        basedir = os.path.join(os.path.expandvars('$HOME'),'MultiHex')
+    elif sys.platform=='win32' or sys.platform=='cygwin': # Windows and/or cygwin. Not actually sure if this works on cygwin
+        basedir = os.path.join(os.path.expandvars('%AppData%'),'MultiHex')
+    else:
+        raise NotImplementedError("{} is not a supported OS".format(sys.platform))
+    if not os.path.exists(basedir):
+        os.mkdir(basedir)
+    savedir = os.path.join(basedir, 'saves')
+    if not os.path.exists(savedir):
+        os.mkdir(savedir)
+    full_sim( 'cont', os.path.join( savedir, 'generated.hexmap' ))

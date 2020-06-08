@@ -29,8 +29,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     if not (size in config):
         raise Exception("Unsupported size: {}".format(size) )
     else:
-        dimensions = config[size]['mountains']['dimensions']
-        config = config[size]['regions']
+        dimensions = [config[size]['mountains']['values']['dimx'], config[size]['mountains']['values']['dimy']]
+        config = config[size]['regions']['values']
 
     
     # load the HexMap

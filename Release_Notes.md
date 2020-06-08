@@ -1,4 +1,50 @@
-## April XX 2020
+## June 05 2020 (v0.3.0)
+
+### Additions
+
+**Major:**
+
+* added new GUI to support world generation with both presets and advanced generation parameters. 
+
+* multithreading for world generation so the gui doesn't sieze up and act non-responsive
+
+**Minor:**
+
+* added window icon for MultiHex 
+
+* Users can now change the color of counties (and in effect kingdoms) 
+
+* Users can add and edit map generation presets
+
+### Changes
+
+**Major:**
+
+* totally reworked the GUIs! Now allows for rapid switching between the different editors
+
+* Updated the civilization toolbar artwork, removed old unused buttons
+
+**Minor:**
+
+* Dramatically reduced file sizes 
+
+* Starting to draw a path from the end of an existing path will allow the continuing of the existing path (applies to rivers, roads)
+
+* changed structure of json file for world generation. Each parameter should have a correlated entry with its description. 
+
+* changed savefile locaiton to be %AppData%\MultiHex\saves on Windows, $HOME/MultiHex/saves on MacOS, and $HOME/.local/MultiHex/saves on Linux 
+
+## Bug Fixes
+
+* Fixed issue where tributaries were not being drawn
+
+* Fixed problem where a spaceritem had the same layout location as a button, causing an obnoxious warning
+
+* Fixed issue where the Hex Brushes outline wouldn't be removed when switching to a new tool
+
+* Several other minor bugfixes 
+
+## April 20ish 2020 (v0.2.0)
 
 ### Additions
 

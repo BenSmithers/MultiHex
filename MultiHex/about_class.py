@@ -6,3 +6,5 @@ class about_dialog(QDialog):
         super(about_dialog, self).__init__(parent)
         self.ui = about_MHX()
         self.ui.setupUi(self)
+
+    

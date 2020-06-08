@@ -8,7 +8,8 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
 
 """
-Implements the overland map type, its brushes, and its hexes 
+Implements the overland map type, its brushes, and its hexes.
+These are all derived from the "core" and "tools classes 
 
 Entries:
     Town            - Settlement (Entity) implementation 
@@ -125,11 +126,11 @@ class Road(Path):
 
 class River(Path):
     """
-    Implements `Path`
+    Implements `Path` for rivers, allowing rivers to be joined to make tributaries 
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = (134, 183,207)
+        self.color = (134, 183, 207)
 
         self.width = 1
 
@@ -215,6 +216,8 @@ class River(Path):
 class County(Region, Government):
     """
     Implements the Region class for Counties. 
+    Adds this "tension" property measuring discrepancies between a county's government and its constituent government 
+    Also adds ways of accessing total wealth and population
     """
 
     def __init__(self, hex_id, parent):
@@ -280,6 +283,7 @@ class County(Region, Government):
 class Nation( Government ):
     """
     A Collection of Counties. One County serves as the seat of the Nation, and that's this one. 
+    Similar to Counties, adds tension and total wealth+population
     """
     def __init__(self, parent, rID):
         """
@@ -387,6 +391,9 @@ class Biome(Region):
 
 
 class Detail_Brush( basic_tool ):
+    """
+    This tool is used to modify aspects of the hexes in bulk. 
+    """
     def __init__(self,parent):
         basic_tool.__init__(self, parent)
 
@@ -465,6 +472,9 @@ class Detail_Brush( basic_tool ):
         self.brushy_brushy(event, -1)
 
     def brushy_brushy( self, event, sign=1):
+        """
+        This is used to change temperature, rainfall, altitude, or whatever is underneath the brush
+        """
         if self.configuring=="":
             return
 
@@ -475,7 +485,7 @@ class Detail_Brush( basic_tool ):
             setattr(self.parent.main_map.catalogue[center_id], self.configuring, getattr(self.parent.main_map.catalogue[center_id], self.configuring) + sign*self.magnitude)
             self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[center_id])
             self.parent.main_map.catalogue[center_id].rescale_color()
-            self.parent.writer_control.redraw_hex(center_id)
+            self.parent.hex_control.redraw_hex(center_id)
 
         reduced = self.magnitude
         iter = 1
@@ -488,7 +498,7 @@ class Detail_Brush( basic_tool ):
                     setattr(self.parent.main_map.catalogue[each], self.configuring, new_value)
                     self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
                     self.parent.main_map.catalogue[each].rescale_color()
-                    self.parent.writer_control.redraw_hex(each)
+                    self.parent.hex_control.redraw_hex(each)
             iter+=1
 
     def drop(self):
@@ -530,6 +540,9 @@ class River_Brush( path_brush ):
 
 
     def _dive(self,river, key):
+        """
+        Recursively access the river object according to the selected tributary 
+        """
         assert(isinstance(key, str))
         assert(isinstance(river, River))
 
@@ -630,8 +643,7 @@ class River_Brush( path_brush ):
                     self.draw_path(pid)
                     self.select_pid(None)
                     self.sub_select('')
-                    self.parent.river_update_gui()
-                    print("merge")
+                    self.parent.extra_ui.river_update_gui()
                     return
 
         elif self._state==4: # adding to end
@@ -674,7 +686,7 @@ class River_Brush( path_brush ):
             self.select_pid(None )
             self._state = 0
 
-        self.parent.river_update_list()
+        self.parent.extra_ui.river_update_list()
         
 
     def draw_path( self, pID):
@@ -684,25 +696,21 @@ class River_Brush( path_brush ):
         # before calling the original implementation, we remove the drawn river recursively!
         assert(isinstance( pID, int) or (pID is None))
 
+        # Clear everything out first. This starts from the outermost, works its way in to the delta
+        if pID in self._drawn_paths:
+            self.river_remove_item( self._drawn_paths[pID] )
+            del self._drawn_paths[pID]
+
+        path_brush.draw_path(self, pID, self.sub_selection!='')
+
         if pID in self.parent.main_map.path_catalog[self._path_key]:
             this_path = self.parent.main_map.path_catalog[self._path_key][pID]
         else:
             return
 
-        
-
-        if pID in self._drawn_paths:
-
-            if this_path.tributaries is not None:
+        if this_path.tributaries is not None:
+            if pID in self._drawn_paths:
                 self._drawn_paths[pID].tribs = self.draw_tribs( this_path, '', self.selected_pid==pID)
-
-            self.river_remove_item( self._drawn_paths[pID] )
-            del self._drawn_paths[pID]
-
-        
-        # if there's a sub-selection, make sure not to draw the base part blue 
-        blue = self.sub_selection!=''
-        path_brush.draw_path(self, pID, blue)
 
 
 
@@ -720,14 +728,6 @@ class River_Brush( path_brush ):
 
     def draw_tribs(self, river, depth, is_selected):
         assert( isinstance( river, River))
-       
-        # color, style, already set by original call to the draw function! 
-        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
-        if river.tributaries[0].tributaries is not None:
-            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
-        if river.tributaries[1].tributaries is not None:
-            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
-
 
         if not self.drawing:
             return
@@ -764,6 +764,13 @@ class River_Brush( path_brush ):
         tributary_objs[0].setZValue(river.z_level)
         tributary_objs[1].setZValue(river.z_level)
 
+        # color, style, already set by original call to the draw function! 
+        # draw tributaties of the tributaries (recursively), assign the newely formed tuples to the QRiverItem
+        if river.tributaries[0].tributaries is not None:
+            tributary_objs[0].tribs = self.draw_tribs( river.tributaries[0], depth+'0',is_selected)
+        if river.tributaries[1].tributaries is not None:
+            tributary_objs[1].tribs = self.draw_tribs( river.tributaries[1], depth+'1',is_selected)
+
         # return a tuple of the objects 
         return tributary_objs
 
@@ -778,9 +785,13 @@ class River_Brush( path_brush ):
             for pID in self.parent.main_map.path_catalog['rivers'].keys():
                 assert( isinstance( self.parent.main_map.path_catalog['rivers'][pID], River) )
                 self.draw_path( pID )
+    def drop(self):
+        self.sub_select('')
+        path_brush.drop(self)
+
     def clear(self):
         path_brush.clear(self)
-        self._sub_selection = ''
+        self.drop()
 
                     
 
@@ -795,11 +806,11 @@ class Biome_Brush( region_brush):
 
     def primary_mouse_released(self, event):
         region_brush.primary_mouse_released(self, event)
-        self.parent.biome_update_gui()
+        self.parent.extra_ui.biome_update_gui()
      
     def secondary_mouse_released(self, event):
         region_brush.secondary_mouse_released(self, event)
-        self.parent.biome_update_gui()
+        self.parent.extra_ui.biome_update_gui()
 
 class County_Brush( region_brush ):
     def __init__(self, parent):
@@ -818,7 +829,7 @@ class County_Brush( region_brush ):
 
     def primary_mouse_released(self, event):
         region_brush.primary_mouse_released(self, event)
-        self.parent.county_update_with_selected()
+        self.parent.extra_ui.county_update_with_selected()
 
 class Nation_Brush( basic_tool ):
     def __init__(self, parent):
@@ -850,7 +861,7 @@ class Nation_Brush( basic_tool ):
         else:
             raise NotImplementedError("Unrecognized state {}".format(state))
 
-        self.parent.update_state()
+        self.parent.extra_ui.update_state()
 
     def primary_mouse_released( self, event ):
         where = Point( event.scenePos().x(), event.scenePos().y() )
@@ -891,7 +902,7 @@ class Nation_Brush( basic_tool ):
                 return
             else:
                 self._selected.add_county( this_county_rid )
-                self.parent.nation_update_gui()
+                self.parent.extra_ui.nation_update_gui()
                 
         elif self._state == 3:
             if self._selected is None:
@@ -900,7 +911,7 @@ class Nation_Brush( basic_tool ):
                 return
             else:
                 self._selected.remove_county( this_county_rid )
-                self.parent.nation_update_gui()
+                self.parent.extra_ui.nation_update_gui()
 
         self.parent.county_control.redraw_region(this_county_rid)
 
@@ -935,7 +946,7 @@ class Road_Brush( path_brush ):
 
     def secondary_mouse_released(self, event):
         path_brush.secondary_mouse_released(self, event)
-        self.parent.road_update_list()
+        self.parent.extra_ui.road_update_list()
 
 
 class OEntity_Brush( entity_brush ):
@@ -977,12 +988,6 @@ class OHex_Brush( hex_brush ):
             # default to red->green
             return(QtGui.QColor(max(0,min(255, 230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
 
-    # DIE
-    def drop(self):
-        if self.parent.main_map._outline is not None:
-            self.parent.scene.removeItem( self._outline_obj )
-            self._outline_obj = None
-        self._selected_id = None
 
  
 

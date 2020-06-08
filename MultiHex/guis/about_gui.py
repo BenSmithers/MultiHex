@@ -46,7 +46,7 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
+        Dialog.setWindowTitle(_translate("Dialog", "About MultiHex"))
         self.label.setText(_translate("Dialog", "MultiHex"))
         self.label_2.setText(_translate("Dialog", "Version {}\n".format(multihex_version)+"\n"+"by Ben Smithers\n"+" with Ross McGuyer"))
 

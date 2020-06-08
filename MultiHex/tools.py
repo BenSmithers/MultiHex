@@ -196,9 +196,11 @@ class Basic_Brush(basic_tool):
         self._color = color
 
     def drop(self):
+        self.set_state(0)
         if self._outline_obj is not None:
             self.parent.scene.removeItem( self._outline_obj )
             self._outline_obj = None
+        
 
     def clear(self):
         self.drop()
@@ -279,21 +281,19 @@ class clicker_control(QGraphicsScene):
  
         self._active.mouse_moved( event )
 
+    @property
+    def active(self):
+        return(self._active)
 
-    # in c++ these could've been templates and that would be really cool 
-    def to_hex(self):
-        """
-        We need to switch over to calling the writer control, and have the selector clean itself up. These two cleaners are used to git rid of any drawn selection outlines 
-        """
+    def select(self,which_tool):
+        if not isinstance(which_tool, basic_tool):
+            raise TypeError("Cannot use tool of type {}!".format(type(which_tool)))
         self._active.drop()
-        self._active = self.master.writer_control
+        self._active = which_tool
 
-    def to_region(self):
-        """
-        same...
-        """
+    def drop(self):
         self._active.drop()
-        self._active = self.master.region_control
+        self._active=basic_tool()
 
 class path_brush(basic_tool):
     """
@@ -389,6 +389,7 @@ class path_brush(basic_tool):
     def delete_selected( self ):
         try:
             self.parent.main_map.unregister_path( self._selected_pid , self._path_key )
+            self.draw_path(self._selected_pid)
         except ValueError:
             pass
 
@@ -529,6 +530,16 @@ class path_brush(basic_tool):
             else:
                 where = self.parent.main_map.get_point_from_id(self.parent.main_map.get_id_from_point( Point(event.scenePos().x(),event.scenePos().y() )))
             
+            if self._path_key not in self.parent.main_map.path_catalog:
+                self.parent.main_map.path_catalog[self._path_key] = {}
+
+            # we check if this is the end of an existing path of this type, if it is, we start adding to the end of that one. Nice QOL feature 
+            for pID in self.parent.main_map.path_catalog[self._path_key]:
+                if where==self.parent.main_map.path_catalog[self._path_key][pID].end():
+                    self.select_pid(pID)
+                    self._state = 3
+                    return
+
             self._wip_path = self._creating(where)
             self._state = 2
 
@@ -580,17 +591,14 @@ class path_brush(basic_tool):
                 self._wip_path_object = None
 
 
-            # no river is drawn if there aren't at least 2 vertices to make a river
+            # no river is added if there aren't at least 2 vertices to make a river
             if len(self._wip_path.vertices)<=1:
                 self._wip_path = None
-                return
-
-            pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
-            self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
-            self._wip_path = None
-            self.draw_path( pID )
-            print("Registered no {}".format(pID))
-
+            else:
+                pID = self.parent.main_map.register_new_path( self._wip_path, self._path_key )
+                self.parent.main_map.path_catalog[ self._path_key][pID].name = "Path {}".format( pID )
+                self._wip_path = None
+                self.draw_path( pID )
             self._state = 0
         elif self._state==3 or self._state==4:
             self.draw_path( self._selected_pid )
@@ -630,6 +638,7 @@ class path_brush(basic_tool):
         self.QPen.setStyle(1)
         self.QPen.setWidth( 3 + this_path.width )
 
+        # we use this here so the correct type of Scene object is used for derived paths 
         path = self._qtpath_type()
         
         # if we're drawing the selected path, use red
@@ -662,6 +671,10 @@ class path_brush(basic_tool):
         if self._drawn_icon is not None:
             self.parent.scene.removeItem( self._drawn_icon )
         self._drawn_icon = None 
+
+        temp = self.selected_pid
+        self.select_pid(None)
+        self.draw_path(temp)
         
     def clear(self):
         for pID in self._drawn_paths:
@@ -757,6 +770,9 @@ class entity_brush(basic_tool):
         assert( isinstance(ent_type, int))
         self._placing = ent_type 
 
+        if not self._loaded:
+            self.load_assets()
+
         if self._ghosted_placement is not None:
             self.parent.scene.removeItem(self._ghosted_placement)
             self._ghosted_placement = None 
@@ -812,7 +828,7 @@ class entity_brush(basic_tool):
         Called when a new hex is selected, OR this hex has changed (like new entities). Updates the GUI based on the hex selected: draws an outline around the selected Hex and updates the list of entities 
         """
         
-        self._menu = self.parent.ui.toolBox.currentIndex()
+        self._menu = self.parent.ui.contextPane.currentIndex()
 
         if self._selected_hex_outline is not None:
             self.parent.scene.removeItem( self._selected_hex_outline )
@@ -822,7 +838,7 @@ class entity_brush(basic_tool):
 
         if self._menu == 0:
             # tell the gui to update the proper menu
-            self.parent.loc_update_selection( self._selected_hex )
+            self.parent.extra_ui.loc_update_selection( self._selected_hex )
         elif self._menu==1:
             # get eIDs at this hex
             settlement_eid = None
@@ -833,7 +849,7 @@ class entity_brush(basic_tool):
                     if isinstance( self.parent.main_map.eid_catalogue[eID] , self._settlement ):
                         settlement_eid = eID
             self._selected_eid = settlement_eid
-            self.parent.set_update_selection( settlement_eid )
+            self.parent.extra_ui.set_update_selection( settlement_eid )
         else:
             pass
 
@@ -842,12 +858,12 @@ class entity_brush(basic_tool):
         """
         Called when a new /entity/ is selected. Chooses and updates the proper menu
         """
-        self._menu = self.parent.ui.toolBox.currentIndex()
+        self._menu = self.parent.ui.contextPane.currentIndex()
 
         if self._menu == 0:
-            self.parent.loc_update_name_text( self._selected_eid )
+            self.parent.extra_ui.loc_update_name_text( self._selected_eid )
         elif self._menu==1:
-            self.parent.set_update_selection( self._selected_eid )
+            self.parent.extra_ui.set_update_selection( self._selected_eid )
 
     def primary_mouse_released( self, event ):
         """
@@ -1099,7 +1115,10 @@ class hex_brush(Basic_Brush):
     def select_evt(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        self.parent.det_show_selected(loc_id)
+        try:
+            self.parent.extra_ui.det_show_selected(loc_id)
+        except AttributeError:
+            pass
         self.select( loc_id ) #select
 
     def deselect_evt(self, event):
@@ -1233,10 +1252,6 @@ class hex_brush(Basic_Brush):
         else:
             raise ValueError("Cannot set brush size to {}".format(size))
 
-    # DIE
-    def drop(self):
-        Basic_Brush.drop()
-    
     def clear(self):
         self.drop()
         self.drawn_hexes = {}
@@ -1440,10 +1455,6 @@ class region_brush(Basic_Brush):
                     except RegionMergeError:
                         # delete that region, remove it
                         self.parent.main_map.remove_region( new_rid , self.r_layer )
-
-                    #for ID in temp_region.ids:
-                    #    print("Failed here")
-                    #    self.parent.main_map.remove_from_region( ID )
 
     def reg_remove(self, event):
         """

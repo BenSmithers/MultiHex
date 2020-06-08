@@ -29,14 +29,13 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     if not (size in config):
         raise Exception("Unsupported size: {}".format(size) )
     else:
-        config = config[size]['mountains']
+        config = config[size]['mountains']['values']
 
 
     # load presets 
-    dimensions = config['dimensions']
+    dimensions = [config['dimx'],config['dimy']]
     n_peaks = config['n_peaks']
-    if size=='cont':
-        zones = config['zones']
+    zones = config['zones']
 
     main_map = Hexmap()
     main_map.dimensions = ( dimensions[0], dimensions[1] )
@@ -129,11 +128,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     continue
 
 
-    if size=='cont':
-        for i in range(zones):
-            make_continent()
-    else:
-        raise NotImplementedError()
+    for i in range(zones):
+        make_continent()
 
     # choose a direction the ridgeline will preferably go, and spread around that direction
 

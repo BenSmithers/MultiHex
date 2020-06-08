@@ -24,7 +24,7 @@ Objects:
     Path            - path traveling between vertices. Generic implementation of roads/rivers/etc
 """
 
-multihex_version = "0.2.1"
+multihex_version = "0.3.0"
 map_version = "0.4"
 
 
@@ -550,7 +550,6 @@ class Hexmap:
         new_pID = 0
         if layer not in self.path_catalog:
             self.path_catalog[layer] = {}
-            print("Note! '{}' not in catalog. Adding... ".format(layer))
 
         while new_pID in self.path_catalog[layer]:
             new_pID += 1

@@ -1,91 +1,24 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-
-<svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="200mm"
-   height="200mm"
-   viewBox="0 0 200 200"
-   version="1.1"
-   id="svg8"
-   inkscape:version="0.92.3 (2405546, 2018-03-11)"
-   sodipodi:docname="select_location.svg">
-  <defs
-     id="defs2" />
-  <sodipodi:namedview
-     id="base"
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1.0"
-     inkscape:pageopacity="0.0"
-     inkscape:pageshadow="2"
-     inkscape:zoom="0.75187993"
-     inkscape:cx="427.40226"
-     inkscape:cy="400.02556"
-     inkscape:document-units="mm"
-     inkscape:current-layer="layer3"
-     showgrid="false"
-     inkscape:snap-intersection-paths="true"
-     inkscape:object-paths="true"
-     inkscape:snap-object-midpoints="true"
-     inkscape:window-width="1853"
-     inkscape:window-height="1025"
-     inkscape:window-x="67"
-     inkscape:window-y="27"
-     inkscape:window-maximized="1"
-     inkscape:snap-bbox="false"
-     inkscape:bbox-nodes="true"
-     inkscape:snap-bbox-edge-midpoints="true" />
-  <metadata
-     id="metadata5">
-    <rdf:RDF>
-      <cc:Work
-         rdf:about="">
-        <dc:format>image/svg+xml</dc:format>
-        <dc:type
-           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
-      </cc:Work>
-    </rdf:RDF>
-  </metadata>
-  <g
-     inkscape:label="dungeon"
-     inkscape:groupmode="layer"
-     id="layer1"
-     transform="translate(0,-97)"
-     sodipodi:insensitive="true">
-    <path
-       id="path817"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:0.26458329px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       d="M 182.7164,240.25844 H 12.355763 m 0,0 44.741174,-63.67014 17.781748,17.78173 35.563505,-65.96454 72.27421,111.85295"
-       inkscape:connector-curvature="0" />
-    <path
-       id="path824"
-       style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.05;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1;paint-order:stroke fill markers"
-       d="m 118.11298,210.65841 a 12.642907,12.619306 0 0 1 -12.64291,12.6193 12.642907,12.619306 0 0 1 -12.642912,-12.6193 12.642907,12.619306 0 0 1 12.642912,-12.61931 12.642907,12.619306 0 0 1 12.64291,12.61931 z m -25.255226,0.33465 H 118.09636 V 241.3941 H 92.857754 Z"
-       inkscape:connector-curvature="0" />
-  </g>
-  <g
-     inkscape:groupmode="layer"
-     id="layer2"
-     inkscape:label="Plus"
-     style="display:inline" />
-  <g
-     inkscape:groupmode="layer"
-     id="layer3"
-     inkscape:label="cursor"
-     sodipodi:insensitive="true">
-    <path
-       id="path841"
-       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
-       d="m 175.02537,153.75669 -26.22966,7.41346 9.0836,13.05028 -8.29607,5.61426 -8.73792,-13.2842 -16.63343,21.59356 -17.22784,-80.19387 z"
-       inkscape:connector-curvature="0"
-       sodipodi:nodetypes="cccccccc" />
-  </g>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 15.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 width="400px" height="400px" viewBox="0 0 400 400" enable-background="new 0 0 400 400" xml:space="preserve">
+<polyline fill="none" stroke="#000000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" points="
+	106.411,211.827 40.682,195.671 40.682,167.981 40.682,168.089 106.411,151.935 "/>
+<polyline fill="none" stroke="#000000" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="10" points="
+	298.193,211.827 363.922,195.671 363.922,167.981 363.922,168.089 298.193,151.935 "/>
+<polyline fill="none" stroke="#000000" stroke-width="7" stroke-linecap="round" stroke-miterlimit="10" points="106.411,211.827 
+	167.204,246.925 237.4,246.925 298.193,211.827 "/>
+<g id="layer1" transform="translate(0,-97)" inkscape:label="dungeon" sodipodi:insensitive="true" inkscape:groupmode="layer">
+	<path id="path817" inkscape:connector-curvature="0" stroke="#000000" stroke-width="0.2646" d="M325.712,282.427H65.304
+		 M65.304,282.427l68.39-97.324l27.181,27.181l54.36-100.832l110.478,170.975"/>
+	<path id="path824" inkscape:connector-curvature="0" fill="#FFFFFF" d="M226.96,237.181c0,10.653-8.652,19.289-19.326,19.289
+		c-10.672,0-19.324-8.636-19.324-19.289c0-10.653,8.652-19.29,19.324-19.29l0,0C218.308,217.892,226.96,226.528,226.96,237.181
+		L226.96,237.181L226.96,237.181z M188.356,237.693h38.579v46.47h-38.579V237.693z"/>
+</g>
+<g id="layer3" inkscape:label="cursor" sodipodi:insensitive="true" inkscape:groupmode="layer">
+	
+		<path id="path841" inkscape:connector-curvature="0" sodipodi:nodetypes="cccccccc" fill="#FFFFFF" stroke="#000000" stroke-width="10" stroke-linejoin="round" d="
+		M366.953,291.875l-74.352,21.016l25.75,36.992l-23.518,15.914l-24.768-37.656l-47.15,61.211L174.08,162.031L366.953,291.875z"/>
+</g>
 </svg>

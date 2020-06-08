@@ -1,86 +1,95 @@
-# -*- coding: utf-8 -*-
+"""
+This file defines all the terrain editor components and adds the appropriate map functionality 
+"""
 
-# Form implementation generated from reading ui file 'terrain_editor_2.ui'
-#
-# Created by: PyQt5 UI code generator 5.10.1
-#
-# WARNING! All changes made in this file will be lost!
-
+# Qt items an Qt accessories
 from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
+from MultiHex.tools import QEntityItem
+
+# MultiHex imports 
+from MultiHex.guis.main_gui import main_gui
+from MultiHex.generator.noise import generate_gradients, sample_noise
+from MultiHex.generator.util import create_name
+from MultiHex.map_types.overland import Nation
+
+# these are a couple dialogs
+from MultiHex.guis.confirm_inject import Ui_Dialog as confirm_ui
+from MultiHex.about_class import about_dialog
+
 
 import os
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
 
-class editor_gui_window(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1109, 815)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.centralwidget)
-        self.horizontalLayout.setObjectName("horizontalLayout")
-        self.verticalLayout = QtWidgets.QVBoxLayout()
-        self.verticalLayout.setObjectName("verticalLayout")
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem)
+class ConfirmationDialog(QDialog):
+    def __init__(self, parent=None, warning=''):
+        QDialog.__init__(self,parent)
+        self.ui=confirm_ui()
+        self.ui.setupUi(self)
+
+        if warning!='':
+            if not isinstance(warning, str):
+                raise TypeError("Optional arg 'warning' must be {}, not {}".format(str,type(warning)))
+            self.ui.label_2.setText(warning)
+
+class terrain_ui:
+    def __init__(self,MainWindow):
+        self.parent = MainWindow
+        which_ui = MainWindow.ui
+
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"select_hex.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        self.tool_hex_select = QtWidgets.QToolButton(self.centralwidget)
+        self.tool_hex_select = QtWidgets.QToolButton(which_ui.centralwidget)
         self.tool_hex_select.setIcon(icon)
         self.tool_hex_select.setIconSize(QtCore.QSize(32, 32))
         self.tool_hex_select.setMinimumSize(QtCore.QSize(40, 40))
         self.tool_hex_select.setObjectName("tool_hex_select")
-        self.verticalLayout.addWidget(self.tool_hex_select)
-        self.tool_detail = QtWidgets.QToolButton(self.centralwidget)
+        which_ui.toolPane.addWidget(self.tool_hex_select)
+        self.tool_detail = QtWidgets.QToolButton(which_ui.centralwidget)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"detailer.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.tool_detail.setIcon(icon)
         self.tool_detail.setIconSize(QtCore.QSize(32, 32))
         self.tool_detail.setMinimumSize(QtCore.QSize(40, 40))
         self.tool_detail.setObjectName("tool_detail")
-        self.verticalLayout.addWidget(self.tool_detail)
-        self.tool_hex_brush = QtWidgets.QToolButton(self.centralwidget)
+        which_ui.toolPane.addWidget(self.tool_detail)
+        self.tool_hex_brush = QtWidgets.QToolButton(which_ui.centralwidget)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"hex_brush.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.tool_hex_brush.setIcon(icon)
         self.tool_hex_brush.setIconSize(QtCore.QSize(32, 32))
         self.tool_hex_brush.setMinimumSize(QtCore.QSize(40, 40))
         self.tool_hex_brush.setObjectName("tool_hex_brush")
-        self.verticalLayout.addWidget(self.tool_hex_brush)
-        self.tool_riv_but = QtWidgets.QToolButton(self.centralwidget)
+        which_ui.toolPane.addWidget(self.tool_hex_brush)
+        self.tool_riv_but = QtWidgets.QToolButton(which_ui.centralwidget)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"new_river.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.tool_riv_but.setIcon(icon)
         self.tool_riv_but.setIconSize(QtCore.QSize(32, 32))
         self.tool_riv_but.setMinimumSize(QtCore.QSize(40, 40))
         self.tool_riv_but.setObjectName("tool_riv_but")
-        self.verticalLayout.addWidget(self.tool_riv_but)
-        self.tool_biome_but = QtWidgets.QToolButton(self.centralwidget)
+        which_ui.toolPane.addWidget(self.tool_riv_but)
+        self.tool_biome_but = QtWidgets.QToolButton(which_ui.centralwidget)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"biome_brush.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.tool_biome_but.setIcon(icon)
         self.tool_biome_but.setIconSize(QtCore.QSize(32, 32))
         self.tool_biome_but.setMinimumSize(QtCore.QSize(40, 40))
         self.tool_biome_but.setObjectName("tool_biome_but")
-        self.verticalLayout.addWidget(self.tool_biome_but)
-        self.tool_biome_sel = QtWidgets.QToolButton(self.centralwidget)
+        which_ui.toolPane.addWidget(self.tool_biome_but)
+        self.tool_biome_sel = QtWidgets.QToolButton(which_ui.centralwidget)
         icon = QtGui.QIcon()
         icon.addPixmap(QtGui.QPixmap(os.path.join(art_dir,"select_biome.svg")), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         self.tool_biome_sel.setIcon(icon)
         self.tool_biome_sel.setIconSize(QtCore.QSize(32, 32))
         self.tool_biome_sel.setMinimumSize(QtCore.QSize(40,40))
         self.tool_biome_sel.setObjectName("tool_biome_sel")
-        self.verticalLayout.addWidget(self.tool_biome_sel)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.verticalLayout.addItem(spacerItem1)
-        self.horizontalLayout.addLayout(self.verticalLayout)
-        self.graphicsView = QtWidgets.QGraphicsView(self.centralwidget)
-        self.graphicsView.setObjectName("graphicsView")
-        self.horizontalLayout.addWidget(self.graphicsView)
-        self.toolBox = QtWidgets.QToolBox(self.centralwidget)
-        self.toolBox.setMinimumSize(QtCore.QSize(250,0))
-        self.toolBox.setMaximumSize(QtCore.QSize(250, 16777215))
-        self.toolBox.setObjectName("toolBox")
+        which_ui.toolPane.addWidget(self.tool_biome_sel)
+        self.spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        which_ui.toolPane.addItem(self.spacerItem1)
+
+        # define the 
+
         self.Detaoer = QtWidgets.QWidget()
         self.Detaoer.setGeometry(QtCore.QRect(0, 0, 250, 629))
         self.Detaoer.setObjectName("Detaoer")
@@ -160,7 +169,7 @@ class editor_gui_window(object):
         self.det_close_heatmap.setObjectName("det_close_heatmap")
         self.formLayout_4.setWidget(14, QtWidgets.QFormLayout.SpanningRole, self.det_close_heatmap )
 
-        self.toolBox.addItem(self.Detaoer, "")
+        which_ui.contextPane.addItem(self.Detaoer, "")
         self.HexBrush = QtWidgets.QWidget()
         self.HexBrush.setGeometry(QtCore.QRect(0, 0, 250, 629))
         self.HexBrush.setObjectName("HexBrush")
@@ -195,7 +204,7 @@ class editor_gui_window(object):
         self.hex_subtype_lbl = QtWidgets.QLabel(self.HexBrush)
         self.hex_subtype_lbl.setObjectName("hex_subtype_lbl")
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.hex_subtype_lbl)
-        self.toolBox.addItem(self.HexBrush, "")
+        which_ui.contextPane.addItem(self.HexBrush, "")
         self.RiverPen = QtWidgets.QWidget()
         self.RiverPen.setGeometry(QtCore.QRect(0, 0, 250, 629))
         self.RiverPen.setObjectName("RiverPen")
@@ -245,7 +254,7 @@ class editor_gui_window(object):
         self.river_name_disp.setText("")
         self.river_name_disp.setObjectName("river_name_disp")
         self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.river_name_disp)
-        self.toolBox.addItem(self.RiverPen, "")
+        which_ui.contextPane.addItem(self.RiverPen, "")
         self.BiomePainter = QtWidgets.QWidget()
         self.BiomePainter.setGeometry(QtCore.QRect(0, 0, 250, 629))
         self.BiomePainter.setObjectName("BiomePainter")
@@ -268,43 +277,23 @@ class editor_gui_window(object):
         self.formLayout_3.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.bio_name_but_gen)
         self.biome_but_apply = QtWidgets.QPushButton(self.BiomePainter)
         self.biome_but_apply.setObjectName("biome_but_apply")
-        self.formLayout_3.setWidget(6, QtWidgets.QFormLayout.FieldRole, self.biome_but_apply)
+        self.formLayout_3.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.biome_but_apply)
         self.biome_but_delete = QtWidgets.QPushButton(self.BiomePainter)
         self.biome_but_delete.setObjectName("biome_but_delete")
         self.formLayout_3.setWidget(7, QtWidgets.QFormLayout.FieldRole, self.biome_but_delete)
 
-        spacerItem5 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.formLayout_3.setItem(7, QtWidgets.QFormLayout.FieldRole, spacerItem5)
         spacerItem6 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.formLayout_3.setItem(5, QtWidgets.QFormLayout.FieldRole, spacerItem6)
-        self.toolBox.addItem(self.BiomePainter, "")
-        self.horizontalLayout.addWidget(self.toolBox)
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1109, 22))
-        self.menubar.setObjectName("menubar")
-        self.menuFile = QtWidgets.QMenu(self.menubar)
-        self.menuFile.setObjectName("menuFile")
-        self.menuHelp = QtWidgets.QMenu(self.menubar)
+        self.formLayout_3.setItem(6, QtWidgets.QFormLayout.FieldRole, spacerItem6)
+        which_ui.contextPane.addItem(self.BiomePainter, "")
+
+
+        self.menuHelp = QtWidgets.QMenu(which_ui.menubar)
         self.menuHelp.setObjectName("menuHelp")
-        self.menuHeatmaps = QtWidgets.QMenu(self.menubar)
+        self.menuHeatmaps = QtWidgets.QMenu(which_ui.menubar)
         self.menuHeatmaps.setObjectName("menuHeatmaps")
-        self.menuView = QtWidgets.QMenu(self.menubar)
+        self.menuView = QtWidgets.QMenu(which_ui.menubar)
         self.menuView.setObjectName("menuView")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-        self.actionNew = QtWidgets.QAction(MainWindow)
-        self.actionNew.setObjectName("actionNew")
-        self.actionOpen = QtWidgets.QAction(MainWindow)
-        self.actionOpen.setObjectName("actionOpen")
-        self.actionSave = QtWidgets.QAction(MainWindow)
-        self.actionSave.setObjectName("actionSave")
-        self.actionSave_As = QtWidgets.QAction(MainWindow)
-        self.actionSave_As.setObjectName("actionSave_As")
-        self.actionQuit = QtWidgets.QAction(MainWindow)
-        self.actionQuit.setObjectName("actionQuit")
+
         self.actionAbout_MultiHex = QtWidgets.QAction(MainWindow)
         self.actionAbout_MultiHex.setObjectName("actionAbout_MultiHex")
         self.actionTemperature = QtWidgets.QAction(MainWindow)
@@ -323,13 +312,7 @@ class editor_gui_window(object):
         self.actionRivers = QtWidgets.QAction(MainWindow)
         self.actionRivers.setCheckable(True)
         self.actionRivers.setObjectName("actionRivers")
-        self.menuFile.addAction(self.actionNew)
-        self.menuFile.addAction(self.actionOpen)
-        self.menuFile.addSeparator()
-        self.menuFile.addAction(self.actionSave_As)
-        self.menuFile.addAction(self.actionSave)
-        self.menuFile.addSeparator()
-        self.menuFile.addAction(self.actionQuit)
+
         self.menuHelp.addAction(self.actionAbout_MultiHex)
         self.menuHeatmaps.addAction(self.actionAltitude)
         self.menuHeatmaps.addAction(self.actionRainfall)
@@ -338,18 +321,13 @@ class editor_gui_window(object):
         self.menuView.addAction(self.actionBiome_Borders)
         self.menuView.addSeparator()
         self.menuView.addAction(self.actionRivers)
-        self.menubar.addAction(self.menuFile.menuAction())
-        self.menubar.addAction(self.menuView.menuAction())
-        self.menubar.addAction(self.menuHeatmaps.menuAction())
-        self.menubar.addAction(self.menuHelp.menuAction())
+        which_ui.menubar.addAction(self.menuView.menuAction())
+        which_ui.menubar.addAction(self.menuHeatmaps.menuAction())
+        which_ui.menubar.addAction(self.menuHelp.menuAction())
 
-        self.retranslateUi(MainWindow)
-        self.toolBox.setCurrentIndex(0)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        which_ui.contextPane.setCurrentIndex(0)
 
-    def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
         self.tool_hex_select.setToolTip(_translate("MainWindow", "Hex Selector"))
         self.tool_hex_select.setText(_translate("MainWindow", "..."))
         self.tool_detail.setToolTip(_translate("MainWindow", "Detailer"))
@@ -374,13 +352,13 @@ class editor_gui_window(object):
         self.det_alt_lbl.setText(_translate("MainWindow", "Altitude"))
         self.det_temp_slide_2.setText(_translate("MainWindow", "Temperature"))
         self.det_rain_lbl.setText(_translate("MainWindow", "Rainfall"))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.Detaoer), _translate("MainWindow", "Detailer"))
+        which_ui.contextPane.setItemText(which_ui.contextPane.indexOf(self.Detaoer), _translate("MainWindow", "Detailer"))
         self.hex_brush_lbl.setText(_translate("MainWindow", "Brush Size"))
         self.hex_select_lbl.setText(_translate("MainWindow", "Selected: "))
         self.hex_type_lbl.setText(_translate("MainWindow", "Type:"))
         self.hex_subtype_lbl.setText(_translate("MainWindow", "\n"
-"Subtype:"))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.HexBrush), _translate("MainWindow", "Hex Brush"))
+        "Subtype:"))
+        which_ui.contextPane.setItemText(which_ui.contextPane.indexOf(self.HexBrush), _translate("MainWindow", "Hex Brush"))
         self.river_label.setText(_translate("MainWindow", "Rivers:"))
         self.riv_but_pstart.setText(_translate("MainWindow", "Pop Start"))
         self.riv_but_pend.setText(_translate("MainWindow", "Pop End"))
@@ -392,22 +370,16 @@ class editor_gui_window(object):
         self.det_close_heatmap.setText(_translate("MainWindow","Close Heatmap"))
         self.riv_but_delete.setText(_translate("MainWindow", "Delte River"))
         self.riv_name_lbl.setText(_translate("MainWindow", "Selected: "))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.RiverPen), _translate("MainWindow", "River Pen"))
+        which_ui.contextPane.setItemText(which_ui.contextPane.indexOf(self.RiverPen), _translate("MainWindow", "River Pen"))
         self.bio_name_disp.setText(_translate("MainWindow", "Biome:"))
         self.bio_color_lbl.setText(_translate("MainWindow", "Color:"))
         self.bio_name_but_gen.setText(_translate("MainWindow", "Generate Name"))
         self.biome_but_apply.setText(_translate("MainWindow", "Apply"))
         self.biome_but_delete.setText(_translate("MainWindow", "Delete"))
-        self.toolBox.setItemText(self.toolBox.indexOf(self.BiomePainter), _translate("MainWindow", "Biome Painter"))
-        self.menuFile.setTitle(_translate("MainWindow", "File"))
+        which_ui.contextPane.setItemText(which_ui.contextPane.indexOf(self.BiomePainter), _translate("MainWindow", "Biome Painter"))
         self.menuHelp.setTitle(_translate("MainWindow", "Help"))
         self.menuHeatmaps.setTitle(_translate("MainWindow", "Heatmaps (Beta)"))
         self.menuView.setTitle(_translate("MainWindow", "View"))
-        self.actionNew.setText(_translate("MainWindow", "New"))
-        self.actionOpen.setText(_translate("MainWindow", "Open"))
-        self.actionSave.setText(_translate("MainWindow", "Save"))
-        self.actionSave_As.setText(_translate("MainWindow", "Save As"))
-        self.actionQuit.setText(_translate("MainWindow", "Quit"))
         self.actionAbout_MultiHex.setText(_translate("MainWindow", "About MultiHex"))
         self.actionTemperature.setText(_translate("MainWindow", "Temperature"))
         self.actionAltitude.setText(_translate("MainWindow", "Altitude"))
@@ -416,3 +388,481 @@ class editor_gui_window(object):
         self.actionBiome_Borders.setText(_translate("MainWindow", "Biome Borders"))
         self.actionRivers.setText(_translate("MainWindow", "Rivers"))
 
+        # toolbar buttons
+        self.tool_hex_select.clicked.connect( self.tb_hex_select )
+        self.tool_hex_brush.clicked.connect( self.tb_hex_brush )
+        self.tool_detail.clicked.connect( self.tb_detailer )
+        self.tool_riv_but.clicked.connect( self.tb_new_river )
+        self.tool_biome_but.clicked.connect( self.tb_new_biome )
+        self.tool_biome_sel.clicked.connect( self.tb_sel_biome )
+
+        # Detailer contextPane connections
+        self.det_noise_combo.currentIndexChanged.connect( self.det_comboBox_select )
+        self.det_but_noise.clicked.connect( self.det_inject_button )
+        self.det_but_color.clicked.connect( self.det_color_button )
+        self.det_apply_button.clicked.connect( self.det_apply_button_func )
+        self.det_Brush_spin.valueChanged.connect(self.det_brush_size_change)
+        self.det_mag_spin.valueChanged.connect(self.det_mag_changed)
+        self.parent.detail_control.set_configuring("_altitude_base")
+        self.det_close_heatmap.clicked.connect(self.det_clear_heatmap)
+        self.det_close_heatmap.setEnabled(False)
+
+        # Hexbar contextPane connections
+        self.hex_type_combo.currentIndexChanged.connect( self.hex_comboBox_select )
+        self.hex_list_entry = QtGui.QStandardItemModel() 
+        self.hex_sub_list.setModel( self.hex_list_entry )
+        self.hex_sub_list.clicked[QtCore.QModelIndex].connect( self.hex_subtype_clicked )
+        self.hex_brush_disp.valueChanged.connect( self.hex_brush_change )
+
+        self.hex_fill_supertypes()
+
+        # river contextPane connections
+        #   first all the list stuff
+        self.river_list_entry = QtGui.QStandardItemModel()
+        self.tributary_list_entry = QtGui.QStandardItemModel()
+        self.river_list.setModel( self.river_list_entry )
+        self.river_trib_list.setModel( self.tributary_list_entry )
+        self.river_list.clicked[QtCore.QModelIndex].connect( self.river_list_click )
+        self.river_trib_list.clicked[QtCore.QModelIndex].connect( self.river_trib_click )
+        # now all the buttons
+        self.riv_but_pstart.clicked.connect( self.river_ps )
+        self.riv_but_pend.clicked.connect( self.river_pe )
+        self.riv_but_astart.clicked.connect( self.river_as )
+        self.riv_but_aend.clicked.connect( self.river_ae )
+        self.riv_but_delete.clicked.connect( self.river_delete )
+        self.river_trib_back_but.clicked.connect( self.river_back )
+        self.river_trib_back_but.setEnabled(False)
+
+        #biome painter buttons
+        self.bio_name_but_gen.clicked.connect( self.biome_name_gen )
+        self.biome_but_apply.clicked.connect( self.biome_apply )
+        self.bio_color_combo.clicked.connect(self.biome_color_button)
+        self.biome_but_delete.clicked.connect( self.biome_delete )
+
+        # drop-down menu buttons
+        self.actionAbout_MultiHex.triggered.connect( self.menu_help )
+        self.actionTemperature.triggered.connect( self.menu_heatmap_temperature )
+        self.actionAltitude.triggered.connect( self.menu_heatmap_altitude )
+        self.actionRainfall.triggered.connect( self.menu_heatmap_rainfall )
+        self.actionBiome_Names.triggered.connect( self.menu_view_biome_name )
+        self.actionBiome_Borders.triggered.connect( self.menu_view_biome_border )
+        self.actionRivers.triggered.connect( self.menu_view_rivers )
+        self.actionBiome_Names.setChecked(True)
+        self.actionBiome_Borders.setChecked(True)
+        self.actionRivers.setChecked(True)
+
+        self.river_update_list()
+
+    def clear_ui(self, which_ui):
+        which_ui.toolPane.removeWidget(self.tool_hex_select)
+        which_ui.toolPane.removeWidget(self.tool_detail)
+        which_ui.toolPane.removeWidget(self.tool_hex_brush)
+        which_ui.toolPane.removeWidget(self.tool_riv_but)
+        which_ui.toolPane.removeWidget(self.tool_biome_but)
+        which_ui.toolPane.removeWidget(self.tool_biome_sel)
+
+        self.tool_hex_select.deleteLater()
+        self.tool_detail.deleteLater()
+        self.tool_hex_brush.deleteLater()
+        self.tool_riv_but.deleteLater()
+        self.tool_biome_but.deleteLater()
+        self.tool_biome_sel.deleteLater()
+
+        self.tool_hex_select = None
+        self.tool_detail= None
+        self.tool_hex_brush= None
+        self.tool_riv_but= None
+        self.tool_biome_but= None
+        self.tool_biome_sel= None
+
+        which_ui.toolPane.removeItem(self.spacerItem1)
+
+        self.Detaoer = None
+        self.HexBrush = None
+        self.RiverPen = None
+        self.BiomePainter = None
+        for i in range(4):
+            which_ui.contextPane.removeItem(0)
+
+        which_ui.menubar.removeAction(self.menuView.menuAction())
+        which_ui.menubar.removeAction(self.menuHeatmaps.menuAction())
+        which_ui.menubar.removeAction(self.menuHelp.menuAction())
+
+
+    def _update_with_hex_id(self, id = None):
+        if id is not None:
+            if not isinstance(id, int):
+                raise TypeError("Expected {}, got {}".format(int, type(id)))
+
+            self.hex_select_disp.setText(str(id))
+            self.det_hexid_disp.setText( str(id) )
+        else:
+            self.hex_select_disp.setText("")
+            self.det_hexid_disp.setText("")
+
+    def det_show_selected(self, id = None):
+        """
+        Function called when a new hex is selected 
+        """
+        if id is not None:
+            if not isinstance(id, int):
+                raise TypeError("Expected {}, got {}".format(int, type(id)))
+
+            self.det_alt_slide.setValue( self.parent.main_map.catalogue[id]._altitude_base*100 )
+            self.det_temp_slide.setValue( self.parent.main_map.catalogue[id]._temperature_base*100)
+            self.det_rain_slide.setValue( self.parent.main_map.catalogue[id]._rainfall_base*100)
+
+        self._update_with_hex_id( id )
+    
+    def tb_hex_select(self):
+        self.parent.scene.select(self.parent.hex_control)
+        self.parent.hex_control.set_state(0)
+        self.parent.ui.contextPane.setCurrentIndex(0)
+
+    def tb_detailer(self):
+        self.parent.scene.select(self.parent.detail_control)
+        self.parent.ui.contextPane.setCurrentIndex(0)
+
+    def tb_hex_brush(self):
+        self.parent.scene.select(self.parent.hex_control)
+        self.parent.hex_control.set_state(1)
+        self.parent.ui.contextPane.setCurrentIndex(1)
+
+    def tb_new_river(self):
+        self.parent.ui.contextPane.setCurrentIndex(2)
+        self.parent.scene.select(self.parent.river_control)
+        self.parent.river_control.prepare(1)
+
+    def tb_new_biome(self):
+        self.parent.ui.contextPane.setCurrentIndex(3)
+        self.parent.scene.select(self.parent.biome_control )
+        self.parent.biome_control.set_state( 1 )
+
+    def tb_sel_biome(self):
+        self.parent.ui.contextPane.setCurrentIndex(3)
+        self.parent.scene.select(self.parent.biome_control)
+        self.parent.biome_control.set_state( 0 )
+
+    def det_brush_size_change(self):
+        new_radius = self.det_Brush_spin.value()
+        self.parent.detail_control.set_radius(new_radius)
+
+    def det_mag_changed(self):
+        new_magnitude = self.det_mag_spin.value()/20.0
+        self.parent.detail_control.set_magnitude( new_magnitude )
+
+    def det_comboBox_select(self):
+        combo_status = self.det_noise_combo.currentText()
+        attribute = ''
+        if combo_status == 'Altitude':
+            attribute = '_altitude_base'
+        elif combo_status == 'Rainfall':
+            attribute = '_rainfall_base'
+        elif combo_status == 'Temperature':
+            attribute = '_temperature_base'
+        else:
+            raise NotImplementedError("Somehow got '{}' from combo box.".format(combo_status))
+
+        self.parent.detail_control.set_configuring( attribute )
+
+    def det_inject_button(self):
+        """
+        This button injects perlin noise into the Hexmap. 
+        It uses the current state of the drop-down menu to decide which attribute to inject into
+
+        It asks for confirmation before doing this. 
+        """
+        dialog = ConfirmationDialog(self.parent)
+        result = dialog.exec_() 
+        if result==1:
+            print("Injecting")
+
+            combo_status = self.det_noise_combo.currentText()
+            attribute = ''
+            if combo_status == 'Altitude':
+                attribute = '_altitude_base'
+            elif combo_status == 'Rainfall':
+                attribute = '_rainfall_base'
+            elif combo_status == 'Temperature':
+                attribute = '_temperature_base'
+            else:
+                raise NotImplementedError("Somehow got '{}' from combo box.".format(combo_status))
+
+            # we aren't using the perlinize function, since that tries to load/save the whole map 
+            # first generate a texture file
+            texture = generate_gradients()
+            
+            # apply the noise
+            for hexID in self.parent.main_map.catalogue:
+                center = self.parent.main_map.catalogue[hexID].center
+                scale = (0.9+self.det_mag_spin.value())
+
+                new_value = getattr( self.parent.main_map.catalogue[hexID], attribute) \
+                        + scale*sample_noise(center.x, center.y, 1.1*self.parent.main_map.dimensions[0],\
+                        1.1*self.parent.main_map.dimensions[1], texture)
+
+                setattr( self.parent.main_map.catalogue[hexID], attribute, new_value)
+
+                # apply the relevant heatmep
+
+    def det_color_button(self):
+        # make a Climatizer
+        note = "This will take a few minutes. MultiHex may seem unresponsive. This process is irreversible"
+        dialog = ConfirmationDialog(self.parent, note)
+        result = dialog.exec_() 
+
+        if result==0:
+            return
+        
+        for hexID in self.parent.main_map.catalogue:
+            if self.parent.main_map.catalogue[hexID].biome=='mountain':
+                continue
+
+            self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalogue[hexID] )
+            self.parent.main_map.catalogue[hexID].rescale_color()
+            self.parent.hex_control.redraw_hex(hexID)
+
+
+    def det_apply_button_func(self):
+        # build the dictionary to adjut the hex
+        params = {
+                    "_altitude_base": self.det_alt_slide.value()/100., 
+                    "_rainfall_base": self.det_rain_slide.value()/100.,
+                    "_temperature_base": self.det_temp_slide.value()/100.
+            }
+        if self.parent.hex_control.selected is None:
+            return
+        self.parent.hex_control.adjust_hex( self.parent.main_map.catalogue[self.parent.hex_control.selected] , params )
+        self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalogue[self.parent.hex_control.selected])
+        self.parent.hex_control.redraw_hex( self.parent.hex_control.selected )
+
+    def hex_comboBox_select(self):
+        """
+        Called when you choose a new entry in the drop-down menu
+        """
+        self.hex_list_entry.clear()
+        this_sub = self.hex_type_combo.currentText()
+
+        for entry in self.parent.config[self.parent.main_map.tileset]["types"][this_sub]:
+            this = QtGui.QStandardItem(entry)
+            color =  self.parent.config[self.parent.main_map.tileset]["types"][this_sub][entry]["color"]
+            this.setBackground( QtGui.QColor(color[0], color[1], color[2] ))
+            self.hex_list_entry.appendRow(this)
+
+
+    def hex_subtype_clicked(self, index=None):
+        """
+        Called when you click on a subtype 
+        """
+        # get ready to draw
+        self.tb_hex_brush()
+
+        sub_type = index.data()
+        this_type = self.hex_type_combo.currentText()
+
+        new_param = {}
+        for key in self.parent.params:
+            new_param[key] = self.parent.config[self.parent.main_map.tileset]["types"][this_type][sub_type][key]
+        
+        self.parent.hex_control.set_color(self.parent.config[self.parent.main_map.tileset]["types"][this_type][sub_type]["color"])
+        self.parent.hex_control.set_params( new_param )
+
+    def hex_brush_change(self):
+        """
+        Called when the brush size changes. Tells the hex_control to switch to the new size
+        """
+        value = self.hex_brush_disp.value()
+        self.parent.hex_control.set_brush_size( value )
+
+
+    def hex_fill_supertypes(self):
+        # hex_type_combo
+        where = self.parent.main_map.tileset
+        for super_type in self.parent.config[self.parent.main_map.tileset]["types"]:
+            self.hex_type_combo.addItem(super_type)
+
+        self.hex_type_combo.setCurrentIndex(0)
+
+    def river_list_click(self, index=None):
+        """
+        Called when an entry in the list of rivers is clicked 
+        """
+        # river_list_entry
+        item = self.river_list_entry.itemFromIndex(index)
+        pID = item.eID
+
+        if pID is not None:
+            self.parent.river_control.select_pid(pID)
+
+        self.parent.river_control.sub_select( '' )
+        self.river_update_gui()
+
+    def river_trib_click(self, index=None):
+        """
+        Called when a tributary entry is clicked on. It selects that tributary, and reupdates the tributary list
+        """
+        item = self.tributary_list_entry.itemFromIndex(index).eID
+        self.parent.river_control.sub_select( self.parent.river_control.sub_selection + str(item) )
+        self.river_update_gui()
+
+
+    def river_update_list(self):
+        """
+        This updates the Gui with a new list of rivers
+        """
+        self.river_list_entry.clear()
+
+        if not ('rivers' in self.parent.main_map.path_catalog):
+            return
+        for pID in self.parent.main_map.path_catalog['rivers']:
+            self.river_list_entry.appendRow( QEntityItem("River {}".format(pID), pID))
+
+    def river_update_gui(self):
+        """
+        Should be called when the gui needs updating because a tributary or river was selected. 
+        """
+        selected = self.parent.river_control.get_sub_selection()
+
+        self.tributary_list_entry.clear()
+        if self.parent.river_control.selected_pid is not None:
+            if selected.tributaries is not None:
+                self.tributary_list_entry.appendRow( QEntityItem("Tributary 0".format(0), 0))
+                self.tributary_list_entry.appendRow( QEntityItem("Tributary 1".format(1), 1))
+
+        if selected.tributaries is not None:
+            self.riv_but_pstart.setEnabled(False)
+            self.riv_but_astart.setEnabled(False)
+        else:
+            self.riv_but_pstart.setEnabled(True)
+            self.riv_but_astart.setEnabled(True)
+
+        # can only add or remove from the end if this is not a tributary 
+        if self.parent.river_control.sub_selection == '':
+            self.riv_but_pend.setEnabled(True)
+            self.riv_but_aend.setEnabled(True)
+            self.river_trib_back_but.setEnabled(False)
+        else:
+            self.riv_but_pend.setEnabled(False)
+            self.riv_but_aend.setEnabled(False)
+            self.river_trib_back_but.setEnabled(True)
+
+    def river_back(self):
+        self.parent.river_control.sub_select( self.parent.river_control.sub_selection[:-1] )
+        self.river_update_gui()
+
+    def river_ps(self):
+        self.parent.river_control.pop_selected_start()
+
+    def river_pe(self):
+        self.parent.river_control.pop_selected_end()
+
+    def river_as(self):
+        self.parent.scene.select(self.parent.river_control)
+        self.parent.river_control.prepare( 5 )
+
+    def river_ae(self):
+        self.parent.scene.select(self.parent.river_control)
+        self.parent.river_control.prepare( 3 )
+
+    def river_delete(self):
+        self.parent.river_control.delete_selected()
+        self.river_update_list()
+
+    def biome_name_gen(self):
+        """
+        Generates a new name for the Biome (Region)
+
+        Uses the first registered ID to determine an overall theme (Forest, Grassland, etc)
+        """
+        if self.parent.biome_control.selected is None:
+            return
+
+        # this is the first registered Hex
+        first = self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].ids[0]
+
+        new_one = create_name( self.parent.main_map.catalogue[first].biome )
+        self.bio_name_edit.setText( new_one )
+
+    def biome_apply(self):
+        if self.parent.biome_control.selected is None:
+            pass
+        else:
+            self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].name = self.bio_name_edit.text()
+            self.parent.biome_control.redraw_region_text( self.parent.biome_control.selected)
+
+    def biome_update_gui(self):
+        if self.parent.biome_control.selected is None:
+            self.bio_name_edit.setText("")
+            self.bio_color_combo.setEnabled(False)
+        else:
+            self.bio_name_edit.setText(self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].name)
+            self.bio_color_combo.setEnabled(True)
+
+    def biome_color_button(self):
+        if self.parent.biome_control.selected is None:
+            pass
+        else:
+            old_one = self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color
+            qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
+            new_color = QColorDialog.getColor(initial = qt_old_one, parent=self.parent)
+
+            if new_color.isValid():
+                self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
+                self.parent.biome_control.redraw_region(self.parent.biome_control.selected)
+    
+    def biome_delete(self):
+        if self.parent.biome_control.selected is None:
+            pass
+        else:
+            self.parent.main_map.remove_region( self.parent.biome_control.selected, self.parent.biome_control.r_layer)
+
+
+        self.parent.biome_control.redraw_region( self.parent.biome_control.selected )
+        self.parent.biome_control.select(None)
+
+
+    def menu_view_biome_name(self):
+        state  = self.actionBiome_Names.isChecked()
+        self.parent.biome_control.draw_names = state
+        self.parent._redraw_biomes()
+
+    def menu_view_biome_border(self):
+        state = self.actionBiome_Borders.isChecked()
+        self.biome_control.draw_borders = state
+        self._redraw_biomes()
+
+    def menu_view_rivers(self):
+        state =  self.actionRivers.isChecked()
+        self.parent.river_control._drawing = state
+        self.parent.river_control.redraw_rivers()
+
+    def menu_heatmap_altitude(self):
+        self.parent.scene.select( self.parent.detail_control)
+        self.parent.ui.contextPane.setCurrentIndex(0)
+        self.hex_control.use_param_as_color = '_altitude_base'
+        self.parent._redraw_hexes()
+        self.det_close_heatmap.setEnabled(True)
+
+    def menu_heatmap_temperature(self):
+        self.scene.select( self.parent.detail_control)
+        self.parent.ui.contextPane.setCurrentIndex(0)
+        self.parent.hex_control.use_param_as_color = '_temperature_base'
+        self.parent._redraw_hexes()
+        self.det_close_heatmap.setEnabled(True)
+
+    def menu_heatmap_rainfall(self):
+        self.parent.scene.select( self.parent.detail_control)
+        self.parent.ui.contextPane.setCurrentIndex(0)
+        self.parent.hex_control.use_param_as_color = '_rainfall_base'
+        self.parent._redraw_hexes()
+        self.det_close_heatmap.setEnabled(True)
+
+    def det_clear_heatmap(self):
+        self.parent.hex_control.use_param_as_color = ''
+        self.parent._redraw_hexes()
+        self.det_close_heatmap.setEnabled(False)
+
+    def menu_help(self):
+        dialog = about_dialog(self.parent)
+        dialog.setAttribute( QtCore.Qt.WA_DeleteOnClose )
+        dialog.exec_()
