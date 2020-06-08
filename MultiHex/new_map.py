@@ -1,4 +1,4 @@
-from MultiHex.guis.advanced_map_generation import advanced_map_dialog
+from MultiHex.guis.advanced_map_generation import advanced_map_dialog, new_preset_dialog
 from MultiHex.guis.basic_map_generation import basic_map_dialog
 
 import os
@@ -73,8 +73,6 @@ class basicMapDialog(QDialog):
 
         self.ui.tileset_combo.clear()
         for key in data:
-            if str(key)=="custom":
-                continue
             nice = str(key).lower()
             nice = nice[0].upper() + nice[1:]
             self.ui.tileset_combo.addItem(nice)
@@ -87,6 +85,8 @@ class basicMapDialog(QDialog):
         
         self.ui.gen_preset_combo.clear()
         for key in data:
+            if str(key).lower()=="custom":
+                continue
             nice = str(key).lower()
             nice = nice[0].upper() + nice[1:]
             self.ui.gen_preset_combo.addItem(nice)
@@ -115,6 +115,9 @@ class advancedMapDialog(QDialog):
         self.added_items = {}
         self.row_number = 0
 
+        self.new_preset = ''
+        self.new_preset_button = None
+
         if baseline not in self.config:
             self.close()
         
@@ -134,11 +137,15 @@ class advancedMapDialog(QDialog):
         """
         self.config[self.custom_key] = self.config[self.baseline]
 
-    def write_config_file(self):
+    def write_config_file(self,new_name=None):
         """
         This dumps the current configuration into the generation config file
         """
         f = open(self.config_loc,'w')
+        if new_name is not None:
+            if not isinstance(new_name,str):
+                raise TypeError("New config name must be {}, got {}".format(str, type(new_name)))
+            self.config[new_name] = self.config[self.custom_key]
         json.dump(self.config,f,ensure_ascii=True,indent=2)
         f.close()
 
@@ -151,14 +158,31 @@ class advancedMapDialog(QDialog):
             self.added_items[key].deleteLater()
         self.added_items = {}
 
+        if self.new_preset_button is not None:
+            self.ui.horizontalLayout.removeWidget(self.new_preset_button)
+            self.new_preset_button.deleteLater()
+            self.new_preset_button=None
+
         self.row_number = 0
         for key in self.config[self.custom_key][get_key]["values"]:
             self.add_entry(key, isinstance(self.config[self.custom_key][get_key]["values"][key], int))
 
         if self.ui.param_combo.currentIndex() == (self.ui.param_combo.count()-1):
+            self.new_preset_button = QtWidgets.QPushButton(self.ui.scrollAreaWidgetContents)
+            self.new_preset_button.setObjectName("new_preset_button")
+            self.new_preset_button.setText("Save As New Preset")
+            self.ui.horizontalLayout.insertWidget(0,self.new_preset_button)
+            self.new_preset_button.clicked.connect(self.save_config)
+
             self.ui.pushButton.setText("Generate")
         else:
+            
             self.ui.pushButton.setText("Save and Continue")
+
+    def save_config(self):
+        config_dialog = newPresetDialog(self)
+        config_dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        config_dialog.exec_()
 
     def add_entry(self, key, type_int):
         name = str(key).lower()
@@ -211,3 +235,23 @@ class advancedMapDialog(QDialog):
                 self.config[self.custom_key][subkey]["values"][key] = self.added_items[name].value()
 
             self.ui.param_combo.setCurrentIndex(self.ui.param_combo.currentIndex()+1)
+
+
+class newPresetDialog(QDialog):
+    def __init__(self,parent):
+        QDialog.__init__(self,parent)
+        self.ui=new_preset_dialog()
+        self.ui.setupUi(self)
+        self.parent=parent
+
+        self.ui.buttonBox.accepted.connect(self.accept)
+        self.ui.buttonBox.rejected.connect(self.reject)
+
+    def accept(self):
+        print("accept")
+        self.parent.write_config_file( str(self.ui.line.text()) )
+        QDialog.accept(self)
+
+    def reject(self):
+        print("reject")
+        QDialog.reject(self)
