@@ -3,6 +3,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
 
+"""
+This file defines the gui for the MainWindow's structure
+"""
+
 class main_gui(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")

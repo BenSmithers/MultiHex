@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
+"""
+This file defines all the terrain editor components and adds the appropriate map functionality 
+"""
 
-# Form implementation generated from reading ui file 'terrain_editor_2.ui'
-#
-# Created by: PyQt5 UI code generator 5.10.1
-#
-# WARNING! All changes made in this file will be lost!
-
-# Qt items an dQt accessories
+# Qt items an Qt accessories
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
 from MultiHex.tools import QEntityItem
 
+# MultiHex imports 
 from MultiHex.guis.main_gui import main_gui
 from MultiHex.generator.noise import generate_gradients, sample_noise
 from MultiHex.generator.util import create_name

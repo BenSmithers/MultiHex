@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
+"""
+This defines the additional elements of the Civilization editor mode
 
-# Form implementation generated from reading ui file 'civilization_design_file.ui'
-#
-# Created by: PyQt5 UI code generator 5.10.1
-#
-# WARNING! All changes made in this file will be lost!
+It also connects them all to map functionality 
+"""
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog

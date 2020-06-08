@@ -6,6 +6,11 @@
 #
 # WARNING! All changes made in this file will be lost!
 
+
+"""
+This defines the gui for the little window that pops up asking the user if they are sure they want to inject noise or recalculate climates around the whole map
+"""
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_Dialog(object):
