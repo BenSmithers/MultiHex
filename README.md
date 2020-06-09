@@ -22,12 +22,12 @@ Python2 is unsupported (and won't work due to some changes in the way python han
 
 # Installing and Running
 
-Installing is super easy. `cd` to some folder. `git clone git@github.com:BenSmithers/HexMap.git` to download it.
+Installing is super easy. `cd` to some folder. `git clone git@github.com:BenSmithers/MultiHex.git` to download it.
 
 Then, `cd` into that new folder. Run `pwd`, copy the output, and open up your `~/.bashrc` file.
 Add `export PYTHONPATH=$PYTHONPATH:/thing/you/just/copied` to the bottom of the that file. 
 
-Now, open up a new terminal window, go to `/path/to/HexMap/HexMap` and run `./launch.py`. Congrats, you're in!
+Now, open up a new terminal window, go to `/path/to/MultiHex/MultiHex` and run `python3 ./main_file.pyw`. Congrats, you're in!
 
 # Current Features
 
