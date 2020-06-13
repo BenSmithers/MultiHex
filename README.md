@@ -33,25 +33,34 @@ Now, open up a new terminal window, go to `/path/to/MultiHex/MultiHex` and run `
 
 ## World Generation
 
-MultiHex currently supports a multi-step world generation system. 
-When creating a new map, you have the option of 
+*MultiHex* currently supports a multi-step world generation system with multiple presets, and the option of customizing existing to your hearts content. 
 
-a. Allowing *MultiHex* to seed the world with its own mountain ridges, and spawn the world from there, (recommended) or
-
-b. Drawing out the mountainous ridge contours of your world, and letting *MultiHex* do the rest, or for the dedicated. (outdated)
-
-c. Filling in all the dtails yourself, starting with just a blank canvas and creativity. (not working)
+<p align="center">
+  <img src="https://github.com/BenSmithers/MultiHex/blob/master/MultiHex/Artwork/wiki_images/worldgen.PNG" alt="A screenshot of the MultiHex world generation dialogs" width="1082" height="752">
+</p>
 
 *MultiHex* uses a seeded algorithm to generate the world's topography and oceans. 
 Then, it uses a 'nuanced' weather model to propagate storm systems across your new world to map out areas of intense rainfall and arid deserts. 
 
 ## World Editor
 
-The master branch editor allows you to change Hexes and draw new biomes. An update to this interface is currently under development, see #11 for more details. 
+A fully-fledged terrain editor is in place that allows for drawing vast swaths of desert, grassland, forests, and more. 
+Modifications of existing json files allows for easy addition of new hex climates with seamless integration into the world generation algorithm. 
+
+<p align="center">
+  <img src="https://github.com/BenSmithers/MultiHex/blob/master/MultiHex/Artwork/wiki_images/terrain_editor.PNG" alt="A screenshot of the MultiHex terrain editor" width="1082" height="752">
+</p>
+
+Users can also draw new rivers, inject perlin noise into climate-determining hex parameters, use the 'detailer' brush to finely-tune the climate at each hex, and draw bordered regions on the map for named geographic features.
+
 
 ## Civilization Editor
 
-Allows the user to view and edit the civilizations on the map: locations (with multiple choices of icons), settlements, roadways, counties, and kingdoms (which are collections of counties). Currently uses template artwork for the buttons. 
+Allows the user to view and edit the civilizations on the map: locations (with multiple choices of icons), settlements, roadways, counties, and kingdoms (which are collections of counties).
+
+<p align="center">
+  <img src="https://github.com/BenSmithers/MultiHex/blob/master/MultiHex/Artwork/wiki_images/civ_editor.PNG" alt="A screenshot of the MultiHex civilization editor" width="1082" height="752">
+</p>
 
 # Future Plans
 
