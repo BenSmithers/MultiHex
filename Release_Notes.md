@@ -1,4 +1,4 @@
-## June 05 2020 (v0.3.0)
+## June 05 2020 (v0.4.0)
 
 ### Additions
 
@@ -44,7 +44,7 @@
 
 * Several other minor bugfixes 
 
-## April 20ish 2020 (v0.2.0)
+## April 20ish 2020 (v0.3.0)
 
 ### Additions
 
