@@ -466,6 +466,8 @@ class Hexmap:
         self._tileset = "standard"
         self._version = map_version 
 
+        self.dimensions = None
+
     @property
     def tileset(self):
         return(self._tileset)

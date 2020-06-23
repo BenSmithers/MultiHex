@@ -68,6 +68,8 @@ class main_gui(object):
         self.actionSave.setObjectName("actionSave")
         self.actionSave_As = QtWidgets.QAction(MainWindow)
         self.actionSave_As.setObjectName("actionSave_As")
+        self.export_image = QtWidgets.QAction(MainWindow)
+        self.export_image.setObjectName("export_image")
         self.actionQuit = QtWidgets.QAction(MainWindow)
         self.actionQuit.setObjectName("actionQuit")
 
@@ -83,6 +85,7 @@ class main_gui(object):
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionSave_As)
         self.menuFile.addAction(self.actionSave)
+        self.menuFile.addAction(self.export_image)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionQuit)
 
@@ -95,6 +98,7 @@ class main_gui(object):
         self.actionOpen.setText(QtCore.QCoreApplication.translate("MainWindow", "Open"))
         self.actionSave.setText(QtCore.QCoreApplication.translate("MainWindow", "Save"))
         self.actionSave_As.setText(QtCore.QCoreApplication.translate("MainWindow", "Save As"))
+        self.export_image.setText(QtCore.QCoreApplication.translate("MainWindow","Export Image"))
         self.actionQuit.setText(QtCore.QCoreApplication.translate("MainWindow", "Quit"))
 
         self.menubar.addAction(self.menuEditor.menuAction())

@@ -58,6 +58,7 @@ class main_window(QMainWindow):
         self.ui.actionQuit.triggered.connect( self.quit )
         self.ui.actionSave.triggered.connect( self.save_map )
         self.ui.actionSave_As.triggered.connect( self.save_as)
+        self.ui.export_image.triggered.connect(self.export_image)
         self.ui.actionOpen.triggered.connect( self.open )
         self.ui.actionNew.triggered.connect(self.new)
         self.ui.actionTerrainEditor.triggered.connect(self.switch_to_terrain)
@@ -92,6 +93,24 @@ class main_window(QMainWindow):
         self.savedir = os.path.join(basedir, 'saves')
         if not os.path.exists(self.savedir):
             os.mkdir(self.savedir)
+
+    def export_image(self):
+        """
+        Function is called when the 'export image' action is chosen. Exports a PNG of the map at the location of the user's choice
+        """
+        temp= QFileDialog.getSaveFileName(None, 'Exoport Image', self.savedir, 'PNGs (*.png)')[0]
+        if temp is None:
+            return
+        elif temp=='':
+            return
+
+        #self.main_map.dimensions
+        size   = QtCore.QSize(self.main_map.dimensions[0], self.main_map.dimensions[1])
+        image  = QtGui.QImage(size,QtGui.QImage.Format_ARGB32_Premultiplied)
+        painter= QtGui.QPainter(image)
+        self.scene.render(painter)
+        painter.end()
+        image.save(temp)
 
     def smart_ui_chooser(self):
         self.switch_to_terrain()
