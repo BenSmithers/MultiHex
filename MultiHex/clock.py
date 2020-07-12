@@ -43,7 +43,6 @@ day_list = [ "Monday",
           "Sunday"]
 
 
-
 phases = {  "New":0.0,
             "Waxing Crescent":0.3,
             "Waxing Gibbous":0.6,
@@ -288,6 +287,12 @@ class Time:
         Implements the ">" operator. Opposite of "<" operator but they can't be equal! 
         """
         return( (not self.__lt__(other)) and (self.minute!=other.minute))
+
+    def __eq__(self,other):
+        """
+        Implements the "==" operator. 
+        """
+        return( self.hour == other.hour and self.minute == other.minute and self.month == other.month and self.day==other.day and self.year==other.year)
 
 class Clock:
     """
