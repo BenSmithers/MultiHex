@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
-from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
 from PyQt5 import QtGui, QtCore
 
 
@@ -72,6 +72,15 @@ class basic_tool:
         """
         Toggles the 'mode' of the tool. Optionally passed a 'corce' argument 
         """
+        pass
+
+    def get_context_options(self,event):
+        """
+        Function called by the clicker control requesting a list of context menu options, from the active tool, at the cursor. 
+        The tool returns a list containing a string for each viable option
+        """
+        return([])
+    def do_action(self, action):
         pass
 
     def clear(self):
@@ -212,12 +221,17 @@ class clicker_control(QGraphicsScene):
     def __init__(self, parent=None, master=None):
         QGraphicsScene.__init__(self, parent)
 
+        if not isinstance(master, QMainWindow):
+            raise TypeError("Clicker control master must be {}, got {}".format(QMainWindow, type(master)))
+        if not isinstance(parent, QGraphicsView):
+            raise TypeError("Clicker control parent must be {}, got {}".format(QGraphicsView, type(parent)))
+
         self._active = None #basic_tool object
         self._primary_held = False
         self._secondary_held = False
-        
-        self.parent = parent
-        self.master = master
+
+        self.parent = parent #QGraphicsView
+        self.master = master #MainMap
 
         self._alt_held = False
 
@@ -284,6 +298,21 @@ class clicker_control(QGraphicsScene):
     @property
     def active(self):
         return(self._active)
+
+    def contextMenuEvent(self, event):
+        opts = self.active.get_context_options(event)
+        if not isinstance(opts, list):
+            return
+        if len(opts)==0:
+            return
+        contextMenu = QMenu(self.parent)
+        actions = {}
+        for option in opts:
+            actions[option] = contextMenu.addAction(str(option))
+
+
+        action = contextMenu.exec_(self.master.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
+        #action.text()
 
     def select(self,which_tool):
         if not isinstance(which_tool, basic_tool):
@@ -907,7 +936,9 @@ class entity_brush(basic_tool):
             pass
 
 
-
+    def get_context_options(self, event):
+        return(["one", "two"])
+    
     def load_assets(self):
         """
         Loads all the artwork into an Icon object held 
