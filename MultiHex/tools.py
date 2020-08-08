@@ -120,11 +120,14 @@ class Basic_Brush(basic_tool):
 
         If no Arg is provided, deselect the hex
         """
+
         if which is not None:
             if not isinstance(which, int):
                 raise TypeError("Expected {}, got {}".format(int, type(which)))
 
         self._selected = which
+
+        # draw a blue outline around the selected hex
 
     @property
     def state(self):
@@ -178,8 +181,8 @@ class Basic_Brush(basic_tool):
             self._outline_obj.setZValue(10)
 
     def get_color(self):
-        new = (self._color[0], self._color[1], self._color[2])
-        return(new)
+        new = self.QPen.color()
+        return((new.red(),new.green(),new.blue()))
             
     def set_color( self, color):
         """
@@ -1072,6 +1075,9 @@ class hex_brush(Basic_Brush):
 
         self.use_param_as_color=''
 
+        # outline object for which hex is selected
+        self._selection_outline_obj = None 
+
     def set_params( self, obj ):
         assert( isinstance(obj, dict) )
 
@@ -1141,7 +1147,23 @@ class hex_brush(Basic_Brush):
             self.deselect_evt(event)
         elif self._state == 1:
             self.erase(event)
-    
+
+    def select(self, loc_id=None ):
+        Basic_Brush.select(self, loc_id)
+
+        # remove any selection outline
+        if self._selection_outline_obj is not None:
+            self.parent.scene.removeItem(self._selection_outline_obj)
+
+        if (loc_id is not None) and (loc_id in self.parent.main_map.catalogue):
+            temp = self.get_color()
+            self.QPen.setColor(QtGui.QColor(0, 220,220))
+            self.QPen.setStyle(1)
+            self.QBrush.setStyle(0)
+            outline = self.parent.main_map.get_neighbor_outline( loc_id , self._brush_size)
+
+            self._selection_outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
+            self._selection_outline_obj.setZValue(10)
 
     def select_evt(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
@@ -1152,8 +1174,9 @@ class hex_brush(Basic_Brush):
             pass
         self.select( loc_id ) #select
 
+
     def deselect_evt(self, event):
-        self.parent.det_show_selected()
+        self.parent.extra_ui.det_show_selected()
         self.select() # deselect
     
     def erase(self, event):
