@@ -2,9 +2,9 @@ from PyQt5 import QtCore
 from MultiHex.objects import Entity, Mobile
 
 try:
-    from numpy import sqrt, atan, pi, floor, cos, sin
+    from numpy import sqrt, atan, pi, floor, cos, sin, inf
 except ImportError:
-    from math import sqrt, atan, pi, floor, cos, sin
+    from math import sqrt, atan, pi, floor, cos, sin, inf
 
 import pickle
 
@@ -270,6 +270,15 @@ class Hex:
         # used in procedural generation
         self.genkey            = '00000000'
 
+    def get_cost(self, other):
+        """
+        Default get_cost function. 
+        Should be reimplemented in derived classes. 
+        """
+        if not isinstance(other, Hex):
+            raise TypeError("Cost only defined for {}, got {}".format(Hex, type(other)))
+
+        return(1.)
 
     @property
     def center(self):
@@ -497,6 +506,73 @@ class Hexmap:
     def drawscale(self):
         copy = self._drawscale
         return( copy )
+
+    def _get_cost_between(self, start_id, end_id):
+        """
+        Function for calculating the movement cost between neighboring hexes 
+        Used by the get_route_between_hexes functionm
+
+        -> does not account for locations on map. This is just a raw distance, not including getting closer to the final destination 
+        """
+        assert(start_id in self.catalogue)
+        assert(end_id in self.catalogue)
+
+        start_neighs = self.get_hex_neighbors(start_id)
+        if end_id not in start_neighs:
+            return(inf) #you can't teleport. This is an infiinite cost move...
+
+        # We need to be able to have type-specific cost implementations. The Hexmap does not know what kind of map it is
+        # So the Hexes themselves will be responsible for calculating the cost.
+        # Subtypes of Hexes will implement unique cost functions 
+
+        start_hex = self.catalogue[start_id]
+        return(start_hex.get_cost( self.catalogue[end_id]))
+
+    def get_route_between_hexes(self, start_id, end_id):
+        """
+        Finds quickest route between two given HexIDs. Both IDs must be on the Hexmap.
+        Always steps closer to the target
+
+        Returns ordered list of HexIDs representing shortest found path between start and end (includes start and end)
+        """
+        if not isinstance(start_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(start_id)))
+        if not isinstance(end_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(end_id)))
+        if start_id not in self.catalogue:
+            raise ValueError("Start ID {} not found in catalogue!".format(start_id))
+        if end_id not in self.catalogue:
+            raise ValueError("End ID {} not found in catalogue!".format(end_id))
+
+        steps = [start_id]
+        while True:
+            neighbor_nodes = self.get_get_hex_neighbors(steps[-1])
+            # if we're next to the end, just end it already
+            if end_id in neighbor_nodes:
+                steps.append(end_id)
+                break
+
+            raw_costs = [self._get_cost_between(steps[-1], node) for node in neighbor_nodes]
+            current_dist = (self.catalogue[steps[-1]].center - self.catalogue[end_id].center)**2 #distance squared. no root for you!
+
+            # get all the distances from the neighboring nodes to the final destination
+            other_dists = [ 0. for i in range(6) ]
+            for i in range(6):
+                if neighbor_nodes[i] not in self.catalogue:
+                    other_dists[i] = inf
+                    continue
+                else:
+                    other_dists[i] = (self.catalogue[neighbor_nodes[i]].center - self.catalogue[end_id].center)**2
+
+            # if the step takes you further, make it infinite cost. The step that brings you closest lowers the cost. The others minimally reduce the cost
+            raw_dist_cost = [(inf if other_dists[i]>current_dist else 0.85) for i in range(6)]
+            min_index = other_dists.index(min(other_dists))
+            raw_dist_cost[min_index] = 0.7
+
+            # calculate the cost, append the cheapest cost step to the steps list 
+            net_costs = [raw_dist_cost[i]*raw_costs[i] for i in range(6)]
+            steps.append( neighbor_nodes[net_costs.index(min(net_costs))] )
+
     
     def get_region_neighbors( self, rID, layer):
         """

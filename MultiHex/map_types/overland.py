@@ -7,6 +7,11 @@ from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, ba
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
 
+try:
+    from numpy import inf
+except ImportError:
+    from math import inf
+
 """
 Implements the overland map type, its brushes, and its hexes.
 These are all derived from the "core" and "tools classes 
@@ -1012,6 +1017,27 @@ class OHex(Hex):
 
         # CW downstream , CCW downstream, runs through
         self.river_border = [ False ,False , False]
+
+    def get_cost(self, other):
+        """
+        Gets the cost of movement between two hexes. Used for routing
+        """
+        if not isinstance(other, OHex):
+            raise TypeError("Can only calculate cost with other {}, got {}".format(OHex, type(other)))
+
+        # xor operator
+        # both should be land OR both should be water
+        if not (self._is_land ^ other._is_land):
+            return(inf)
+
+        # altitude doesn't matter when you're on a boat
+        if not self._is_land:
+            return(1.)
+
+        # between -1 and 1
+        alt_dif = other.altitude - self.altitude
+
+        return(1. + 0.15*alt_dif)
 
     @property
     def biodiversity(self):
