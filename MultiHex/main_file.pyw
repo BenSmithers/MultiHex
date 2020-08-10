@@ -9,7 +9,7 @@ import json
 from MultiHex.guis.main_gui import main_gui
 
 from MultiHex.core import Hexmap, save_map, load_map
-from MultiHex.tools import basic_tool
+from MultiHex.tools import basic_tool, Map_Use_Tool
 from MultiHex.objects import Icons
 from MultiHex.map_types.overland import OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
 from MultiHex.about_class import about_dialog
@@ -19,7 +19,7 @@ from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
 from MultiHex.guis.terrain_editor_gui import terrain_ui
 from MultiHex.guis.civ_gui import civ_ui
 from MultiHex.guis.new_load_gui import new_load_gui
-
+from MultiHex.guis.map_use_gui import map_use_ui
 
 #import some dialogs
 from MultiHex.new_map import basicMapDialog
@@ -44,6 +44,7 @@ class main_window(QMainWindow):
         self.nation_control = Nation_Brush(self)
         self.detail_control = Detail_Brush(self)
         self.climatizer = Climatizer( "standard" )
+        self.map_use_control = Map_Use_Tool(self)
 
         # Allow the graphics view to follow the mouse when it isn't being clicked, and associate the clicker control with the ui 
         self.scene = ol_clicker_control( self.ui.graphicsView, self )
@@ -63,6 +64,7 @@ class main_window(QMainWindow):
         self.ui.actionNew.triggered.connect(self.new)
         self.ui.actionTerrainEditor.triggered.connect(self.switch_to_terrain)
         self.ui.actionCivEditor.triggered.connect(self.switch_to_civilization)
+        self.ui.actionMapUse.triggered.connect(self.switch_to_map_use)
 
         self._ui_clear_function = None
         self.extra_ui = None
@@ -122,6 +124,7 @@ class main_window(QMainWindow):
         self.extra_ui = terrain_ui(self)
         self.ui.actionCivEditor.setChecked(False)
         self.ui.actionTerrainEditor.setChecked(True)
+        self.ui.actionMapUse.setChecked(False)
         self._ui_clear_function = self.extra_ui.clear_ui
 
         self.county_control.draw_borders = False
@@ -138,6 +141,7 @@ class main_window(QMainWindow):
         self.extra_ui = civ_ui(self)
         self.ui.actionCivEditor.setChecked(True)
         self.ui.actionTerrainEditor.setChecked(False)
+        self.ui.actionMapUse.setChecked(False)
         self._ui_clear_function = self.extra_ui.clear_ui
 
         self.county_control.draw_borders = True
@@ -146,6 +150,24 @@ class main_window(QMainWindow):
         self.biome_control.small_font=True
         self._redraw_counties()
         self._redraw_biomes()
+
+    def switch_to_map_use(self):
+        self.scene.drop()
+        if self._ui_clear_function is not None:
+            self._ui_clear_function(self.ui)
+        self.extra_ui = map_use_ui(self)
+        self.ui.actionCivEditor.setChecked(False)
+        self.ui.actionTerrainEditor.setChecked(False)
+        self.ui.actionMapUse.setChecked(True)
+        self._ui_clear_function = self.extra_ui.clear_ui
+
+        self.county_control.draw_borders = True
+        self.county_control.small_font = False
+        self.biome_control.draw_borders=False 
+        self.biome_control.small_font=True
+        self._redraw_counties()
+        self._redraw_biomes()
+        self.scene.select(self.map_use_control) # temporary until more buttons are here
 
     def show(self):
         QMainWindow.show(self)
