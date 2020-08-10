@@ -34,7 +34,7 @@ month_list = [ "January",
 assert( len(month_list) == months_in_year )
 
 
-day_list = [ "Monday",
+day_list = [ "Morndas",
           "Tuesday",
           "Wednesday",
           "Thursday",
@@ -42,6 +42,7 @@ day_list = [ "Monday",
           "Saturday",
           "Sunday"]
 
+days_in_week = len(day_list)
 
 phases = {  "New":0.0,
             "Waxing Crescent":0.3,
@@ -56,7 +57,7 @@ class Time:
     Used to pass around and properly format the times
     """
 
-    def __init__( self , hour=0, minute=0, month=0, day = 0,year = 0,date=True):
+    def __init__( self , hour=0, minute=0, month=0, day = 0,year = 0,date=True, **kwargs):
         if not ( minute>=0 ):
             raise ValueError("Invalid number of minutes {}".format(minute))
         if not (hour>=0 and hour<hours_in_day):
@@ -80,6 +81,8 @@ class Time:
 
         self.morning = ( hour < hours_in_day/2  )
 
+        self._day_shift = 2
+
     @property
     def year(self):
         return( self._year )
@@ -98,6 +101,12 @@ class Time:
 
         return(self._minute)
 
+    def get_day_of_week(self):
+        """
+        Returns the day of the week given the current time
+        """
+        n_days = self._day_shift + self.day + days_in_month*(self.month + months_in_year*self.year)
+        return( day_list[ n_days % len(day_list) ])
 
     def month_str(self):
         """
@@ -323,6 +332,14 @@ class Clock:
         self._cache_sin_lat = 0.0
         self._cache_co_lon = 0.0
         self._cache_sin_lon = 0.0
+
+        
+
+    def get_day_of_week(self):
+        """
+        Returns the current day of the week
+        """
+        return(self._time.get_day_of_week())
 
     def change_axial_tilt(self, new_tilt):
         """
