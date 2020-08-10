@@ -1044,6 +1044,80 @@ class entity_brush(basic_tool):
         self.drop() 
         self._drawn_entities = {}
 
+class Map_Use_Tool(basic_tool):
+    """
+    The tool used in the map use mode. It's used to place and edit mobiles in addition to accessing information on all map entities. 
+    """
+    def __init__(self, parent):
+        basic_tool.__init__(self,parent)
+
+        self._state = 0
+        self._valid_states = [0,1]
+
+        self._from_id = None
+        self._route = None
+
+        self._drawn_route_obj = None
+
+        self.QBrush = QtGui.QBrush()
+        self.QBrush.setStyle(0)
+        self.QPen   = QtGui.QPen()
+        self.QPen.setStyle(2)
+        self.QPen.setWidth(5)
+        self.QPen.setColor(QtGui.QColor(20, 200, 200))
+
+    @property
+    def state(self):
+        return(self._state)
+    def set_state(self, state):
+        if state not in self._valid_states:
+            raise ValueError("{} not in list of valid states: {}".format(state, self._valid_states))
+        self._state = state
+
+    def primary_mouse_released(self, event):
+        place = Point( event.scenePos().x(), event.scenePos().y())
+        loc_id = self.parent.main_map.get_id_from_point( place )
+        if self.state==0:
+            self._from_id = loc_id
+            self.set_state(1)
+        elif self.state==1:
+            # get the route! 
+            self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
+            self.set_state(0)
+            self.draw_route( self._route )
+
+    def mouse_moved(self, event):
+        return()
+        place = Point( event.scenePos().x(), event.scenePos().y())
+        loc_id = self.parent.main_map.get_id_from_point( place )
+        if loc_id==self._from_id:
+            return
+        if self.state==1:
+            # get the route! 
+            self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
+            self.draw_route( self._route )
+
+    def secondary_mouse_released(self, event):
+        pass
+
+    def draw_route(self, route):
+        if self._drawn_route_obj is not None:
+            self.parent.scene.removeItem( self._drawn_route_obj )
+
+        positions = [self.parent.main_map.get_point_from_id(id) for id in route]
+
+        # we use this here so the correct type of Scene object is used for derived paths 
+        path = QtGui.QPainterPath()
+
+        path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( positions )))
+        self._drawn_route_obj = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+        self._drawn_route_obj.setZValue( 30 )
+
+    def drop(self):
+        pass
+
+
+
 class hex_brush(Basic_Brush):
     """
     Another tool with clicker-control interfacing used to paint hexes on a hexmap. 

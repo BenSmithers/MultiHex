@@ -6,6 +6,7 @@ try:
 except ImportError:
     from math import sqrt, atan, pi, floor, cos, sin, inf
 
+from collections import deque
 import pickle
 
 """
@@ -275,10 +276,13 @@ class Hex:
         Default get_cost function. 
         Should be reimplemented in derived classes. 
         """
-        if not isinstance(other, Hex):
-            raise TypeError("Cost only defined for {}, got {}".format(Hex, type(other)))
+        raise NotImplementedError('subclasses must override')
 
-        return(1.)
+    def get_heuristic(self, other):
+        """
+        Tries to predict the total cost of stepping to a distant Hex
+        """
+        raise NotImplementedError('subclasses must override')
 
     @property
     def center(self):
@@ -514,8 +518,10 @@ class Hexmap:
 
         -> does not account for locations on map. This is just a raw distance, not including getting closer to the final destination 
         """
-        assert(start_id in self.catalogue)
-        assert(end_id in self.catalogue)
+        if start_id not in self.catalogue:
+            raise KeyError("start_id {} not in catalogue!".format(start_id))
+        if end_id not in self.catalogue:
+            return(inf)
 
         start_neighs = self.get_hex_neighbors(start_id)
         if end_id not in start_neighs:
@@ -528,7 +534,20 @@ class Hexmap:
         start_hex = self.catalogue[start_id]
         return(start_hex.get_cost( self.catalogue[end_id]))
 
-    def get_route_between_hexes(self, start_id, end_id):
+    def _get_heuristic(self, start_id, end_id):
+        if not isinstance(start_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(start_id)))
+        if not isinstance(end_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(end_id)))
+        if start_id not in self.catalogue:
+            raise ValueError("Start ID {} not found in catalogue!".format(start_id))
+        if end_id not in self.catalogue:
+            raise ValueError("End ID {} not found in catalogue!".format(end_id))
+
+        return( self.catalogue[start_id].get_heuristic(self.catalogue[end_id]) )
+
+
+    def get_route_a_star(self, start_id, end_id):
         """
         Finds quickest route between two given HexIDs. Both IDs must be on the Hexmap.
         Always steps closer to the target
@@ -544,34 +563,66 @@ class Hexmap:
         if end_id not in self.catalogue:
             raise ValueError("End ID {} not found in catalogue!".format(end_id))
 
-        steps = [start_id]
-        while True:
-            neighbor_nodes = self.get_get_hex_neighbors(steps[-1])
-            # if we're next to the end, just end it already
-            if end_id in neighbor_nodes:
-                steps.append(end_id)
-                break
 
-            raw_costs = [self._get_cost_between(steps[-1], node) for node in neighbor_nodes]
-            current_dist = (self.catalogue[steps[-1]].center - self.catalogue[end_id].center)**2 #distance squared. no root for you!
+        openSet = deque([start_id])
+        cameFrom = {}
 
-            # get all the distances from the neighboring nodes to the final destination
-            other_dists = [ 0. for i in range(6) ]
-            for i in range(6):
-                if neighbor_nodes[i] not in self.catalogue:
-                    other_dists[i] = inf
+        gScore = {}
+        gScore[start_id] = 0.
+
+        fScore = {}
+        fScore[start_id] = self._get_heuristic(start_id,end_id)
+
+        def reconstruct_path(cameFrom, current):
+            total_path = [current]
+            while current in cameFrom.keys():
+                current = cameFrom[current]
+                total_path.append(current)
+            
+            #list_o_points = [self.get_point_from_id(id) for id in total_path[::-1]]
+            #print("These are the points I decided to travel along: \n {}".format(list_o_points))
+            return(total_path[::-1])
+
+        while len(openSet)!=0:
+            # find minimum fScore thing in openSet
+            min_id = None
+            min_cost = None
+            for node in openSet:
+                try:
+                    cost = fScore[node]
+                except KeyError:
+                    cost = inf
+                if min_id is None:
+                    min_id = node
+                    min_cost = cost
                     continue
+                if cost<min_cost:
+                    min_id = node
+                    mind_cost=cost
+            current = min_id
+
+            if current==end_id:
+                return reconstruct_path(cameFrom, current)
+
+            openSet.remove(min_id)
+            for neighbor in self.get_hex_neighbors(current):
+                try:
+                    tentative_gScore = gScore[current] + self._get_cost_between(current, neighbor)
+                except KeyError:
+                    tentative_gScore = inf
+
+                if neighbor in gScore:
+                    neigh = gScore[neighbor]
                 else:
-                    other_dists[i] = (self.catalogue[neighbor_nodes[i]].center - self.catalogue[end_id].center)**2
+                    neigh = inf
 
-            # if the step takes you further, make it infinite cost. The step that brings you closest lowers the cost. The others minimally reduce the cost
-            raw_dist_cost = [(inf if other_dists[i]>current_dist else 0.85) for i in range(6)]
-            min_index = other_dists.index(min(other_dists))
-            raw_dist_cost[min_index] = 0.7
-
-            # calculate the cost, append the cheapest cost step to the steps list 
-            net_costs = [raw_dist_cost[i]*raw_costs[i] for i in range(6)]
-            steps.append( neighbor_nodes[net_costs.index(min(net_costs))] )
+                if tentative_gScore < neigh:
+                    cameFrom[neighbor] = current
+                    gScore[neighbor] = tentative_gScore
+                    fScore[neighbor] = gScore[neighbor] + self._get_heuristic(neighbor,end_id)
+                    if neighbor not in openSet:
+                        openSet.append(neighbor)
+        return([])
 
     
     def get_region_neighbors( self, rID, layer):

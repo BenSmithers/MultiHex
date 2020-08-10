@@ -8,9 +8,9 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
 
 try:
-    from numpy import inf
+    from numpy import inf, exp,sqrt
 except ImportError:
-    from math import inf
+    from math import inf, exp,sqrt
 
 """
 Implements the overland map type, its brushes, and its hexes.
@@ -28,6 +28,7 @@ Entries:
 """
 
 default_p = Point(0.0,0.0)
+rthree = sqrt(3)
 
 def point_on_river( point, river ):
     """
@@ -1018,6 +1019,8 @@ class OHex(Hex):
         # CW downstream , CCW downstream, runs through
         self.river_border = [ False ,False , False]
 
+        self._scale_factor = self.radius*rthree
+
     def get_cost(self, other):
         """
         Gets the cost of movement between two hexes. Used for routing
@@ -1027,17 +1030,29 @@ class OHex(Hex):
 
         # xor operator
         # both should be land OR both should be water
-        if not (self._is_land ^ other._is_land):
-            return(inf)
+        if self._is_land ^ other._is_land:
+            water_scale = 10.
+        else:
+            water_scale = 1.
 
-        # altitude doesn't matter when you're on a boat
-        if not self._is_land:
-            return(1.)
 
-        # between -1 and 1
-        alt_dif = other.altitude - self.altitude
+        # prefer flat ground!
+        lateral_dist = (self.center - other.center).magnitude
 
-        return(1. + 0.15*alt_dif)
+        alt_dif = exp(2*(other.altitude - self.altitude)) if self._is_land else 0.
+
+        return(water_scale*(lateral_dist + self.radius*rthree*alt_dif))
+
+    def get_heuristic(self, other):
+        """
+        Estimates the total cost of going from this hex to the other one
+        """
+        if not isinstance(other, OHex):
+            raise TypeError("Can only calculate cost with other {}, got {}".format(OHex, type(other)))
+
+        lateral_dist = (self.center - other.center).magnitude
+        alt_dif = exp(2*(other.altitude - self.altitude))
+        return(lateral_dist + self.radius*rthree*alt_dif)
 
     @property
     def biodiversity(self):
