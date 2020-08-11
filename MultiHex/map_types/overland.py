@@ -1031,17 +1031,17 @@ class OHex(Hex):
         # xor operator
         # both should be land OR both should be water
         if self._is_land ^ other._is_land:
-            water_scale = 10.
+            water_scale = 1000.
         else:
             water_scale = 1.
 
 
         # prefer flat ground!
-        lateral_dist = (self.center - other.center).magnitude
+        lateral_dist = (self.center - other.center)**2
 
-        alt_dif = exp(2*(other.altitude - self.altitude)) if self._is_land else 0.
+        alt_dif = abs(2*(other.altitude - self.altitude)) if self._is_land else 0.
 
-        return(water_scale*(lateral_dist + self.radius*rthree*alt_dif))
+        return(water_scale*(0.1*lateral_dist + self.radius*rthree*alt_dif))
 
     def get_heuristic(self, other):
         """
@@ -1050,9 +1050,9 @@ class OHex(Hex):
         if not isinstance(other, OHex):
             raise TypeError("Can only calculate cost with other {}, got {}".format(OHex, type(other)))
 
-        lateral_dist = (self.center - other.center).magnitude
-        alt_dif = exp(2*(other.altitude - self.altitude))
-        return(lateral_dist + self.radius*rthree*alt_dif)
+        lateral_dist = (self.center - other.center)**2
+        alt_dif = abs(2*(other.altitude - self.altitude))
+        return(0.1*lateral_dist + self.radius*rthree*alt_dif)
 
     @property
     def biodiversity(self):

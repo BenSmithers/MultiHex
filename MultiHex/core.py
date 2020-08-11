@@ -587,24 +587,12 @@ class Hexmap:
             # find minimum fScore thing in openSet
             min_id = None
             min_cost = None
-            for node in openSet:
-                try:
-                    cost = fScore[node]
-                except KeyError:
-                    cost = inf
-                if min_id is None:
-                    min_id = node
-                    min_cost = cost
-                    continue
-                if cost<min_cost:
-                    min_id = node
-                    mind_cost=cost
-            current = min_id
+            current = openSet[0]
 
             if current==end_id:
                 return reconstruct_path(cameFrom, current)
 
-            openSet.remove(min_id)
+            openSet.popleft()
             for neighbor in self.get_hex_neighbors(current):
                 try:
                     tentative_gScore = gScore[current] + self._get_cost_between(current, neighbor)
@@ -621,7 +609,17 @@ class Hexmap:
                     gScore[neighbor] = tentative_gScore
                     fScore[neighbor] = gScore[neighbor] + self._get_heuristic(neighbor,end_id)
                     if neighbor not in openSet:
-                        openSet.append(neighbor)
+
+                        if len(openSet)==0:
+                            openSet.appendleft(neighbor)
+                        else:
+                            iter = 0
+                            while fScore[neighbor]>fScore[openSet[iter]]:
+                                iter += 1
+                                if iter==len(openSet):
+                                    break
+
+                            openSet.insert(iter,neighbor)
         return([])
 
     
