@@ -5,7 +5,18 @@ This file defines the properties of the Map Use mode for MultiHex
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 
+from MultiHex.clock import Time
+
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
+
+class TimeTableEntry(QtWidgets.QTableWidgetItem):
+    def __init__(self, time_):
+        QtWidgets.QTableWidgetItem.__init__(self, str(time_))
+
+        if not isinstance(time_, Time):
+            raise TypeError("Expected {} object, not {}".format(Time, type(time_)))
+
+        self.time = time_
 
 class map_use_ui:
     def __init__(self, MainWindow):
@@ -24,8 +35,9 @@ class map_use_ui:
         which_ui.toolPane.addWidget(self.tool_hex_select)
         '''
 
+        # the panels
         self.Calendar = QtWidgets.QWidget()
-        self.Calendar.setGeometry(QtCore.QRect(0,0,250,630))
+        self.Calendar.setGeometry(QtCore.QRect(0,0,450,630))
         self.Calendar.setObjectName("Calendar")
         self.cal_formLayout = QtWidgets.QFormLayout(self.Calendar)
         self.cal_formLayout.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
@@ -73,6 +85,7 @@ class map_use_ui:
         self.cal_next_some_button.setText("Something")
         self.cal_next_evt_layout.addWidget(self.cal_next_some_button)
         self.cal_formLayout.setLayout(5, QtWidgets.QFormLayout.SpanningRole, self.cal_next_evt_layout)
+        
         self.cal_scroll_area = QtWidgets.QScrollArea()
         self.cal_scroll_area.setObjectName("cal_scroll_area")
         self.cal_formLayout.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.cal_scroll_area)
@@ -80,17 +93,16 @@ class map_use_ui:
         self.cal_scroll_layout = QtWidgets.QVBoxLayout()
         self.cal_scroll_layout.setObjectName("cal_scroll_layout")
         self.cal_evt_table = QtWidgets.QTableWidget(self.Calendar)
-        self.cal_evt_table.setRowCount(2)
         self.cal_evt_table.setColumnCount(2)
-        self.cal_evt_table.setItem(0,0,QtWidgets.QTableWidgetItem("Date"))
-        self.cal_evt_table.setItem(0,1,QtWidgets.QTableWidgetItem("Description"))
-        self.cal_evt_table.setItem(1,0,QtWidgets.QTableWidgetItem("May 21"))
-        self.cal_evt_table.setItem(1,1,QtWidgets.QTableWidgetItem("Doomsday"))
+        self.cal_evt_table.setVerticalHeaderLabels(["Date","Description"])
+        self.cal_evt_table.setSortingEnabled(True)
+        self.cal_evt_table.setEnabled(False)
+        self._add_row_entry(Time(1,13,2,5,120),"Birthday?")
+        self._add_row_entry(Time(1,27,2,2,120),"Happy day")
+        self._add_row_entry(Time(13,15,4,4,119),"Happiest day")
         self.cal_evt_table.horizontalHeader().setStretchLastSection(True)
         self.cal_evt_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.cal_scroll_layout.addWidget(self.cal_evt_table)
-
-        #self.cal_scroll_layout.addWidget(self.cal_scroll_button)
         self.cal_scroll_area.setLayout(self.cal_scroll_layout)
 
 
@@ -117,13 +129,36 @@ class map_use_ui:
         self.cal_skip_combo.addItem("Years")
         self.cal_skip_layout.addWidget(self.cal_skip_combo)
         self.cal_formLayout.setLayout(7, QtWidgets.QFormLayout.SpanningRole, self.cal_skip_layout)
+        self.cal_new_evt_button=QtWidgets.QPushButton(self.Calendar)
+        self.cal_new_evt_button.setObjectName("cal_new_evt_button")
+        self.cal_new_evt_button.setText("Add New Event")
+        self.cal_formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.cal_new_evt_button)
 
-        which_ui.contextPane.addItem(self.Calendar,"")
+        which_ui.contextPane.addItem(self.Calendar,"Calendar")
 
-    def _add_row_entry(date, description):
+    def _add_row_entry(self, date, description):
         """
         Adds an entry to the table
         """
+        if not isinstance(date, Time):
+            raise TypeError("Expected {} object, not {}".format(Time, type(date)))
+
+        #self.cal_evt_table.setRowCount(self.cal_evt_table.rowCount()+1)
+        #self.cal_evt_table.setColumnCount(self.cal_evt_table.columnCount()+1)
+
+        insertion_row = 0
+        
+        #self.cal_evt_table.itemAt(1,1)
+
+        if self.cal_evt_table.rowCount()>0:
+            while date > self.cal_evt_table.itemAt(insertion_row, 0).time:
+                insertion_row+=1
+                if insertion_row==self.cal_evt_table.rowCount():
+                    break
+
+        self.cal_evt_table.insertRow(insertion_row)
+        self.cal_evt_table.setItem(insertion_row,0,TimeTableEntry(date))
+        self.cal_evt_table.setItem(insertion_row,1,QtWidgets.QTableWidgetItem(description))
 
     def clear_ui(self, which_ui):
         pass
