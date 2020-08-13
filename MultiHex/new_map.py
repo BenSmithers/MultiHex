@@ -24,7 +24,7 @@ class basicMapDialog(QDialog):
         self.ui.advanced_gen_button.clicked.connect(self.button_advanced)
 
         # sets the default filename
-        self.ui.fileNameEntry.setText(os.path.join(os.path.dirname(__file__), "saves", default_name))
+        self.ui.fileNameEntry.setText(os.path.join(parent.savedir, default_name))
 
         self.ui.map_type_combo.currentIndexChanged.connect(self.new_map_type)
 
