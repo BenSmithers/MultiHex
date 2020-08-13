@@ -5,7 +5,7 @@ This file defines the properties of the Map Use mode for MultiHex
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 
-from MultiHex.clock import Time, month_list, day_list, days_in_month
+from MultiHex.clock import Time, month_list, day_list, days_in_month, months_in_year
 
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
 
@@ -47,11 +47,23 @@ class MultiHexCalendar(QtWidgets.QWidget):
         self.year_layout.addWidget(self.rightButton)
         self.layout.addItem(self.year_layout)
 
+        self.month_layout = QtWidgets.QHBoxLayout(self)
+        self.leftButtonMon = QtWidgets.QPushButton(self)
+        self.leftButtonMon.setObjectName("leftButtonMon")
+        self.leftButtonMon.setFixedSize(25,25)
+        self.leftButtonMon.setText("<-")
+        self.rightButtonMon = QtWidgets.QPushButton(self)
+        self.rightButtonMon.setObjectName("rightButtonMon")
+        self.rightButtonMon.setFixedSize(25,25)
+        self.rightButtonMon.setText("->")
         self.month_combo = QtWidgets.QComboBox(self)
         self.month_combo.setObjectName("month_combo")
         for month in month_list:
             self.month_combo.addItem(month)
-        self.layout.addWidget(self.month_combo)
+        self.month_layout.addWidget(self.leftButtonMon)
+        self.month_layout.addWidget(self.month_combo)
+        self.month_layout.addWidget(self.rightButtonMon)
+        self.layout.addItem(self.month_layout)
         self.month_combo.setCurrentIndex(self.time.month)
 
         
@@ -61,56 +73,99 @@ class MultiHexCalendar(QtWidgets.QWidget):
             weekday_lbls[day] = QtWidgets.QLabel(self)
             weekday_lbls[day].setText(day_list[day][:2])
             weekday_lbls[day].setObjectName(day_list[day])
+            weekday_lbls[day].setAlignment(QtCore.Qt.AlignCenter)
+
             self.weekday_list.addWidget(weekday_lbls[day])
         self.layout.addItem(self.weekday_list)
 
         self.day_buttons = {}
-        self.evtendarGrid = None
+        self.calendarGrid =  QtWidgets.QGridLayout(self)
+        self.total_rows = int(days_in_month /len(day_list) ) + 1
+
+        row = 0
+        column = 0
+        day = 0
+        while row<=self.total_rows:
+            self.day_buttons[day] = QtWidgets.QPushButton(self)
+            self.day_buttons[day].setFixedSize(25,25)
+            self.day_buttons[day].setText("")
+            self.day_buttons[day].setEnabled(False)
+            self.calendarGrid.addWidget(self.day_buttons[day],row,column)
+
+            column+=1
+            day+=1
+            if column==(len(day_list)):
+                column = 0
+                row += 1
+        self.days = day
+        self.layout.addItem(self.calendarGrid)
         self.fill_days()
 
         self.month_combo.currentIndexChanged.connect(self.change_month)
         self.leftButton.clicked.connect(self.remove_year)
         self.rightButton.clicked.connect(self.add_year)
-
-        
+        self.leftButtonMon.clicked.connect(self.leftMon)
+        self.rightButtonMon.clicked.connect(self.rightMon)
 
     def fill_days(self):
 
-        if self.evtendarGrid is not None:
-            self.layout.removeItem(self.evtendarGrid)
+        # total days is N
 
-        row = 1
-        column = self.time.day
-        
-        self.evtendarGrid = QtWidgets.QGridLayout(self)
-        for day in range(days_in_month):
-            self.day_buttons[day] = QtWidgets.QPushButton(self)
-            self.day_buttons[day].setFixedSize(25,25)
-            self.day_buttons[day].setText(str(day+1))
-            self.evtendarGrid.addWidget(self.day_buttons[day],column, row)
-            if day==self.time.day:
+        counting = False
+        days_so_far = 0
+        day = 0 
+        first_of_month = Time(year=self.time.year, month = self.time.month, day=0).get_day_of_week()
+
+        while day < self.days:
+            if day==first_of_month and days_so_far==0:
+                counting = True
+
+            if counting:
+                days_so_far += 1
+                self.day_buttons[day].setText(str(days_so_far))
+                self.day_buttons[day].setEnabled(True)
+            else:
+                self.day_buttons[day].setText("")
                 self.day_buttons[day].setEnabled(False)
-            row+=1
-            if row==len(day_list):
-                row = 0
-                column += 1
-        self.layout.addItem(self.evtendarGrid)
+
+            if days_so_far==days_in_month:
+                counting=False
+
+            day+=1
+
+    def leftMon(self):
+        new = self.month_combo.currentIndex() -1
+        if new<0:
+            self.time = self.time - Time(year=1)
+            self.month_combo.setCurrentIndex(months_in_year-1)
+        else:
+            self.month_combo.setCurrentIndex(new)
+
+    def rightMon(self):
+        new = self.month_combo.currentIndex() +1
+        if new==months_in_year:
+            self.time = self.time + Time(year=1)
+            self.month_combo.setCurrentIndex(0)
+        else:
+            self.month_combo.setCurrentIndex(new)
 
     def change_month(self):
-        month_diff = self.time.month - self.month_combo.currentIndex()
+        month_diff = self.month_combo.currentIndex() - self.time.month
         if month_diff > 0 :
-            self.time += Time(month=month_diff )
-            self.fill_days()
+            self.time =self.time+ Time(month=month_diff )
         elif month_diff <0:
-            self.time -= Time(month=-1*month_diff)
-            self.fill_days()
+            self.time = self.time- Time(month=-1*month_diff)
+        self.fill_days()
+        self.yearLabel.setText("{}".format(self.time.year))
 
     def add_year(self):
         self.time += Time(year=1)
+        self.yearLabel.setText("{}".format(self.time.year))
         self.fill_days()
 
     def remove_year(self):
         self.time -= Time(year=1)
+        self.yearLabel.setText("{}".format(self.time.year))
         self.fill_days()
 
 
