@@ -5,7 +5,7 @@ This file defines the properties of the Map Use mode for MultiHex
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 
-from MultiHex.clock import Time
+from MultiHex.clock import Time, month_list, day_list, days_in_month
 
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
 
@@ -17,6 +17,103 @@ class TimeTableEntry(QtWidgets.QTableWidgetItem):
             raise TypeError("Expected {} object, not {}".format(Time, type(time_)))
 
         self.time = time_
+
+class MultiHexCalendar(QtWidgets.QWidget):
+    def __init__(self, parent, time):
+        QtWidgets.QWidget.__init__(self, parent)
+        if not isinstance(time, Time):
+            raise TypeError("Expected {}, got {}".format(Time, type(time)))
+
+        self.time = time
+
+        self.setObjectName("MuliHexCalendar")
+        self.layout = QtWidgets.QVBoxLayout(self)
+
+        self.year_layout = QtWidgets.QHBoxLayout(self)
+        self.leftButton = QtWidgets.QPushButton(self)
+        self.leftButton.setObjectName("leftButton")
+        self.leftButton.setFixedSize(25,25)
+        self.leftButton.setText("<-")
+        self.rightButton = QtWidgets.QPushButton(self)
+        self.rightButton.setObjectName("rightButton")
+        self.rightButton.setFixedSize(25,25)
+        self.rightButton.setText("->")
+        self.yearLabel = QtWidgets.QLabel(self)
+        self.yearLabel.setObjectName("yearLabel")
+        self.yearLabel.setText("{}".format(self.time.year))
+        self.yearLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.year_layout.addWidget(self.leftButton)
+        self.year_layout.addWidget(self.yearLabel)
+        self.year_layout.addWidget(self.rightButton)
+        self.layout.addItem(self.year_layout)
+
+        self.month_combo = QtWidgets.QComboBox(self)
+        self.month_combo.setObjectName("month_combo")
+        for month in month_list:
+            self.month_combo.addItem(month)
+        self.layout.addWidget(self.month_combo)
+        self.month_combo.setCurrentIndex(self.time.month)
+
+        
+        weekday_lbls ={}
+        self.weekday_list = QtWidgets.QHBoxLayout(self)
+        for day in range(len(day_list)):
+            weekday_lbls[day] = QtWidgets.QLabel(self)
+            weekday_lbls[day].setText(day_list[day][:2])
+            weekday_lbls[day].setObjectName(day_list[day])
+            self.weekday_list.addWidget(weekday_lbls[day])
+        self.layout.addItem(self.weekday_list)
+
+        self.day_buttons = {}
+        self.evtendarGrid = None
+        self.fill_days()
+
+        self.month_combo.currentIndexChanged.connect(self.change_month)
+        self.leftButton.clicked.connect(self.remove_year)
+        self.rightButton.clicked.connect(self.add_year)
+
+        
+
+    def fill_days(self):
+
+        if self.evtendarGrid is not None:
+            self.layout.removeItem(self.evtendarGrid)
+
+        row = 1
+        column = self.time.day
+        
+        self.evtendarGrid = QtWidgets.QGridLayout(self)
+        for day in range(days_in_month):
+            self.day_buttons[day] = QtWidgets.QPushButton(self)
+            self.day_buttons[day].setFixedSize(25,25)
+            self.day_buttons[day].setText(str(day+1))
+            self.evtendarGrid.addWidget(self.day_buttons[day],column, row)
+            if day==self.time.day:
+                self.day_buttons[day].setEnabled(False)
+            row+=1
+            if row==len(day_list):
+                row = 0
+                column += 1
+        self.layout.addItem(self.evtendarGrid)
+
+    def change_month(self):
+        month_diff = self.time.month - self.month_combo.currentIndex()
+        if month_diff > 0 :
+            self.time += Time(month=month_diff )
+            self.fill_days()
+        elif month_diff <0:
+            self.time -= Time(month=-1*month_diff)
+            self.fill_days()
+
+    def add_year(self):
+        self.time += Time(year=1)
+        self.fill_days()
+
+    def remove_year(self):
+        self.time -= Time(year=1)
+        self.fill_days()
+
+
 
 class map_use_ui:
     def __init__(self, MainWindow):
@@ -39,102 +136,107 @@ class map_use_ui:
         self.Calendar = QtWidgets.QWidget()
         self.Calendar.setGeometry(QtCore.QRect(0,0,450,630))
         self.Calendar.setObjectName("Calendar")
-        self.cal_formLayout = QtWidgets.QFormLayout(self.Calendar)
-        self.cal_formLayout.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.cal_formLayout.setObjectName("cal_formLayout")
-        
-        self.cal_obj_name_lbl = QtWidgets.QLabel(self.Calendar)
-        self.cal_obj_name_lbl.setObjectName("cal_obj_name_lbl")
-        self.cal_obj_name_lbl.setText("Looking at: ")
-        self.cal_formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.cal_obj_name_lbl)
-        self.cal_obj_name_disp = QtWidgets.QLabel(self.Calendar)
-        self.cal_obj_name_disp.setObjectName("cal_obj_name_disp")
-        self.cal_obj_name_disp.setText("${Object_Name}")
-        self.cal_formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.cal_obj_name_disp)
-        self.cal_lat_lbl = QtWidgets.QLabel(self.Calendar)
-        self.cal_lat_lbl.setObjectName("cal_lat_lbl")
-        self.cal_lat_lbl.setText("Latitude: ")
-        self.cal_formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.cal_lat_lbl)
-        self.cal_lat_disp = QtWidgets.QLabel(self.Calendar)
-        self.cal_lat_disp.setObjectName("cal_lat_disp")
-        self.cal_formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.cal_lat_disp)
-        self.cal_lon_lbl = QtWidgets.QLabel(self.Calendar)
-        self.cal_lon_lbl.setObjectName("cal_lon_lbl")
-        self.cal_lon_lbl.setText("Longitude: ")
-        self.cal_formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.cal_lon_lbl)
-        self.cal_lon_disp = QtWidgets.QLabel(self.Calendar)
-        self.cal_lon_disp.setObjectName("cal_lat_disp")
-        self.cal_formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.cal_lon_disp)
-        self.cal_date_disp = QtWidgets.QLabel(self.Calendar)
-        self.cal_date_disp.setObjectName("cal_date_disp")
-        self.cal_date_disp.setText("10 August 2020, 8:43 PM")
-        self.cal_formLayout.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.cal_date_disp)
-        
-        self.cal_next_evt_layout = QtWidgets.QHBoxLayout()
-        self.cal_next_evt_layout.setObjectName("cal_next_evt_layout")
-        self.cal_next_evt_button = QtWidgets.QPushButton(self.Calendar)
-        self.cal_next_evt_button.setObjectName("cal_next_evt_button")
-        self.cal_next_evt_button.setText("Next Event")
-        self.cal_next_evt_layout.addWidget(self.cal_next_evt_button)
-        self.cal_next_sun_button = QtWidgets.QPushButton(self.Calendar)
-        self.cal_next_sun_button.setObjectName("cal_next_sun_button")
-        self.cal_next_sun_button.setText("Next Suntime")
-        self.cal_next_evt_layout.addWidget(self.cal_next_sun_button)
-        self.cal_next_some_button = QtWidgets.QPushButton(self.Calendar)
-        self.cal_next_some_button.setObjectName("cal_next_some_button")
-        self.cal_next_some_button.setText("Something")
-        self.cal_next_evt_layout.addWidget(self.cal_next_some_button)
-        self.cal_formLayout.setLayout(5, QtWidgets.QFormLayout.SpanningRole, self.cal_next_evt_layout)
-        
-        self.cal_scroll_area = QtWidgets.QScrollArea()
-        self.cal_scroll_area.setObjectName("cal_scroll_area")
-        self.cal_formLayout.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.cal_scroll_area)
+        self.cal_form_layout = QtWidgets.QFormLayout(self.Calendar)
+        self.cal_form_layout.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.cal_form_layout.setObjectName("cal_form_layout")
+        self.cal_Calendar = MultiHexCalendar(self.Calendar, Time(3,12,4,17,210))
+        self.cal_Calendar.setObjectName("Actual calendar")
+        self.cal_form_layout.setWidget(1,QtWidgets.QFormLayout.SpanningRole, self.cal_Calendar)
 
-        self.cal_scroll_layout = QtWidgets.QVBoxLayout()
-        self.cal_scroll_layout.setObjectName("cal_scroll_layout")
-        self.cal_evt_table = QtWidgets.QTableWidget(self.Calendar)
-        self.cal_evt_table.setColumnCount(2)
-        self.cal_evt_table.setVerticalHeaderLabels(["Date","Description"])
-        self.cal_evt_table.setSortingEnabled(True)
-        self.cal_evt_table.setEnabled(False)
+        which_ui.contextPane.addItem(self.Calendar,"Calendar")
+
+        #=======  Defining the event list panel  =============================
+        self.EventsList = QtWidgets.QWidget()
+        self.EventsList.setGeometry(QtCore.QRect(0,0,450,630))
+        self.EventsList.setObjectName("EventsList")
+        self.evt_formLayout = QtWidgets.QFormLayout(self.EventsList)
+        self.evt_formLayout.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.evt_formLayout.setObjectName("evt_formLayout")
+        self.evt_obj_name_lbl = QtWidgets.QLabel(self.EventsList)
+        self.evt_obj_name_lbl.setObjectName("evt_obj_name_lbl")
+        self.evt_obj_name_lbl.setText("Looking at: ")
+        self.evt_formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.evt_obj_name_lbl)
+        self.evt_obj_name_disp = QtWidgets.QLabel(self.EventsList)
+        self.evt_obj_name_disp.setObjectName("evt_obj_name_disp")
+        self.evt_obj_name_disp.setText("${Object_Name}")
+        self.evt_formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.evt_obj_name_disp)
+        self.evt_lat_lbl = QtWidgets.QLabel(self.EventsList)
+        self.evt_lat_lbl.setObjectName("evt_lat_lbl")
+        self.evt_lat_lbl.setText("Latitude: ")
+        self.evt_formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.evt_lat_lbl)
+        self.evt_lat_disp = QtWidgets.QLabel(self.EventsList)
+        self.evt_lat_disp.setObjectName("evt_lat_disp")
+        self.evt_formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.evt_lat_disp)
+        self.evt_lon_lbl = QtWidgets.QLabel(self.EventsList)
+        self.evt_lon_lbl.setObjectName("evt_lon_lbl")
+        self.evt_lon_lbl.setText("Longitude: ")
+        self.evt_formLayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.evt_lon_lbl)
+        self.evt_lon_disp = QtWidgets.QLabel(self.EventsList)
+        self.evt_lon_disp.setObjectName("evt_lat_disp")
+        self.evt_formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.evt_lon_disp)
+        self.evt_date_disp = QtWidgets.QLabel(self.EventsList)
+        self.evt_date_disp.setObjectName("evt_date_disp")
+        self.evt_date_disp.setText("10 August 2020, 8:43 PM")
+        self.evt_formLayout.setWidget(4, QtWidgets.QFormLayout.SpanningRole, self.evt_date_disp)
+        self.evt_next_evt_layout = QtWidgets.QHBoxLayout()
+        self.evt_next_evt_layout.setObjectName("evt_next_evt_layout")
+        self.evt_next_evt_button = QtWidgets.QPushButton(self.EventsList)
+        self.evt_next_evt_button.setObjectName("evt_next_evt_button")
+        self.evt_next_evt_button.setText("Next Event")
+        self.evt_next_evt_layout.addWidget(self.evt_next_evt_button)
+        self.evt_next_sun_button = QtWidgets.QPushButton(self.EventsList)
+        self.evt_next_sun_button.setObjectName("evt_next_sun_button")
+        self.evt_next_sun_button.setText("Next Suntime")
+        self.evt_next_evt_layout.addWidget(self.evt_next_sun_button)
+        self.evt_next_some_button = QtWidgets.QPushButton(self.EventsList)
+        self.evt_next_some_button.setObjectName("evt_next_some_button")
+        self.evt_next_some_button.setText("Something")
+        self.evt_next_evt_layout.addWidget(self.evt_next_some_button)
+        self.evt_formLayout.setLayout(5, QtWidgets.QFormLayout.SpanningRole, self.evt_next_evt_layout)
+        self.evt_scroll_area = QtWidgets.QScrollArea()
+        self.evt_scroll_area.setObjectName("evt_scroll_area")
+        self.evt_formLayout.setWidget(6, QtWidgets.QFormLayout.SpanningRole, self.evt_scroll_area)
+        self.evt_scroll_layout = QtWidgets.QVBoxLayout()
+        self.evt_scroll_layout.setObjectName("evt_scroll_layout")
+        self.evt_evt_table = QtWidgets.QTableWidget(self.EventsList)
+        self.evt_evt_table.setColumnCount(2)
+        self.evt_evt_table.setVerticalHeaderLabels(["Date","Description"])
+        self.evt_evt_table.setSortingEnabled(True)
+        self.evt_evt_table.setEnabled(False)
         self._add_row_entry(Time(1,13,2,5,120),"Birthday?")
         self._add_row_entry(Time(1,27,2,2,120),"Happy day")
         self._add_row_entry(Time(13,15,4,4,119),"Happiest day")
-        self.cal_evt_table.horizontalHeader().setStretchLastSection(True)
-        self.cal_evt_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        self.cal_scroll_layout.addWidget(self.cal_evt_table)
-        self.cal_scroll_area.setLayout(self.cal_scroll_layout)
-
-
-        # put in the big whatchamajigger
-        self.cal_skip_layout = QtWidgets.QHBoxLayout()
-        self.cal_skip_layout.setObjectName("cal_skip_layout")
-        self.cal_skip_button = QtWidgets.QPushButton(self.Calendar)
-        self.cal_skip_button.setObjectName("cal_skip_button")
-        self.cal_skip_button.setText("Skip")
-        self.cal_skip_layout.addWidget(self.cal_skip_button)
-        self.cal_skip_number_spin = QtWidgets.QSpinBox(self.Calendar)
-        self.cal_skip_number_spin.setObjectName("cal_skip_number_spin")
-        self.cal_skip_number_spin.setMinimum(1)
-        self.cal_skip_number_spin.setMaximum(60)
-        self.cal_skip_number_spin.setSingleStep(1)
-        self.cal_skip_layout.addWidget(self.cal_skip_number_spin)
-        self.cal_skip_combo = QtWidgets.QComboBox(self.Calendar)
-        self.cal_skip_combo.setObjectName("cal_skip_combo")
-        self.cal_skip_combo.addItem("Minutes")
-        self.cal_skip_combo.addItem("Hours")
-        self.cal_skip_combo.addItem("Days")
-        self.cal_skip_combo.addItem("Weeks")
-        self.cal_skip_combo.addItem("Months")
-        self.cal_skip_combo.addItem("Years")
-        self.cal_skip_layout.addWidget(self.cal_skip_combo)
-        self.cal_formLayout.setLayout(7, QtWidgets.QFormLayout.SpanningRole, self.cal_skip_layout)
-        self.cal_new_evt_button=QtWidgets.QPushButton(self.Calendar)
-        self.cal_new_evt_button.setObjectName("cal_new_evt_button")
-        self.cal_new_evt_button.setText("Add New Event")
-        self.cal_formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.cal_new_evt_button)
-
-        which_ui.contextPane.addItem(self.Calendar,"Calendar")
+        self.evt_evt_table.horizontalHeader().setStretchLastSection(True)
+        self.evt_evt_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.evt_scroll_layout.addWidget(self.evt_evt_table)
+        self.evt_scroll_area.setLayout(self.evt_scroll_layout)
+        self.evt_skip_layout = QtWidgets.QHBoxLayout()
+        self.evt_skip_layout.setObjectName("evt_skip_layout")
+        self.evt_skip_button = QtWidgets.QPushButton(self.EventsList)
+        self.evt_skip_button.setObjectName("evt_skip_button")
+        self.evt_skip_button.setText("Skip")
+        self.evt_skip_layout.addWidget(self.evt_skip_button)
+        self.evt_skip_number_spin = QtWidgets.QSpinBox(self.EventsList)
+        self.evt_skip_number_spin.setObjectName("evt_skip_number_spin")
+        self.evt_skip_number_spin.setMinimum(1)
+        self.evt_skip_number_spin.setMaximum(60)
+        self.evt_skip_number_spin.setSingleStep(1)
+        self.evt_skip_layout.addWidget(self.evt_skip_number_spin)
+        self.evt_skip_combo = QtWidgets.QComboBox(self.EventsList)
+        self.evt_skip_combo.setObjectName("evt_skip_combo")
+        self.evt_skip_combo.addItem("Minutes")
+        self.evt_skip_combo.addItem("Hours")
+        self.evt_skip_combo.addItem("Days")
+        self.evt_skip_combo.addItem("Weeks")
+        self.evt_skip_combo.addItem("Months")
+        self.evt_skip_combo.addItem("Years")
+        self.evt_skip_layout.addWidget(self.evt_skip_combo)
+        self.evt_formLayout.setLayout(7, QtWidgets.QFormLayout.SpanningRole, self.evt_skip_layout)
+        self.evt_new_evt_button=QtWidgets.QPushButton(self.EventsList)
+        self.evt_new_evt_button.setObjectName("evt_new_evt_button")
+        self.evt_new_evt_button.setText("Add New Event")
+        self.evt_formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.evt_new_evt_button)
+        which_ui.contextPane.addItem(self.EventsList,"Event List")
 
     def _add_row_entry(self, date, description):
         """
@@ -143,22 +245,22 @@ class map_use_ui:
         if not isinstance(date, Time):
             raise TypeError("Expected {} object, not {}".format(Time, type(date)))
 
-        #self.cal_evt_table.setRowCount(self.cal_evt_table.rowCount()+1)
-        #self.cal_evt_table.setColumnCount(self.cal_evt_table.columnCount()+1)
+        #self.evt_evt_table.setRowCount(self.evt_evt_table.rowCount()+1)
+        #self.evt_evt_table.setColumnCount(self.evt_evt_table.columnCount()+1)
 
         insertion_row = 0
         
-        #self.cal_evt_table.itemAt(1,1)
+        #self.evt_evt_table.itemAt(1,1)
 
-        if self.cal_evt_table.rowCount()>0:
-            while date > self.cal_evt_table.itemAt(insertion_row, 0).time:
+        if self.evt_evt_table.rowCount()>0:
+            while date > self.evt_evt_table.itemAt(insertion_row, 0).time:
                 insertion_row+=1
-                if insertion_row==self.cal_evt_table.rowCount():
+                if insertion_row==self.evt_evt_table.rowCount():
                     break
 
-        self.cal_evt_table.insertRow(insertion_row)
-        self.cal_evt_table.setItem(insertion_row,0,TimeTableEntry(date))
-        self.cal_evt_table.setItem(insertion_row,1,QtWidgets.QTableWidgetItem(description))
+        self.evt_evt_table.insertRow(insertion_row)
+        self.evt_evt_table.setItem(insertion_row,0,TimeTableEntry(date))
+        self.evt_evt_table.setItem(insertion_row,1,QtWidgets.QTableWidgetItem(description))
 
     def clear_ui(self, which_ui):
         pass
