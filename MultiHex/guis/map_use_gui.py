@@ -5,7 +5,7 @@ This file defines the properties of the Map Use mode for MultiHex
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 
-from MultiHex.clock import Time, month_list, day_list, days_in_month, months_in_year
+from MultiHex.clock import Time, MultiHexCalendar
 
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
 
@@ -17,156 +17,6 @@ class TimeTableEntry(QtWidgets.QTableWidgetItem):
             raise TypeError("Expected {} object, not {}".format(Time, type(time_)))
 
         self.time = time_
-
-class MultiHexCalendar(QtWidgets.QWidget):
-    def __init__(self, parent, time):
-        QtWidgets.QWidget.__init__(self, parent)
-        if not isinstance(time, Time):
-            raise TypeError("Expected {}, got {}".format(Time, type(time)))
-
-        self.time = time
-
-        self.setObjectName("MuliHexCalendar")
-        self.layout = QtWidgets.QVBoxLayout(self)
-
-        self.year_layout = QtWidgets.QHBoxLayout(self)
-        self.leftButton = QtWidgets.QPushButton(self)
-        self.leftButton.setObjectName("leftButton")
-        self.leftButton.setFixedSize(25,25)
-        self.leftButton.setText("<-")
-        self.rightButton = QtWidgets.QPushButton(self)
-        self.rightButton.setObjectName("rightButton")
-        self.rightButton.setFixedSize(25,25)
-        self.rightButton.setText("->")
-        self.yearLabel = QtWidgets.QLabel(self)
-        self.yearLabel.setObjectName("yearLabel")
-        self.yearLabel.setText("{}".format(self.time.year))
-        self.yearLabel.setAlignment(QtCore.Qt.AlignCenter)
-        self.year_layout.addWidget(self.leftButton)
-        self.year_layout.addWidget(self.yearLabel)
-        self.year_layout.addWidget(self.rightButton)
-        self.layout.addItem(self.year_layout)
-
-        self.month_layout = QtWidgets.QHBoxLayout(self)
-        self.leftButtonMon = QtWidgets.QPushButton(self)
-        self.leftButtonMon.setObjectName("leftButtonMon")
-        self.leftButtonMon.setFixedSize(25,25)
-        self.leftButtonMon.setText("<-")
-        self.rightButtonMon = QtWidgets.QPushButton(self)
-        self.rightButtonMon.setObjectName("rightButtonMon")
-        self.rightButtonMon.setFixedSize(25,25)
-        self.rightButtonMon.setText("->")
-        self.month_combo = QtWidgets.QComboBox(self)
-        self.month_combo.setObjectName("month_combo")
-        for month in month_list:
-            self.month_combo.addItem(month)
-        self.month_layout.addWidget(self.leftButtonMon)
-        self.month_layout.addWidget(self.month_combo)
-        self.month_layout.addWidget(self.rightButtonMon)
-        self.layout.addItem(self.month_layout)
-        self.month_combo.setCurrentIndex(self.time.month)
-
-        
-        weekday_lbls ={}
-        self.weekday_list = QtWidgets.QHBoxLayout(self)
-        for day in range(len(day_list)):
-            weekday_lbls[day] = QtWidgets.QLabel(self)
-            weekday_lbls[day].setText(day_list[day][:2])
-            weekday_lbls[day].setObjectName(day_list[day])
-            weekday_lbls[day].setAlignment(QtCore.Qt.AlignCenter)
-
-            self.weekday_list.addWidget(weekday_lbls[day])
-        self.layout.addItem(self.weekday_list)
-
-        self.day_buttons = {}
-        self.calendarGrid =  QtWidgets.QGridLayout(self)
-        self.total_rows = int(days_in_month /len(day_list) ) + 1
-
-        row = 0
-        column = 0
-        day = 0
-        while row<=self.total_rows:
-            self.day_buttons[day] = QtWidgets.QPushButton(self)
-            self.day_buttons[day].setFixedSize(25,25)
-            self.day_buttons[day].setText("")
-            self.day_buttons[day].setEnabled(False)
-            self.calendarGrid.addWidget(self.day_buttons[day],row,column)
-
-            column+=1
-            day+=1
-            if column==(len(day_list)):
-                column = 0
-                row += 1
-        self.days = day
-        self.layout.addItem(self.calendarGrid)
-        self.fill_days()
-
-        self.month_combo.currentIndexChanged.connect(self.change_month)
-        self.leftButton.clicked.connect(self.remove_year)
-        self.rightButton.clicked.connect(self.add_year)
-        self.leftButtonMon.clicked.connect(self.leftMon)
-        self.rightButtonMon.clicked.connect(self.rightMon)
-
-    def fill_days(self):
-
-        # total days is N
-
-        counting = False
-        days_so_far = 0
-        day = 0 
-        first_of_month = Time(year=self.time.year, month = self.time.month, day=0).get_day_of_week()
-
-        while day < self.days:
-            if day==first_of_month and days_so_far==0:
-                counting = True
-
-            if counting:
-                days_so_far += 1
-                self.day_buttons[day].setText(str(days_so_far))
-                self.day_buttons[day].setEnabled(True)
-            else:
-                self.day_buttons[day].setText("")
-                self.day_buttons[day].setEnabled(False)
-
-            if days_so_far==days_in_month:
-                counting=False
-
-            day+=1
-
-    def leftMon(self):
-        new = self.month_combo.currentIndex() -1
-        if new<0:
-            self.time = self.time - Time(year=1)
-            self.month_combo.setCurrentIndex(months_in_year-1)
-        else:
-            self.month_combo.setCurrentIndex(new)
-
-    def rightMon(self):
-        new = self.month_combo.currentIndex() +1
-        if new==months_in_year:
-            self.time = self.time + Time(year=1)
-            self.month_combo.setCurrentIndex(0)
-        else:
-            self.month_combo.setCurrentIndex(new)
-
-    def change_month(self):
-        month_diff = self.month_combo.currentIndex() - self.time.month
-        if month_diff > 0 :
-            self.time =self.time+ Time(month=month_diff )
-        elif month_diff <0:
-            self.time = self.time- Time(month=-1*month_diff)
-        self.fill_days()
-        self.yearLabel.setText("{}".format(self.time.year))
-
-    def add_year(self):
-        self.time += Time(year=1)
-        self.yearLabel.setText("{}".format(self.time.year))
-        self.fill_days()
-
-    def remove_year(self):
-        self.time -= Time(year=1)
-        self.yearLabel.setText("{}".format(self.time.year))
-        self.fill_days()
 
 
 
@@ -292,6 +142,8 @@ class map_use_ui:
         self.evt_new_evt_button.setText("Add New Event")
         self.evt_formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.evt_new_evt_button)
         which_ui.contextPane.addItem(self.EventsList,"Event List")
+        
+        #self.cal_Calendar.signals.signal.connect(self.dis_is_a_test)
 
     def _add_row_entry(self, date, description):
         """
@@ -316,6 +168,7 @@ class map_use_ui:
         self.evt_evt_table.insertRow(insertion_row)
         self.evt_evt_table.setItem(insertion_row,0,TimeTableEntry(date))
         self.evt_evt_table.setItem(insertion_row,1,QtWidgets.QTableWidgetItem(description))
+
 
     def clear_ui(self, which_ui):
         pass

@@ -37,8 +37,8 @@ class main_gui(object):
 
         # this is the contextPane - it's where all the panels go on the right
         self.contextPane = QtWidgets.QToolBox(self.centralwidget)
-        self.contextPane.setMinimumSize(QtCore.QSize(250,0))
-        self.contextPane.setMaximumSize(QtCore.QSize(250, 16777215))
+        self.contextPane.setMinimumSize(QtCore.QSize(300,0))
+        self.contextPane.setMaximumSize(QtCore.QSize(350, 16777215))
         self.contextPane.setObjectName("contextPane")
         self.horizontalLayout.addWidget(self.contextPane)
 
