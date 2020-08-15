@@ -4,7 +4,7 @@ This file defines all the terrain editor components and adds the appropriate map
 
 # Qt items an Qt accessories
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QWidget, QFileDialog, QDialog, QColorDialog
+from PyQt5.QtWidgets import QWidget, QFileDialog, QDialog, QColorDialog
 from MultiHex.tools import QEntityItem
 
 # MultiHex imports 
