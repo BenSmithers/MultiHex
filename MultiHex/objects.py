@@ -424,10 +424,23 @@ class Mobile( Entity ):
     def __init__(self, name):
         Entity.__init__(self, name, location=None)
         
-        self.speed = 1. #miles/minute 
+        self._speed = 1. #miles/hour 
 
     def set_location(self, location):
         # add a check thingy
         self._location = location
+
+    @property 
+    def speed(self):
+        return(self._speed)
+
+    def set_speed(self, new_speed):
+        if not (isinstance(new_speed,float) or isinstance(new_speed,int)):
+            raise TypeError("Expected {}, got {}".format(float, type(new_speed)))
+        if new_speed <= 0.:
+            raise ValueError("Need positive speed, got {}".format(new_speed))
+
+        self._speed = new_speed
+
 
     
