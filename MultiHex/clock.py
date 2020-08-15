@@ -714,7 +714,7 @@ class MultiHexCalendar(QtWidgets.QWidget):
 
         # define and add the year label and add the buttons beside it
         # TODO: (maybe) swap out the year label for something allowing easier large-scale year changes. 
-        self.year_layout = QtWidgets.QHBoxLayout(self)
+        self.year_layout = QtWidgets.QHBoxLayout()
         self.leftButton = QtWidgets.QPushButton(self)
         self.leftButton.setObjectName("leftButton")
         self.leftButton.setFixedSize(25,25)
@@ -733,7 +733,7 @@ class MultiHexCalendar(QtWidgets.QWidget):
         self.layout.addItem(self.year_layout)
 
         # define and add the month combo box and the buttons beside it
-        self.month_layout = QtWidgets.QHBoxLayout(self)
+        self.month_layout = QtWidgets.QHBoxLayout()
         self.leftButtonMon = QtWidgets.QPushButton(self)
         self.leftButtonMon.setObjectName("leftButtonMon")
         self.leftButtonMon.setFixedSize(25,25)
@@ -754,7 +754,7 @@ class MultiHexCalendar(QtWidgets.QWidget):
 
         # Add in the labels for hte weekdays
         weekday_lbls ={}
-        self.weekday_list = QtWidgets.QHBoxLayout(self)
+        self.weekday_list = QtWidgets.QHBoxLayout()
         for day in range(len(day_list)):
             weekday_lbls[day] = QtWidgets.QLabel(self)
             weekday_lbls[day].setText(day_list[day][:2])
@@ -767,7 +767,7 @@ class MultiHexCalendar(QtWidgets.QWidget):
         # we put all the buttons in place, and disable the ones that aren't needed
         # This way we don't have to add/remove buttons as necessary. Just enable/disable them and change the text 
         self.day_buttons = {}
-        self.calendarGrid =  QtWidgets.QGridLayout(self)
+        self.calendarGrid =  QtWidgets.QGridLayout()
         self.total_rows = int(days_in_month /len(day_list) ) + 1 #  make sure we have enough rows of buttons
         row = 0
         column = 0
