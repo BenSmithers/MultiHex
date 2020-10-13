@@ -7,13 +7,13 @@ class mapActionItem(Enum):
     move = 1
 
 class MapEvent:
-    def __init__(self, kind,recurring=None, *args):
+    def __init__(self, kind,recurring=None, **kwargs):
         """
         An event used by the Action Manager. 
 
         kind - mapActionItem enum entry. Specifies what kind of event this is 
         recurring - a Time object. Represents how frequently the event happens. 'None' for one-time events. When this kind of event is triggered, a new one is auto-queued 
-        *args - arguments specific to this kind of event. Varies 
+        kwargs - arguments specific to this kind of event. Varies 
         """
         if not isinstance(kind, mapActionItem):
             raise TypeError("Can only create action of type {}, not {}".format(mapActionItem, type(kind)))
@@ -23,13 +23,16 @@ class MapEvent:
                 raise TypeError("If recurring, arg must be {}, not {}".format(Time, type(recurring)))
         self.recurring = recurring
 
+        self.brief_desc = "" # will be used on the event list
+        self.long_desc = ""
+
 
 class MapAction(MapEvent):
-    def __init__(self, kind,recurring=None, *args):
+    def __init__(self, kind,recurring=None, **kwargs):
         """
         Implementation of MapEvent that actually does something. 
         """
-        MapEvent.__init__(self, kind, recurring, *args)
+        MapEvent.__init__(self, kind, recurring, **kwargs)
         
     def do(self):
         pass

@@ -15,7 +15,9 @@ rthree =  sqrt(3)
 
 class basic_tool:
     """
-    Prototype a basic tool 
+    Prototype a basic tool. We use this for consistent typing and templated functions. 
+    
+    So, you know, like why anyone else would use class inheritance 
     """
     def __init__(self, parent=None):
         if not (isinstance(parent, QMainWindow) or (parent is None)):
@@ -303,6 +305,11 @@ class clicker_control(QGraphicsScene):
         return(self._active)
 
     def contextMenuEvent(self, event):
+        """
+        Here we ask the active tool for a list of appropriate actions, then let the user chose one of those, and then we do that action.
+
+        This way we can push the contextMenu implementation down onto the swappable tools
+        """
         opts = self.active.get_context_options(event)
         if not isinstance(opts, list):
             return
@@ -313,9 +320,9 @@ class clicker_control(QGraphicsScene):
         for option in opts:
             actions[option] = contextMenu.addAction(str(option))
 
-
         action = contextMenu.exec_(self.master.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
-        #action.text()
+        if action is not None:
+            self.active.do_action(action)
 
     def select(self,which_tool):
         if not isinstance(which_tool, basic_tool):
@@ -1053,6 +1060,8 @@ class Map_Use_Tool(basic_tool):
 
         self._state = 0
         self._valid_states = [0,1]
+        # 0 - Idle. Open to selecting a new Mobile or Entity  
+        # 1 - Entity selected
 
         self._from_id = None
         self._route = None
@@ -1074,31 +1083,70 @@ class Map_Use_Tool(basic_tool):
             raise ValueError("{} not in list of valid states: {}".format(state, self._valid_states))
         self._state = state
 
+    def select(self, eid):
+        pass
+
     def primary_mouse_released(self, event):
         place = Point( event.scenePos().x(), event.scenePos().y())
         loc_id = self.parent.main_map.get_id_from_point( place )
+
         if self.state==0:
-            self._from_id = loc_id
-            self.set_state(1)
-        elif self.state==1:
-            # get the route! 
-            self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
-            self.set_state(0)
-            self.draw_route( self._route )
+            if loc_id in self.parent.main_map.eid_map:
+                eids_here = self.parent.main_map.eid_map[loc_id]
+            else:
+                return
+
+            if len(eids_here)==1:
+                self.select(eids_here[0])
+            else:
+                self.special_context_event(event)
+
+        if False: # I don't want this activated atm, but I want to reuse this code later
+            if self.state==0:
+                self._from_id = loc_id
+                self.set_state(1)
+            elif self.state==1:
+                # get the route! 
+                self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
+                self.set_state(0)
+                self.draw_route( self._route )
 
     def mouse_moved(self, event):
-        return()
         place = Point( event.scenePos().x(), event.scenePos().y())
         loc_id = self.parent.main_map.get_id_from_point( place )
-        if loc_id==self._from_id:
-            return
-        if self.state==1:
-            # get the route! 
-            self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
-            self.draw_route( self._route )
+
+        if False:
+            if loc_id==self._from_id:
+                return
+            if self.state==1:
+                # get the route! 
+                self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
+                self.draw_route( self._route )
 
     def secondary_mouse_released(self, event):
         pass
+
+    def special_context_event(self, event):
+        opts = self.get_context_options(event)
+        if not isinstance(opts, list):
+            return
+        if len(opts)==0:
+            return
+        contextMenu = QMenu(self.parent)
+        actions = {}
+        for option in opts:
+            actions[option] = contextMenu.addAction(str(option))
+
+        action = contextMenu.exec_(self.parent.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
+        if action is not None:
+            self.do_action(action)
+
+    def get_context_options(self, event):
+        if self.state==0:
+            place = Point( event.scenePos().x(), event.scenePos().y())
+            loc_id = self.parent.main_map.get_id_from_point( place )
+            if loc_id in self.parent.main_map.eid_map:
+                return([ self.parent.main_map.eid_catalogue[entry].name for entry in self.parent.main_map.eid_map[loc_id]])
 
     def draw_route(self, route):
         if self._drawn_route_obj is not None:
