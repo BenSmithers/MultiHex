@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
+from PyQt5.QtWidgets import QAction
 from PyQt5 import QtGui, QtCore
 
 
@@ -12,6 +13,16 @@ import os # used for some of the icons
 
 from math import sqrt, pi
 rthree =  sqrt(3)
+
+class MultiHexAction(QAction):
+    def __init__(self, name, id=None):
+        QAction.__init__(self,name)
+
+        self._id = id
+    
+    @property
+    def id(self):
+        return(self._id)
 
 class basic_tool:
     """
@@ -310,6 +321,8 @@ class clicker_control(QGraphicsScene):
 
         This way we can push the contextMenu implementation down onto the swappable tools
         """
+
+        # list of (name, id) tuples
         opts = self.active.get_context_options(event)
         if not isinstance(opts, list):
             return
@@ -318,7 +331,13 @@ class clicker_control(QGraphicsScene):
         contextMenu = QMenu(self.parent)
         actions = {}
         for option in opts:
-            actions[option] = contextMenu.addAction(str(option))
+            if not isinstance(option, tuple):
+                raise TypeError("Expected {}, got {}".format(tuple, type(option)))
+            if not len(option)==2:
+                raise ValueError("Expected length-2 tuple, got length-{}".format(len(option)))
+
+            actions[option] = MultiHexAction(option[0], option[1])
+            contextMenu.addAction(actions[option])
 
         action = contextMenu.exec_(self.master.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
         if action is not None:
@@ -1078,13 +1097,23 @@ class Map_Use_Tool(basic_tool):
     @property
     def state(self):
         return(self._state)
+
     def set_state(self, state):
         if state not in self._valid_states:
             raise ValueError("{} not in list of valid states: {}".format(state, self._valid_states))
         self._state = state
 
-    def select(self, eid):
-        pass
+    def select(self, eid=None):
+        if eid is None:
+            self.set_state(0)
+            self._selected = None
+        else:
+            if eid in self.parent.eid_catalogue:
+                self._selected = eid
+                self.set_state(1)
+            else:
+                self._selected = None
+                self.set_state(0)
 
     def primary_mouse_released(self, event):
         place = Point( event.scenePos().x(), event.scenePos().y())
@@ -1135,18 +1164,34 @@ class Map_Use_Tool(basic_tool):
         contextMenu = QMenu(self.parent)
         actions = {}
         for option in opts:
-            actions[option] = contextMenu.addAction(str(option))
+            if not isinstance(option, tuple):
+                raise TypeError("Expected {}, got {}".format(tuple, type(option)))
+            if not len(option)==2:
+                raise ValueError("Expected length-2 tuple, got length-{}".format(len(option)))
+
+            actions[option] = MultiHexAction(option[0], option[1])
+            contextMenu.addAction(actions[option])
 
         action = contextMenu.exec_(self.parent.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
         if action is not None:
             self.do_action(action)
+
+    def do_action(self, action):
+        if not isinstance(action, MultiHexAction):
+            raise TypeError("Somehow got a {}, not a {}".format(type(action), MMultiHexAction))
+
+        if action.id is not None:
+            self.select(action.id)
 
     def get_context_options(self, event):
         if self.state==0:
             place = Point( event.scenePos().x(), event.scenePos().y())
             loc_id = self.parent.main_map.get_id_from_point( place )
             if loc_id in self.parent.main_map.eid_map:
-                return([ self.parent.main_map.eid_catalogue[entry].name for entry in self.parent.main_map.eid_map[loc_id]])
+                return([ (self.parent.main_map.eid_catalogue[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
+        elif self.state==1:
+            # move here
+            return("Move Here")
 
     def draw_route(self, route):
         if self._drawn_route_obj is not None:
