@@ -249,8 +249,8 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
         raise TypeError("Expected {} for 'magnitude', got {}".format(float, type(magnitude)))
     
     # We need to make sure the attribute exist in our Hexes! This way we don't waste time creating a texture we don't need 
-    for HexID in main_map.catalogue:
-        if hasattr( main_map.catalogue[HexID], attr):
+    for HexID in main_map.catalog:
+        if hasattr( main_map.catalog[HexID], attr):
             break
         else:
             raise KeyError("HexMap does not have attribute {}".format(attr))
@@ -266,8 +266,8 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
         raise NotImplementedError("Unsupported algorithm {}".format(algorithm))
     # then grab it into an object to minimize IO later on
     texture = load_texture()
-    for HexID in main_map.catalogue:
-        this_hex = main_map.catalogue[HexID]
+    for HexID in main_map.catalog:
+        this_hex = main_map.catalog[HexID]
         cent = this_hex.center
         # use the Hexes location to skew the specified attribute of the hex 
         new_value = getattr(this_hex, attr) + magnitude*sample_noise(cent.x, cent.y, 1.1*main_map.dimensions[0], 1.1*main_map.dimensions[1], texture)

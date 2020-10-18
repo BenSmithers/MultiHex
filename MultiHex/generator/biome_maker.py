@@ -42,18 +42,18 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     # explicitly setting tileset to keep up appearances 
     this_climatizer = Climatizer(tileset="standard")
 
-    for ID in main_map.catalogue:
-        if main_map.catalogue[ID].genkey[0]=='1':
-            main_map.catalogue[ID].fill = (99,88,60)
-            main_map.catalogue[ID].biome = "mountain"
+    for ID in main_map.catalog:
+        if main_map.catalog[ID].genkey[0]=='1':
+            main_map.catalog[ID].fill = (99,88,60)
+            main_map.catalog[ID].biome = "mountain"
             continue
-        if main_map.catalogue[ID].genkey[1]=='1':
-            main_map.catalogue[ID].fill = (158,140,96)
-            main_map.catalogue[ID].biome = "mountain"
+        if main_map.catalog[ID].genkey[1]=='1':
+            main_map.catalog[ID].fill = (158,140,96)
+            main_map.catalog[ID].biome = "mountain"
             continue
       
-        this_climatizer.apply_climate_to_hex( main_map.catalogue[ID] )
-        main_map.catalogue[ID].rescale_color()
+        this_climatizer.apply_climate_to_hex( main_map.catalog[ID] )
+        main_map.catalog[ID].rescale_color()
 
 
     #                      MAKE BIOMES (REGIONS)
@@ -65,11 +65,11 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     # are faster at adding things to the sides 
     from collections import deque
     r_layer = 'biome'
-    main_map.rid_catalogue[r_layer] = {}
+    main_map.rid_catalog[r_layer] = {}
     main_map.id_map[r_layer] = {}
 
     # seed region generation. Just put them out randomly
-    while len(main_map.rid_catalogue[r_layer].keys()) < n_regions:
+    while len(main_map.rid_catalog[r_layer].keys()) < n_regions:
         # pick a point
         spot = Point( dimensions[0]*rnd.random(), dimensions[1]*rnd.random() )
 
@@ -81,7 +81,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             pass
 
         try:
-            this_hex = main_map.catalogue[ this_id ]
+            this_hex = main_map.catalog[ this_id ]
         except KeyError:
             continue 
 
@@ -95,10 +95,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
         ids_to_propagate = deque(this_region.ids)
 
-        if main_map.catalogue[ids_to_propagate[0]].river_border[0] or main_map.catalogue[ids_to_propagate[0]].river_border[1]:
+        if main_map.catalog[ids_to_propagate[0]].river_border[0] or main_map.catalog[ids_to_propagate[0]].river_border[1]:
             reg_type = 'river'
         else:
-            reg_type = main_map.catalogue[ ids_to_propagate[0] ].biome
+            reg_type = main_map.catalog[ ids_to_propagate[0] ].biome
         this_region.name = create_name( reg_type )
 
         # reg_size 
@@ -114,14 +114,14 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 # add the neighbor to this region if it matches the biome and isn't in a region
                 if neighbor in main_map.id_map[r_layer]:
                     continue
-                if neighbor not in main_map.catalogue:
+                if neighbor not in main_map.catalog:
                     continue
                 try:
                     if reg_type=='river':
-                        if main_map.catalogue[neighbor].river_border[0] or main_map.catalogue[neighbor].river_border[1]:
+                        if main_map.catalog[neighbor].river_border[0] or main_map.catalog[neighbor].river_border[1]:
                             main_map.add_to_region( rid, neighbor, r_layer )
                             ids_to_propagate.append( neighbor )
-                    elif main_map.catalogue[neighbor].biome==reg_type:
+                    elif main_map.catalog[neighbor].biome==reg_type:
                         main_map.add_to_region( rid, neighbor, r_layer )
                         ids_to_propagate.append( neighbor )
                 except RegionMergeError:
