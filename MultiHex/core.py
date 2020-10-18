@@ -26,7 +26,7 @@ Objects:
 """
 
 multihex_version = "0.3.0"
-map_version = "0.4"
+map_version = "0.5"
 
 
 def is_number(object):
@@ -378,7 +378,13 @@ def _update_to_0_4(which):
     which._version = "0.4"
     for hexID in which.catalog:
         del which.catalog[hexID]._vertices
+    _update_to_0_5(which)
 
+def _update_to_0_5(which):
+    which._version = "0.5"
+    setattr(which, "catalog", which.catalogue)
+    setattr(which, "rid_catalog", which.rid_catalogue)
+    setattr(which, "eid_catalog", which.eid_catalogue)
 
 def _update_save(which):
     """
@@ -394,6 +400,10 @@ def _update_save(which):
             _update_to_0_2( which )
         if which._version == "0.2":
             _update_to_0_3(which)
+        elif which._version=="0.3":
+            _update_to_0_4(which)
+        elif which._version=="0.4":
+            _update_to_0_5(which)
 
     elif which.version > map_version:
         raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
