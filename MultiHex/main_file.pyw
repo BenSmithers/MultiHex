@@ -239,11 +239,11 @@ class main_window(QMainWindow):
         
 
     def _redraw_hexes(self):
-        for ID in self.main_map.catalogue: 
+        for ID in self.main_map.catalog: 
             self.hex_control.redraw_hex( ID )
     def _redraw_biomes(self):
-        if 'biome' in self.main_map.rid_catalogue :
-            for rid in self.main_map.rid_catalogue['biome']:
+        if 'biome' in self.main_map.rid_catalog :
+            for rid in self.main_map.rid_catalog['biome']:
                 self.biome_control.redraw_region( rid )
     def _redraw_entities(self):
         for hexID in self.main_map.eid_map:
@@ -253,8 +253,8 @@ class main_window(QMainWindow):
             for pID in self.main_map.path_catalog[self.path_control._path_key]:
                 self.path_control.draw_path( pID )
     def _redraw_counties(self):
-        if 'county' in self.main_map.rid_catalogue :
-            for rid in self.main_map.rid_catalogue['county']:
+        if 'county' in self.main_map.rid_catalog :
+            for rid in self.main_map.rid_catalog['county']:
                 self.county_control.redraw_region( rid )
 
     def quit(self):

@@ -19,8 +19,8 @@
     "mountains": {
       "values": {
         "avg_range": 6.0,
-        "dimx": 6000,
-        "dimy": 3000,
+        "dimx": 2000,
+        "dimy": 1000,
         "n_peaks": 4,
         "sigma": 40,
         "zones": 16
@@ -91,8 +91,8 @@
     "mountains": {
       "values": {
         "avg_range": 6.0,
-        "dimx": 6000,
-        "dimy": 3000,
+        "dimx": 2000,
+        "dimy": 1000,
         "n_peaks": 4,
         "sigma": 40,
         "zones": 16

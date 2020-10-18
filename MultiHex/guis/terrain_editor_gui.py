@@ -508,9 +508,9 @@ class terrain_ui:
             if not isinstance(id, int):
                 raise TypeError("Expected {}, got {}".format(int, type(id)))
 
-            self.det_alt_slide.setValue( self.parent.main_map.catalogue[id]._altitude_base*100 )
-            self.det_temp_slide.setValue( self.parent.main_map.catalogue[id]._temperature_base*100)
-            self.det_rain_slide.setValue( self.parent.main_map.catalogue[id]._rainfall_base*100)
+            self.det_alt_slide.setValue( self.parent.main_map.catalog[id]._altitude_base*100 )
+            self.det_temp_slide.setValue( self.parent.main_map.catalog[id]._temperature_base*100)
+            self.det_rain_slide.setValue( self.parent.main_map.catalog[id]._rainfall_base*100)
 
         self._update_with_hex_id( id )
     
@@ -593,15 +593,15 @@ class terrain_ui:
             texture = generate_gradients()
             
             # apply the noise
-            for hexID in self.parent.main_map.catalogue:
-                center = self.parent.main_map.catalogue[hexID].center
+            for hexID in self.parent.main_map.catalog:
+                center = self.parent.main_map.catalog[hexID].center
                 scale = (0.9+self.det_mag_spin.value())
 
-                new_value = getattr( self.parent.main_map.catalogue[hexID], attribute) \
+                new_value = getattr( self.parent.main_map.catalog[hexID], attribute) \
                         + scale*sample_noise(center.x, center.y, 1.1*self.parent.main_map.dimensions[0],\
                         1.1*self.parent.main_map.dimensions[1], texture)
 
-                setattr( self.parent.main_map.catalogue[hexID], attribute, new_value)
+                setattr( self.parent.main_map.catalog[hexID], attribute, new_value)
 
                 # apply the relevant heatmep
 
@@ -614,12 +614,12 @@ class terrain_ui:
         if result==0:
             return
         
-        for hexID in self.parent.main_map.catalogue:
-            if self.parent.main_map.catalogue[hexID].biome=='mountain':
+        for hexID in self.parent.main_map.catalog:
+            if self.parent.main_map.catalog[hexID].biome=='mountain':
                 continue
 
-            self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalogue[hexID] )
-            self.parent.main_map.catalogue[hexID].rescale_color()
+            self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalog[hexID] )
+            self.parent.main_map.catalog[hexID].rescale_color()
             self.parent.hex_control.redraw_hex(hexID)
 
 
@@ -632,8 +632,8 @@ class terrain_ui:
             }
         if self.parent.hex_control.selected is None:
             return
-        self.parent.hex_control.adjust_hex( self.parent.main_map.catalogue[self.parent.hex_control.selected] , params )
-        self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalogue[self.parent.hex_control.selected])
+        self.parent.hex_control.adjust_hex( self.parent.main_map.catalog[self.parent.hex_control.selected] , params )
+        self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalog[self.parent.hex_control.selected])
         self.parent.hex_control.redraw_hex( self.parent.hex_control.selected )
 
     def hex_comboBox_select(self):
@@ -778,16 +778,16 @@ class terrain_ui:
             return
 
         # this is the first registered Hex
-        first = self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].ids[0]
+        first = self.parent.main_map.rid_catalog[self.parent.biome_control.r_layer][self.parent.biome_control.selected].ids[0]
 
-        new_one = create_name( self.parent.main_map.catalogue[first].biome )
+        new_one = create_name( self.parent.main_map.catalog[first].biome )
         self.bio_name_edit.setText( new_one )
 
     def biome_apply(self):
         if self.parent.biome_control.selected is None:
             pass
         else:
-            self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].name = self.bio_name_edit.text()
+            self.parent.main_map.rid_catalog[self.parent.biome_control.r_layer][self.parent.biome_control.selected].name = self.bio_name_edit.text()
             self.parent.biome_control.redraw_region_text( self.parent.biome_control.selected)
 
     def biome_update_gui(self):
@@ -795,19 +795,19 @@ class terrain_ui:
             self.bio_name_edit.setText("")
             self.bio_color_combo.setEnabled(False)
         else:
-            self.bio_name_edit.setText(self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].name)
+            self.bio_name_edit.setText(self.parent.main_map.rid_catalog[self.parent.biome_control.r_layer][self.parent.biome_control.selected].name)
             self.bio_color_combo.setEnabled(True)
 
     def biome_color_button(self):
         if self.parent.biome_control.selected is None:
             pass
         else:
-            old_one = self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color
+            old_one = self.parent.main_map.rid_catalog[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color
             qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
             new_color = QColorDialog.getColor(initial = qt_old_one, parent=self.parent)
 
             if new_color.isValid():
-                self.parent.main_map.rid_catalogue[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
+                self.parent.main_map.rid_catalog[self.parent.biome_control.r_layer][self.parent.biome_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
                 self.parent.biome_control.redraw_region(self.parent.biome_control.selected)
     
     def biome_delete(self):

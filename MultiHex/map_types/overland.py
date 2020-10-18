@@ -238,7 +238,7 @@ class County(Region, Government):
         if these_ids==0:
             return(0)
         else:
-            towns = list(filter( (lambda x:  isinstance(self.parent.main_map.eid_catalogue[x], Town)), these_ids))
+            towns = list(filter( (lambda x:  isinstance(self.parent.main_map.eid_catalog[x], Town)), these_ids))
             
             avg_ord = self.order/( 1+len(towns))
             avg_war = self.war/( 1+len(towns))
@@ -261,8 +261,8 @@ class County(Region, Government):
     def wealth( self ):
         this_wealth = 0
         for eID in self.eIDs:
-            if isinstance( self.parent.eid_catalogue[eID], Settlement ):
-                this_wealth += self.parent.eid_catalogue[eID].wealth
+            if isinstance( self.parent.eid_catalog[eID], Settlement ):
+                this_wealth += self.parent.eid_catalog[eID].wealth
 
         # returns in gp per person 
         return(this_wealth)
@@ -282,8 +282,8 @@ class County(Region, Government):
     def population( self ):
         pop = 0 
         for eID in self.eIDs:
-            if isinstance( self.parent.eid_catalogue[ eID ], Settlement ):
-                pop += self.parent.eid_catalogue[eID].population 
+            if isinstance( self.parent.eid_catalog[ eID ], Settlement ):
+                pop += self.parent.eid_catalog[eID].population 
         return( pop )
 
 class Nation( Government ):
@@ -301,14 +301,14 @@ class Nation( Government ):
         
         self._county_key = 'county'
 
-        if not rID in parent.rid_catalogue[self._county_key]:
+        if not rID in parent.rid_catalog[self._county_key]:
             raise ValueError("County must be a registered in Hexmap.")
 
         self.parent = parent
         self.counties = [rID]
-        self.color = self.parent.rid_catalogue[self._county_key][rID].color
-        self.parent.rid_catalogue[self._county_key][rID].nation = self
-        self.name = "Kingdom of " + self.parent.rid_catalogue[self._county_key][rID].name
+        self.color = self.parent.rid_catalog[self._county_key][rID].color
+        self.parent.rid_catalog[self._county_key][rID].nation = self
+        self.name = "Kingdom of " + self.parent.rid_catalog[self._county_key][rID].name
 
     @property
     def tension(self):
@@ -322,13 +322,13 @@ class Nation( Government ):
             avg_spi = self.spirit/(1+len(self.counties))
 
             for count in self.counties:
-                avg_ord += self.parent.rid_catalogue[self._county_key][count].order/(1+len(self.counties))
-                avg_war += self.parent.rid_catalogue[self._county_key][count].war/(1+len(self.counties))
-                avg_spi += self.parent.rid_catalogue[self._county_key][count].spirit/(1+len(self.counties))
+                avg_ord += self.parent.rid_catalog[self._county_key][count].order/(1+len(self.counties))
+                avg_war += self.parent.rid_catalog[self._county_key][count].war/(1+len(self.counties))
+                avg_spi += self.parent.rid_catalog[self._county_key][count].spirit/(1+len(self.counties))
 
             wip = 0
             for count in self.counties:
-                wip += (self.parent.rid_catalogue[self._county_key][count].population/self.subjects)*((avg_ord - self.parent.rid_catalogue[self._county_key][count].order)**2 + (avg_war - self.parent.rid_catalogue[self._county_key][count].war)**2 + (avg_spi - self.parent.rid_catalogue[self._county_key][count].spirit)**2)
+                wip += (self.parent.rid_catalog[self._county_key][count].population/self.subjects)*((avg_ord - self.parent.rid_catalog[self._county_key][count].order)**2 + (avg_war - self.parent.rid_catalog[self._county_key][count].war)**2 + (avg_spi - self.parent.rid_catalog[self._county_key][count].spirit)**2)
 
             wip = sqrt(wip)
             return( wip )
@@ -337,28 +337,28 @@ class Nation( Government ):
     def subjects( self ):
         pop = 0
         for county in self.counties:
-            pop += self.parent.rid_catalogue[self._county_key][county].population
+            pop += self.parent.rid_catalog[self._county_key][county].population
         return( pop )
     
     @property
     def total_wealth( self ):
         wea = 0
         for county in self.counties:
-            wea += self.parent.rid_catalogue[self._county_key][county].wealth
+            wea += self.parent.rid_catalog[self._county_key][county].wealth
         return(wea)
 
     
     def add_county( self, rID ):
         if not isinstance( rID, int):
             raise TypeError("Expected arg of type {}, received {}".format(int, type(rID)))
-        if not rID in self.parent.rid_catalogue[self._county_key]:
+        if not rID in self.parent.rid_catalog[self._county_key]:
             raise ValueError("No registered county of rID {}".format(rID))
         
         if rID in self.counties:
             return
 
         # if it's already part of another Nation, remove it from that nation
-        if self.parent.rid_catalogue[self._county_key][rID].nation is not None:
+        if self.parent.rid_catalog[self._county_key][rID].nation is not None:
             self.remove_county( rID )
 
         allowed = False
@@ -369,8 +369,8 @@ class Nation( Government ):
         if not allowed:
             raise ValueError("Unable to add County {} to Nation. They share no border".format(rID))
         
-        self.parent.rid_catalogue[self._county_key][rID].color = self.color 
-        self.parent.rid_catalogue[self._county_key][rID].nation = self
+        self.parent.rid_catalog[self._county_key][rID].color = self.color 
+        self.parent.rid_catalog[self._county_key][rID].nation = self
         self.counties.append( rID )
 
     def remove_county( self, rID ):
@@ -382,8 +382,8 @@ class Nation( Government ):
         if rID not in self.counties:
             return
 
-        self.parent.rid_catalogue[self._county_key][rID].set_color( rID )
-        self.parent.rid_catalogue[self._county_key][rID].nation = None
+        self.parent.rid_catalog[self._county_key][rID].set_color( rID )
+        self.parent.rid_catalog[self._county_key][rID].nation = None
         self.counties.pop( self.counties.index(rID) )
 
 class Biome(Region):
@@ -487,10 +487,10 @@ class Detail_Brush( basic_tool ):
         place = Point( event.scenePos().x(), event.scenePos().y() )
         center_id = self.parent.main_map.get_id_from_point(place)
 
-        if center_id in self.parent.main_map.catalogue:
-            setattr(self.parent.main_map.catalogue[center_id], self.configuring, getattr(self.parent.main_map.catalogue[center_id], self.configuring) + sign*self.magnitude)
-            self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[center_id])
-            self.parent.main_map.catalogue[center_id].rescale_color()
+        if center_id in self.parent.main_map.catalog:
+            setattr(self.parent.main_map.catalog[center_id], self.configuring, getattr(self.parent.main_map.catalog[center_id], self.configuring) + sign*self.magnitude)
+            self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[center_id])
+            self.parent.main_map.catalog[center_id].rescale_color()
             self.parent.hex_control.redraw_hex(center_id)
 
         reduced = self.magnitude
@@ -499,11 +499,11 @@ class Detail_Brush( basic_tool ):
             reduced *= 2./3
             neighbors = self.parent.main_map.get_hex_neighbors(center_id, iter)
             for each in neighbors:
-                if each in self.parent.main_map.catalogue:
-                    new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalogue[each], self.configuring) + sign*reduced))
-                    setattr(self.parent.main_map.catalogue[each], self.configuring, new_value)
-                    self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
-                    self.parent.main_map.catalogue[each].rescale_color()
+                if each in self.parent.main_map.catalog:
+                    new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalog[each], self.configuring) + sign*reduced))
+                    setattr(self.parent.main_map.catalog[each], self.configuring, new_value)
+                    self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[each])
+                    self.parent.main_map.catalog[each].rescale_color()
                     self.parent.hex_control.redraw_hex(each)
             iter+=1
 
@@ -889,8 +889,8 @@ class Nation_Brush( basic_tool ):
             except KeyError:
                 return
 
-            if self.parent.main_map.rid_catalogue[self._county_key][this_county_rid].nation is not None:
-                self.select(self.parent.main_map.rid_catalogue[self._county_key][this_county_rid].nation)
+            if self.parent.main_map.rid_catalog[self._county_key][this_county_rid].nation is not None:
+                self.select(self.parent.main_map.rid_catalog[self._county_key][this_county_rid].nation)
                 self.parent.nation_update_gui()
 
         elif self._state == 1:

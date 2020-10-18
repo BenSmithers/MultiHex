@@ -817,7 +817,7 @@ class entity_brush(basic_tool):
         Function exposing the selected eID. Allows it to be set by non-member functions
         """
         assert( isinstance( eID, int ))
-        if not eID in self.parent.main_map.eid_catalogue:
+        if not eID in self.parent.main_map.eid_catalog:
             raise ValueError("eID {} not registered, but is being selected?".format(eID))
         self._selected_eid = eID
 
@@ -904,7 +904,7 @@ class entity_brush(basic_tool):
             if self._selected_hex in self.parent.main_map.eid_map:
                 eIDs_here = self.parent.main_map.eid_map[ self._selected_hex ]
                 for eID in eIDs_here:
-                    if isinstance( self.parent.main_map.eid_catalogue[eID] , self._settlement ):
+                    if isinstance( self.parent.main_map.eid_catalog[eID] , self._settlement ):
                         settlement_eid = eID
             self._selected_eid = settlement_eid
             self.parent.extra_ui.set_update_selection( settlement_eid )
@@ -946,12 +946,12 @@ class entity_brush(basic_tool):
                 new_ent = Entity( "temp" , loc_id )
                 new_ent.icon = "location"
                 self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
-                self.parent.main_map.eid_catalogue[self._selected_eid].name = "Entity {}".format(self._selected_eid)
+                self.parent.main_map.eid_catalog[self._selected_eid].name = "Entity {}".format(self._selected_eid)
             else: #placing is 1
                 new_ent = self._settlement("temp", loc_id )
                 new_ent.icon = "village"
                 self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
-                self.parent.main_map.eid_catalogue[self._selected_eid].name = "Town {}".format(self._selected_eid)
+                self.parent.main_map.eid_catalog[self._selected_eid].name = "Town {}".format(self._selected_eid)
             
             self.update_wrt_new_eid()
             self.redraw_entities_at_hex( loc_id )
@@ -998,7 +998,7 @@ class entity_brush(basic_tool):
         
         which_eID = None
         for eID in eIDs:
-            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], self._settlement)
+            is_set = isinstance( self.parent.main_map.eid_catalog[eID], self._settlement)
             
             if is_set and (not self.draw_settlements):
                 continue
@@ -1007,9 +1007,9 @@ class entity_brush(basic_tool):
                 which_eID = eID 
                 continue
             
-            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], self._settlement )
+            other_is_set = isinstance( self.parent.main_map.eid_catalog[which_eID], self._settlement )
 
-            is_mob = isinstance( self.parent.main_map.eid_catalogue[eID], Mobile )
+            is_mob = isinstance( self.parent.main_map.eid_catalog[eID], Mobile )
             if is_mob:
                 print("Don't know how to draw a mob")
                 continue
@@ -1025,7 +1025,7 @@ class entity_brush(basic_tool):
             # if they /both/ are settlements
             elif other_is_set and is_set:
                 # choose the one with the higher population
-                if self.main_map.eid_catalogue[eID].population > self.main_map.eid_catalogue[which_eID].population:
+                if self.main_map.eid_catalog[eID].population > self.main_map.eid_catalog[which_eID].population:
                     which_eID = eID
 
         if which_eID is None:
@@ -1041,18 +1041,18 @@ class entity_brush(basic_tool):
         if not self._loaded:
             self.load_assets()
 
-        if (eID not in self.parent.main_map.eid_catalogue) and (eID not in self._drawn_entities):
-            raise ValueError("eID {} not registered in catalogue".format(eID))
+        if (eID not in self.parent.main_map.eid_catalog) and (eID not in self._drawn_entities):
+            raise ValueError("eID {} not registered in catalog".format(eID))
 
         # delete old drawing if it exists
         if eID in self._drawn_entities:
             self.parent.scene.removeItem( self._drawn_entities[ eID ] )
             del self._drawn_entities[ eID ]
 
-        if eID in self.parent.main_map.eid_catalogue:
-            self._drawn_entities[eID] = self.parent.scene.addPixmap( self._all_icons.pixdict[self.parent.main_map.eid_catalogue[ eID ].icon] )
+        if eID in self.parent.main_map.eid_catalog:
+            self._drawn_entities[eID] = self.parent.scene.addPixmap( self._all_icons.pixdict[self.parent.main_map.eid_catalog[ eID ].icon] )
             self._drawn_entities[eID].setZValue(5)
-            location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
+            location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalog[eID].location)
             self._drawn_entities[eID].setX( location.x - self._all_icons.shift)
             self._drawn_entities[eID].setY( location.y - self._all_icons.shift)
 
@@ -1108,7 +1108,7 @@ class Map_Use_Tool(basic_tool):
             self.set_state(0)
             self._selected = None
         else:
-            if eid in self.parent.eid_catalogue:
+            if eid in self.parent.eid_catalog:
                 self._selected = eid
                 self.set_state(1)
             else:
@@ -1188,7 +1188,7 @@ class Map_Use_Tool(basic_tool):
             place = Point( event.scenePos().x(), event.scenePos().y())
             loc_id = self.parent.main_map.get_id_from_point( place )
             if loc_id in self.parent.main_map.eid_map:
-                return([ (self.parent.main_map.eid_catalogue[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
+                return([ (self.parent.main_map.eid_catalog[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
         elif self.state==1:
             # move here
             return("Move Here")
@@ -1322,7 +1322,7 @@ class hex_brush(Basic_Brush):
         if self._selection_outline_obj is not None:
             self.parent.scene.removeItem(self._selection_outline_obj)
 
-        if (loc_id is not None) and (loc_id in self.parent.main_map.catalogue):
+        if (loc_id is not None) and (loc_id in self.parent.main_map.catalog):
             temp = self.get_color()
             self.QPen.setColor(QtGui.QColor(0, 220,220))
             self.QPen.setStyle(1)
@@ -1393,10 +1393,10 @@ class hex_brush(Basic_Brush):
         
         # register that hex in the hexmap 
         try:
-            if (loc_id in self.parent.main_map.catalogue) and self.overwrite:
+            if (loc_id in self.parent.main_map.catalog) and self.overwrite:
                 # if we're overwriting, delete any hex that exists here
-                self.adjust_hex( self.parent.main_map.catalogue[loc_id])
-                self.parent.main_map.catalogue[loc_id].rescale_color()
+                self.adjust_hex( self.parent.main_map.catalog[loc_id])
+                self.parent.main_map.catalog[loc_id].rescale_color()
             else:
                 # create a hex at that point, with a radius given by the current drawscale 
                 new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
@@ -1411,9 +1411,9 @@ class hex_brush(Basic_Brush):
             for neighbor in neighbors:
                 new_hex_center = self.parent.main_map.get_point_from_id( neighbor )
                 try:
-                    if (neighbor in self.parent.main_map.catalogue) and self.overwrite:
-                        self.adjust_hex( self.parent.main_map.catalogue[neighbor])
-                        self.parent.main_map.catalogue[neighbor].rescale_color()
+                    if (neighbor in self.parent.main_map.catalog) and self.overwrite:
+                        self.adjust_hex( self.parent.main_map.catalog[neighbor])
+                        self.parent.main_map.catalog[neighbor].rescale_color()
                     else:
                         new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
                         self.parent.main_map.register_hex( new_hex, neighbor )            
@@ -1436,10 +1436,10 @@ class hex_brush(Basic_Brush):
             self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
             del self.drawn_hexes[hex_id]
 
-        if hex_id not in self.parent.main_map.catalogue:
+        if hex_id not in self.parent.main_map.catalog:
             return
 
-        this_hex = self.parent.main_map.catalogue[ hex_id ]
+        this_hex = self.parent.main_map.catalog[ hex_id ]
         if self.use_param_as_color=='':
             self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
             self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
@@ -1523,7 +1523,7 @@ class region_brush(Basic_Brush):
         Basic_Brush.select(self, event)
 
         if self.selected is not None:
-            self.set_color(self.parent.main_map.rid_catalogue[self.r_layer][self.selected].color)
+            self.set_color(self.parent.main_map.rid_catalog[self.r_layer][self.selected].color)
         else:
             self.set_color((255,255,255))
 
@@ -1567,8 +1567,8 @@ class region_brush(Basic_Brush):
         """
         Draws or Erases, depending on the mode 
         """
-        if self.r_layer not in self.parent.main_map.rid_catalogue:
-            self.parent.main_map.rid_catalogue[self.r_layer] = {}
+        if self.r_layer not in self.parent.main_map.rid_catalog:
+            self.parent.main_map.rid_catalog[self.r_layer] = {}
         if self.r_layer not in self.parent.main_map.id_map:
             self.parent.main_map.id_map[self.r_layer] = {}
 
@@ -1613,7 +1613,7 @@ class region_brush(Basic_Brush):
         # get the nearest relevant ID
         loc_id = self.parent.main_map.get_id_from_point( place )
         
-        if loc_id not in self.parent.main_map.catalogue:
+        if loc_id not in self.parent.main_map.catalog:
             return
 
 
@@ -1683,7 +1683,7 @@ class region_brush(Basic_Brush):
         """
         place   = Point( event.scenePos().x(), event.scenePos().y() )
         loc_id  = self.parent.main_map.get_id_from_point( place )
-        if loc_id not in self.parent.main_map.catalogue:
+        if loc_id not in self.parent.main_map.catalog:
             return
 
         if loc_id not in self.parent.main_map.id_map[self.r_layer]:
@@ -1723,7 +1723,7 @@ class region_brush(Basic_Brush):
             return()
         
         try:
-            reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
+            reg_obj = self.parent.main_map.rid_catalog[self.r_layer][ reg_id ]
         except KeyError:
             return
 
@@ -1758,10 +1758,10 @@ class region_brush(Basic_Brush):
         if not self.draw_names:
             return
 
-        if rid not in self.parent.main_map.rid_catalogue[self.r_layer]:
+        if rid not in self.parent.main_map.rid_catalog[self.r_layer]:
             return
 
-        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
+        reg_obj = self.parent.main_map.rid_catalog[self.r_layer][ rid ]
 
         if reg_obj.name=="":
             return
