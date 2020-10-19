@@ -1108,7 +1108,7 @@ class Map_Use_Tool(basic_tool):
             self.set_state(0)
             self._selected = None
         else:
-            if eid in self.parent.eid_catalog:
+            if eid in self.parent.main_map.eid_catalog:
                 self._selected = eid
                 self.set_state(1)
             else:

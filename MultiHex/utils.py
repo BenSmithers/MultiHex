@@ -26,6 +26,13 @@ class MapEvent:
         self.brief_desc = "" # will be used on the event list
         self.long_desc = ""
 
+        # whether or not the event should appear in the Event List
+        self._show = True
+
+    @property
+    def show(self):
+        return(self._show)
+
 
 class MapAction(MapEvent):
     def __init__(self, kind,recurring=None, **kwargs):
@@ -33,9 +40,25 @@ class MapAction(MapEvent):
         Implementation of MapEvent that actually does something. 
         """
         MapEvent.__init__(self, kind, recurring, **kwargs)
-        
-    def do(self):
-        pass
+
+        if kind==mapActionItem.move:
+            needed =["eID", "to"]
+            for entry in needed:
+                if entry not in kwargs:
+                    raise ValueError("Missing entry {} in kwargs".format(entry))
+            self.eid = kwargs["eID"]
+            self.to = kwargs["to"]
+
+            def this_action(map):
+                if not isinstance(map, Hexmap):
+                    raise TypeError("Can only act on {}, not {}".format(Hexmap, type(map)))
+                map.eid_catalog[self.eid].set_location(self.to)
+
+            self.do = this_action
+            
+        else:
+            raise NotImplementedError("Unrecognized kind: {}".format(kind))
+
 
 
 class ActionManager:

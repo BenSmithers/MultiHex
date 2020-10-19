@@ -419,15 +419,35 @@ class Settlement(Entity, Government):
 
 class Mobile( Entity ):
     """
-    Defines a mobile map Entity. Fundamentally the same as an Entity, but its location can be moved 
+    Defines a mobile map Entity. Fundamentally the same as an Entity, but its location can be moved. Also allows for a route to be stored in the Mobile: it's planned direction in life 
     """
     def __init__(self, name):
         Entity.__init__(self, name, location=None)
         
         self._speed = 1. #miles/hour 
 
+        # this is a list of hex IDs. It represents where the Mobile is going to go. 
+        #    these should be managed by the ActionManager in `utils.py`
+        self._route = []
+
+    @property
+    def route(self):
+        return(self._route)
+
+    def set_route(self, new_route = None):
+        if new_route is None:
+            self._route = []
+        if not isinstance(new_route, (list,tuple)):
+            raise TypeError("New route should be {}, got {}".format(list, type(new_route)))
+        for entry in new_route:
+            if not isinstance(entry, int):
+                raise TypeError("Found {} in new_route. Should be {}, not {}".format(entry, int, type(entry)))
+
+        self._route = new_route
+
     def set_location(self, location):
-        # add a check thingy
+        if not isinstance(location,int):
+            raise TypeError("Can only set location to {}, not {}".format(int, type(location)))
         self._location = location
 
     @property 

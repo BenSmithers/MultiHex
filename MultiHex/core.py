@@ -589,8 +589,6 @@ class Hexmap:
                 current = cameFrom[current]
                 total_path.append(current)
             
-            #list_o_points = [self.get_point_from_id(id) for id in total_path[::-1]]
-            #print("These are the points I decided to travel along: \n {}".format(list_o_points))
             return(total_path[::-1])
 
         while len(openSet)!=0:
