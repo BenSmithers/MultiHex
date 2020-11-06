@@ -1,6 +1,7 @@
 from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
+from MultiHex.logger import Logger
 
 from numpy import arccos 
 from numpy import histogram
@@ -51,7 +52,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         x_center = 0.80*rnd.random()*dimensions[0] + 0.10*dimensions[0]
         y_cos  = 1.8*rnd.random() - 0.9
         y_center = arccos( y_cos )*dimensions[1]/( pi )
-        print("Making New Continent at ({:.2f},{:.2f})".format(x_center, y_center))
+        Logger.Log("Making New Continent at ({:.2f},{:.2f})".format(x_center, y_center))
         for j in range(n_peaks):
             while True:
                 place = Point( rnd.gauss( x_center, 300), rnd.gauss( y_center, 300) )
@@ -78,8 +79,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
         # build the neighbor function
         distribution = get_distribution( direction, sigma)
-        print("    Ridgeline Direction: {} +/- {}".format(direction, sigma))
-        print("    Ridgline Avg Length: {}".format(avg_range))
+        Logger.Log("    Ridgeline Direction: {} +/- {}".format(direction, sigma))
+        Logger.Log("    Ridgline Avg Length: {}".format(avg_range))
 
         angles = [150., 90., 30., 330., 270., 210.]
         neighbor_weights = [ distribution( angle ) for angle in angles]

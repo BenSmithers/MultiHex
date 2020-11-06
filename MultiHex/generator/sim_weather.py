@@ -2,6 +2,7 @@ from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
 from MultiHex.generator.noise import perlinize
+from MultiHex.logger import Logger
 
 from numpy import arccos, histogram, linspace
 from math import exp, floor, sqrt, e, pi, sin
@@ -44,7 +45,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     #                Establish Rainfall
     # ======================================================
 
-    print("Simulating Weather")
+    Logger.Log("Simulating Weather")
 
     rthree = sqrt(3)
     if size=='cont':
@@ -195,7 +196,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 continue
             else:
                 if perc > (test+1)*10:
-                    print("{}% done".format((1.+test)*10.))
+                    Logger.Log("{}% done".format((1.+test)*10.))
                     percentages[test] = True
 
         # step the cloud forward
@@ -260,11 +261,11 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             try:        
                 main_map.catalog[ID]._rainfall_base = percentiles[which]
             except IndexError:
-                print( "ID: {}".format(ID))
-                print( "which: {} of {}".format(which, len(percentiles)))
+                Logger.Log( "ID: {}".format(ID))
+                Logger.Log( "which: {} of {}".format(which, len(percentiles)))
                 sys.exit()        
 
-    print("Applying Sunlight Gradient")
+    Logger.Log("Applying Sunlight Gradient")
     for ID in main_map.catalog:
         point_y = main_map.catalog[ID]._center.y
         # sine arg goes from 0->pi
@@ -278,11 +279,11 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     save_map( main_map, sim )
 
     n_rounds = 2
-    print("Performing {} round of Rainfall Smoothing".format(n_rounds))
+    Logger.Log("Performing {} round of Rainfall Smoothing".format(n_rounds))
     for i in range(n_rounds):
         smooth(['rain'], sim)
 
-    perlinize(attr='_temperature_base')
+    perlinize(sim, attr='_temperature_base')
 
 
     

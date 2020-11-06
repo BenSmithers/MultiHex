@@ -9,6 +9,8 @@ except ImportError:
 from collections import deque
 import pickle
 
+from MultiHex.logger import Logger
+
 """
 Ben Smithers
 b.smithers.actual@gmail.com 
@@ -391,7 +393,7 @@ def _update_save(which):
     This function figures out the version mismatch of the given Hexmap and applies necessary updates
     """
     assert( isinstance( which, Hexmap ))
-    print("Updating Map")
+    Logger.Log("Updating Map")
     if not hasattr( which, "_version"):
         _update_to_0_1( which )
         
@@ -408,7 +410,7 @@ def _update_save(which):
     elif which.version > map_version:
         raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
     
-    print("Updated map to version {}. You should save!".format(map_version))
+    Logger.Log("Updated map to version {}. You should save!".format(map_version))
     
 
 def save_map(h_map, filename):
@@ -802,11 +804,11 @@ class Hexmap:
         if loc_id not in self.eid_map:
             # that means the Entity thought it was somewhere that the Map thought had nothing
 
-            print("WARN! Inconsistency in eIDs")
+            Logger.Warn("Inconsistency in eIDs")
         else:
             if eID not in self.eid_map[loc_id]:
                 # means that the Entity thought it was somewhere that the Map that had some things, just not this thing 
-                print("WARN! Inconsistency in eIDS (2)")
+                Logger.Warn("Inconsistency in eIDS (2)")
             else:
                 # otherwise remove the eID from this list 
                 self.eid_map[loc_id].pop( self.eid_map[loc_id].index( eID ) )
@@ -1081,7 +1083,7 @@ class Hexmap:
                 iteration += 1
 
             perimeter_points = [ i+center for i in perimeter_points ]
-            #print("{}\n".format(perimeter_points))
+            Logger.Trace("{}\n".format(perimeter_points))
             return( perimeter_points ) 
 
     def points_to_draw( self, list_of_points ):
@@ -1153,7 +1155,7 @@ class Hexmap:
         # We don't know which 
 
         if v_type is None:
-            print("this shouldn't be called")
+            Logger.Warn("This shouldn't be called")
             # deduce the vertex type
             l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
             l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
@@ -1167,7 +1169,7 @@ class Hexmap:
                 v_type=1
                 #return([ l_up, l_down, r_up]) # type 1
             else:
-                raise ValueError("I don't think this place, {}, is a vertex".format(place))
+                Logger.Fatal("I don't think this place, {}, is a vertex".format(place), ValueError)
         
         assert(type(v_type)==int)
         if v_type==1:
@@ -1180,7 +1182,7 @@ class Hexmap:
                         self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self.drawscale ) ])
 
         else:
-            raise ValueError("Invalid Vertex type value: {}".format(v_type))
+            Logger.Fatal("Invalid Vertex type value: {}".format(v_type), ValueError)
 
     def get_ids_beside_edge(self, start, end):
         """
@@ -1514,11 +1516,11 @@ class Region:
                             max_x = point.x
                             which = loop
             if which is None:
-                print("start indices: {}".format( start_indices ))
-                print("Loops: {}".format(loops))
-                print("self.perimeter: {}".format(self.perimeter))
-                print("other one: {}".format(other_region.perimeter))
-                raise TypeError("Some bad stuff has happened.")
+                Logger.Trace("start indices: {}".format( start_indices ))
+                Logger.Trace("Loops: {}".format(loops))
+                Logger.Trace("self.perimeter: {}".format(self.perimeter))
+                Logger.Trace("other one: {}".format(other_region.perimeter))
+                Logger.Fatal("Some bad stuff has happened.")
             self.perimeter = which
             for loop in loops:
                 if loop!=which:
@@ -1599,8 +1601,8 @@ class Region:
                 which=each
                 break
         if which is None:
-            print("Looking for {}, but only have {}".format( hex_id, self.ids))
-            raise ValueError("id not in region")
+            Logger.Trace("Looking for {}, but only have {}".format( hex_id, self.ids))
+            Logger.Fatal("id not in region", ValueError)
        
 
         
@@ -1781,7 +1783,7 @@ def _glom( original, new, start_index):
     
 
     if new_perimeter == []:
-        raise Exception("Something terribly unexpected happened: {}, {}, {}".format(original, new, start_index))
+        Logger.Fatal("Something terribly unexpected happened: {}, {}, {}".format(original, new, start_index))
 
     return( new_perimeter )
 
@@ -1820,7 +1822,7 @@ class Path:
             pass
         elif isinstance( offset, float):
             offset = int(offset)
-            print("ATTN: received `offset` of type {}, rounding. This may be an issue!".format(float))
+            Logger.Warn("ATTN: received `offset` of type {}, rounding. This may be an issue!".format(float))
         else:
             raise TypeError("Received type {} for arg `offset`, expected {}".format( type(offset), int))
 

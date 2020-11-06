@@ -15,6 +15,8 @@ from glob import glob
 
 from copy import deepcopy, copy
 
+from MultiHex.logger import Logger
+
 class PixHolder:
     """
     Generic implementation of an object that loads in images from some directory and stores them as pixmaps. 
@@ -44,12 +46,12 @@ class PixHolder:
             for found_file in files_found:
                 obj_name = os.path.basename(found_file).split(".")[0]
                 if obj_name in self.pixdict:
-                    print("Skipping '{}{}', already have file with same name".format( obj_name, file_type))
+                    Logger.Log("Skipping '{}{}', already have file with same name".format( obj_name, file_type))
                     continue
             
                 self.pixdict[ obj_name ] = QtGui.QPixmap(found_file).scaledToWidth( self._icon_size, 1) 
             if len(files_found)!=0:
-                print("Loaded ({}) media in {}".format(len(files_found), self._art_dir ))
+                Logger.Log("Loaded ({}) media in {}".format(len(files_found), self._art_dir ))
 
     @property
     def shift(self):

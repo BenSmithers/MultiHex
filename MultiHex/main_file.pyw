@@ -23,6 +23,9 @@ from MultiHex.guis.map_use_gui import map_use_ui
 
 #import some dialogs
 from MultiHex.new_map import basicMapDialog
+from MultiHex.logger import Logger
+
+Logger.Log("Launching MultiHex")
 
 class main_window(QMainWindow):
     def __init__(self,parent=None):
@@ -222,21 +225,16 @@ class main_window(QMainWindow):
         self.smart_ui_chooser()
         self.params = get_tileset_params( self.main_map.tileset )
 
-        print("Drawing hexes... ", end='')
+        Logger.Log("Drawing hexes... ")
         self._redraw_hexes()
-        print("done")
-        print("Drawing biomes... ", end='')
+        Logger.Log("Drawing biomes... ")
         self._redraw_biomes()
-        print("done")
-        print("Drawing rivers... ", end='')
+        Logger.Log("Drawing rivers... ")
         self.river_control.redraw_rivers()
-        print("done")
-        print("Drawing everything else...",end='')
+        Logger.Log("Drawing everything else...")
         self._redraw_entities()
         self._redraw_roads()
         self._redraw_counties()
-        print("done")
-        
 
     def _redraw_hexes(self):
         for ID in self.main_map.catalog: 
@@ -268,7 +266,7 @@ class main_window(QMainWindow):
         Opens a dialog to accept a filename from the user, then calls the save_map function
         """
         temp= QFileDialog.getSaveFileName(None, 'Save HexMap', self.savedir, 'HexMaps (*.hexmap)')[0]
-        print(temp)
+        Logger.Log("Using Save Name {}".format(temp))
         if temp is not None:
             if temp!='':
                 self.filename=temp

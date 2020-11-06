@@ -2,6 +2,7 @@ from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
 from MultiHex.generator.noise import perlinize
+from MultiHex.logger import Logger
 
 from numpy import arccos 
 from numpy import histogram
@@ -48,13 +49,13 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
           
     #         Add mountainous terrain around Ridgelines
     # ======================================================
-    print("Spreading Mountains")
+    Logger.Log("Spreading Mountains")
     
     ids_to_propagate = list( main_map.catalog.keys())
 
     # average thickness of the mountains
 
-    print("    average mountain thickness {}".format( mnt_thicc ))
+    Logger.Log("    average mountain thickness {}".format( mnt_thicc ))
 
     while len(ids_to_propagate) != 0:
         
@@ -111,10 +112,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 ids_to_propagate.pop(0)
 
 
-    print("Spread Land Out")
+    Logger.Log("Spread Land Out")
 
-    print("    Land Spread Factor  {} +/- {}".format(land_spread, land_width))
-    print("    Ocean Spread Factor {} +/- {}".format(water_spread, water_width))
+    Logger.Log("    Land Spread Factor  {} +/- {}".format(land_spread, land_width))
+    Logger.Log("    Ocean Spread Factor {} +/- {}".format(water_spread, water_width))
 
     ids_to_propagate = list( main_map.catalog.keys())
 
@@ -171,7 +172,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     for i in range( n_rounds ):
         smooth( ['alt'], sim )
 
-    perlinize()
+    perlinize(sim)
 
 if __name__=='__main__':
     generate('cont')

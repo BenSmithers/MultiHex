@@ -1,7 +1,10 @@
 from enum import Enum 
+
 from MultiHex.objects import Mobile, Entity 
 from MultiHex.clock import Clock, Time
 from MultiHex.core import Hexmap
+
+from MultiHex.logger import Logger
 
 class mapActionItem(Enum):
     move = 1
@@ -16,11 +19,11 @@ class MapEvent:
         kwargs - arguments specific to this kind of event. Varies 
         """
         if not isinstance(kind, mapActionItem):
-            raise TypeError("Can only create action of type {}, not {}".format(mapActionItem, type(kind)))
+            Logger.Fatal("Can only create action of type {}, not {}".format(mapActionItem, type(kind)), TypeError)
 
         if recurring is not None:
             if not isinstance(recurring, Time):
-                raise TypeError("If recurring, arg must be {}, not {}".format(Time, type(recurring)))
+                Logger.Fatal("If recurring, arg must be {}, not {}".format(Time, type(recurring)), TypeError)
         self.recurring = recurring
 
         self.brief_desc = "" # will be used on the event list
@@ -45,19 +48,19 @@ class MapAction(MapEvent):
             needed =["eID", "to"]
             for entry in needed:
                 if entry not in kwargs:
-                    raise ValueError("Missing entry {} in kwargs".format(entry))
+                    Logger.Fatal("Missing entry {} in kwargs".format(entry), ValueError)
             self.eid = kwargs["eID"]
             self.to = kwargs["to"]
 
             def this_action(map):
                 if not isinstance(map, Hexmap):
-                    raise TypeError("Can only act on {}, not {}".format(Hexmap, type(map)))
+                    Logger.Fatal("Can only act on {}, not {}".format(Hexmap, type(map)), ValueError)
                 map.eid_catalog[self.eid].set_location(self.to)
 
             self.do = this_action
             
         else:
-            raise NotImplementedError("Unrecognized kind: {}".format(kind))
+            Logger.Fatal("Unrecognized kind: {}".format(kind), NotImplementedError)
 
 
 
@@ -68,7 +71,7 @@ class ActionManager:
     """
     def __init__(self, parent_map):
         if not isinstance(parent_map, Hexmap):
-            raise TypeError("Parent must be {}, received {}".format(Hexmap, type(parent_map)))
+            Logger.Fatal("Parent must be {}, received {}".format(Hexmap, type(parent_map)), TypeError)
 
         self._queue = []
 
@@ -78,9 +81,9 @@ class ActionManager:
 
     def add_event(self, event, time):
         if not isinstance(event, MapEvent):
-            raise TypeError("Can only register {} type events, not {}".format(MapEvent, type(event)))
+            Logger.Fatal("Can only register {} type events, not {}".format(MapEvent, type(event)), TypeError)
         if not isinstance(time, Time):
-            raise TypeError("Expected {} for time, not {}.".format(Time, type(time)))
+            Logger.Fatal("Expected {} for time, not {}.".format(Time, type(time)), TypeError)
 
         if len(self.queue)==0:
             self._queue.append( [time, event] )
