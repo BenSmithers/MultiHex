@@ -6,6 +6,7 @@ try:
 except ImportError:
     from math import sqrt, atan, pi, floor, cos, sin, inf
 
+import os, json, sys
 from collections import deque
 import pickle
 
@@ -317,7 +318,7 @@ class Hex:
         return(same)
 
     def __repr__(self):
-        return("{}@{}".format(self.__clas__, self.id))
+        return("{}@{}".format(self.__class__))
 
     
 
@@ -697,7 +698,7 @@ class Hexmap:
 
     def unregister_path( self, pID, layer):
         if not type(pID)==int:
-            raise Type("Expected {} for rivid, got {}".format(int, type(pID)))
+            raise TypeError("Expected {} for rivid, got {}".format(int, type(pID)))
         
         if layer not in self.path_catalog:
             raise ValueError("{} is not a layer in the path catalog".format( layer))
@@ -767,7 +768,7 @@ class Hexmap:
                     raise ValueError("Mobile with eID {} thought it was here: {}. Hex only contains eIDs {}".format(eID, curr_id, self.eid_map[curr_id]))
                 else:
                     # remove the mapping to this entity from its old location
-                    self.eid_map[curr_id].pop( self.eidmap[curr_id].index( eID ) )
+                    self.eid_map[curr_id].pop( self.eid_map[curr_id].index( eID ) )
             # After this, if there are no more entities at this Hex, just remove the mapping! 
             if len(self.eid_map[curr_id])==0:
                 del self.eid_map[curr_id]

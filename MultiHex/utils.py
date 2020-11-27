@@ -6,6 +6,23 @@ from MultiHex.core import Hexmap
 
 from MultiHex.logger import Logger
 
+from panas import DataFrame, read_csv
+import os
+
+
+def get_base_dir():
+    # set up the save directory
+    if sys.platform=='linux':
+        basedir = os.path.join(os.path.expandvars('$HOME'),'.local','MultiHex')
+    elif sys.platform=='darwin': #macOS
+        basedir = os.path.join(os.path.expandvars('$HOME'),'MultiHex')
+    elif sys.platform=='win32' or sys.platform=='cygwin': # Windows and/or cygwin. Not actually sure if this works on cygwin
+        basedir = os.path.join(os.path.expandvars('%AppData%'),'MultiHex')
+    else:
+        Logger.Fatal("{} is not a supported OS".format(sys.platform), NotImplementedError)
+
+    return(basedir)
+
 class mapActionItem(Enum):
     move = 1
 
@@ -77,6 +94,9 @@ class ActionManager:
 
         self.clock = Clock()
         self._parent = parent_map
+
+        self.database_dir = get_base_dir()
+        self.database_filename = "event_database.csv"
 
 
     def add_event(self, event, time):

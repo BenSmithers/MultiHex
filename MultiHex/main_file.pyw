@@ -14,6 +14,7 @@ from MultiHex.objects import Icons
 from MultiHex.map_types.overland import OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
 from MultiHex.about_class import about_dialog
 from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
+from MultiHex.utils import get_base_dir
 
 # import other guis! 
 from MultiHex.guis.terrain_editor_gui import terrain_ui
@@ -84,18 +85,10 @@ class main_window(QMainWindow):
 
         self.unsaved_changes = False
 
-        # set up the save directory
-        if sys.platform=='linux':
-            basedir = os.path.join(os.path.expandvars('$HOME'),'.local','MultiHex')
-        elif sys.platform=='darwin': #macOS
-            basedir = os.path.join(os.path.expandvars('$HOME'),'MultiHex')
-        elif sys.platform=='win32' or sys.platform=='cygwin': # Windows and/or cygwin. Not actually sure if this works on cygwin
-            basedir = os.path.join(os.path.expandvars('%AppData%'),'MultiHex')
-        else:
-            raise NotImplementedError("{} is not a supported OS".format(sys.platform))
-        if not os.path.exists(basedir):
-            os.mkdir(basedir)
-        self.savedir = os.path.join(basedir, 'saves')
+        self.basedir = get_base_dir()
+        if not os.path.exists(self.basedir):
+            os.mkdir(self.basedir)
+        self.savedir = os.path.join(self.basedir, 'saves')
         if not os.path.exists(self.savedir):
             os.mkdir(self.savedir)
 

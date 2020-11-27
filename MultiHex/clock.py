@@ -65,7 +65,7 @@ class Time:
     Used to pass around and properly format the times
     """
 
-    def __init__( self , hour=0, minute=0, month=0, day = 0,year = 0,date=True, **kwargs):
+    def __init__(self, minute=0, hour=0, day = 0, month=0, year = 0,date=True, **kwargs):
         if not ( minute>=0 ):
             raise ValueError("Invalid number of minutes {}".format(minute))
         if not (hour>=0 and hour<hours_in_day):
@@ -232,7 +232,7 @@ class Time:
         """
         Define method by which two times are added together
         """
-        new = Time(self.hour, self.minute, self.month, self.day, self.year)
+        new = Time(minute=self.minute,hour=self.hour,day=self.day,month=self.month,year=self.year)
         new._hour += other.hour
         new._minute+= other.minute
         new._day += other.day
@@ -316,6 +316,16 @@ class Time:
         Implements the "==" operator. 
         """
         return( self.hour == other.hour and self.minute == other.minute and self.month == other.month and self.day==other.day and self.year==other.year)
+
+    def __int__(self):
+        """
+        We need this special casting of the Time object so we can properly serialize these objects in the Pandas DataFrame
+        """
+        value = self.minute
+        value += minutes_in_hour*self.hour + minutes_in_day*self.day + minutes_in_month*self.month + minutes_in_year*self.year
+        return(value)
+
+
 
 class Clock:
     """
@@ -525,7 +535,7 @@ class Clock:
 
         lapse = new_time - self._time
 
-        self._time.skip_time(lapse.minute, lapse.hour, lapse.day, lapse.month, lapse.year)
+        self.skip_time(Time(lapse.minute, lapse.hour, lapse.day, lapse.month, lapse.year))
 
     def get_time_to_holiday(self, holiday):
         """

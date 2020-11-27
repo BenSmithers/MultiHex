@@ -1,5 +1,5 @@
 import os
-import time
+from datetime import datetime
 
 logfile = os.path.join(os.path.dirname(__file__), "MultiLog.log")
 class LoggerClass:
@@ -11,9 +11,10 @@ class LoggerClass:
             self.visual = True
             self.Fatal("Logger passed level of type {}, not {}".format(type(level), int), TypeError)
 
-        self.file = open(logfile,"w+")
+        self.file = open(logfile,"a")
         self.level = level
         self.visual = visual
+        self.Trace("Initializing Logger")
 
     def __del__(self):
         self.file.close()
@@ -24,13 +25,15 @@ class LoggerClass:
         elif level==2:
             status = "WARN "
         elif level==3:
-            status = ""
+            status = "LOG"
         elif level==4:
             status = "TRACE "
         else:
             self.Fatal("Received invalid log level {}".format(level), ValueError)
 
-        self.file.write(" ".join([str(time.time()), status, message,"\n"]))
+        date_string = str(datetime.now())
+
+        self.file.write(" ".join([date_string, status, message,"\n"]))
 
     def Trace(self,message):
         if self.level>=4:
@@ -57,4 +60,4 @@ class LoggerClass:
         raise exception(error)
 
 
-Logger = LoggerClass(level=3, visual=True)
+Logger = LoggerClass(visual=True)
