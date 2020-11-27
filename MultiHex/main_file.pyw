@@ -226,7 +226,7 @@ class main_window(QMainWindow):
         self.params = get_tileset_params( self.main_map.tileset )
 
         Logger.Log("Drawing hexes... ")
-        self._redraw_hexes()
+        self._draw_hexes()
         Logger.Log("Drawing biomes... ")
         self._redraw_biomes()
         Logger.Log("Drawing rivers... ")
@@ -236,6 +236,9 @@ class main_window(QMainWindow):
         self._redraw_roads()
         self._redraw_counties()
 
+    def _draw_hexes(self):
+        for ID in self.main_map.catalog: 
+            self.hex_control.draw_hex( ID )
     def _redraw_hexes(self):
         for ID in self.main_map.catalog: 
             self.hex_control.redraw_hex( ID )

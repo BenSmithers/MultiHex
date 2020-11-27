@@ -828,7 +828,7 @@ class terrain_ui:
 
     def menu_view_biome_border(self):
         state = self.actionBiome_Borders.isChecked()
-        self.biome_control.draw_borders = state
+        self.parent.biome_control.draw_borders = state
         self._redraw_biomes()
 
     def menu_view_rivers(self):

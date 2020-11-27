@@ -1430,16 +1430,18 @@ class hex_brush(Basic_Brush):
         raise NotImplementedError("Use a derived class!")
         return( QtGui.QColor(0,0,0) )
 
-    def redraw_hex(self, hex_id):
+    def erase_hex(self, hex_id):
         # if this hex has been drawn, redraw it! 
         if hex_id in self.drawn_hexes:
             self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
             del self.drawn_hexes[hex_id]
 
-        if hex_id not in self.parent.main_map.catalog:
+    def draw_hex(self, hex_id):
+        try:
+            this_hex = self.parent.main_map.catalog[ hex_id ]
+        except KeyError:
             return
 
-        this_hex = self.parent.main_map.catalog[ hex_id ]
         if self.use_param_as_color=='':
             self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
             self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
@@ -1454,6 +1456,11 @@ class hex_brush(Basic_Brush):
         
         self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex.vertices )), pen=self.QPen, brush=self.QBrush) 
         self.drawn_hexes[hex_id].setZValue(-1)
+
+    def redraw_hex(self, hex_id):
+        self.erase_hex(hex_id)
+        self.draw_hex(hex_id)
+
 
     def toggle_brush_size(self):
         """
