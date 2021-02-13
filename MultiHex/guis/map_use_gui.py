@@ -108,9 +108,9 @@ class map_use_ui:
         self.evt_evt_table.setVerticalHeaderLabels(["Date","Description"])
         self.evt_evt_table.setSortingEnabled(True)
         self.evt_evt_table.setEnabled(False)
-        self._add_row_entry(Time(1,13,2,5,120),"Birthday?")
-        self._add_row_entry(Time(1,27,2,2,120),"Happy day")
-        self._add_row_entry(Time(13,15,4,4,119),"Happiest day")
+        self._add_row_entry(Time(1,2,13,month=5,year=120),"Birthday?")
+        self._add_row_entry(Time(1,2,27,month=2,year=120),"Happy day")
+        self._add_row_entry(Time(13,4,15,month=4,year=119),"Happiest day")
         self.evt_evt_table.horizontalHeader().setStretchLastSection(True)
         self.evt_evt_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.evt_scroll_layout.addWidget(self.evt_evt_table)
@@ -171,4 +171,6 @@ class map_use_ui:
 
 
     def clear_ui(self, which_ui):
-        pass
+
+        for i in range(2):
+            which_ui.contextPane.removeItem(0)

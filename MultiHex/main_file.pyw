@@ -215,6 +215,7 @@ class main_window(QMainWindow):
 
         self.ui.graphicsView.update()
         self.main_map = load_map( self.filename )
+        self.entity_control.configure_icon_size()
         self.smart_ui_chooser()
         self.params = get_tileset_params( self.main_map.tileset )
 
