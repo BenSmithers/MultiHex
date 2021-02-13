@@ -8,7 +8,7 @@ Entries
     Mobile          - Implements Entity. A moving object on the map.
 """
 
-from PyQt5 import QtGui
+from PyQt5 import QtGui, QtWidgets, QtCore
 import os
 
 from glob import glob
@@ -16,6 +16,8 @@ from glob import glob
 from copy import deepcopy, copy
 
 from MultiHex.logger import Logger
+
+art_dir = os.path.join( os.path.dirname(__file__),'Artwork')
 
 class PixHolder:
     """
@@ -95,6 +97,182 @@ class Entity:
         copy = self._location
         return( copy )
 
+    @staticmethod
+    def widget(self):
+        return [EntityWidget]
+
+class GenericTab(QtWidgets.QWidget):
+    def __init__(self, parent=None, config_entity=None):
+        QtWidgets.QWidget.__init__(self, parent=parent)
+        if not isinstance(config_entity, Entity):
+            Logger.Fatal("Expected {}, got {}".format(Entity, type(config_entity)), TypeError)
+
+    def set_configuration(self, entity):
+        if not isinstance(entity, Entity):
+            raise TypeError("Cannot configure object of type {}".format(type(entity)))
+
+
+    def get_configuration(self, entity):
+        if not isinstance(entity, Entity):
+            raise TypeError("Cannot configure object of type {}".format(type(entity)))
+
+
+class EntityWidget(GenericTab):
+    def __init__(self, parent=None, config_entity=None):
+        GenericTab.__init__(self,parent, config_entity)
+        self.setObjectName("EntityWidget")
+
+        if False: #isinstance(self, MobileWidget):
+            self.art_dir = os.path.join(art_dir, 'mobiles')
+        else:
+            self.art_dir = os.path.join(art_dir, 'map_icons')
+
+        self.verticalLayout = QtWidgets.QVBoxLayout(self)
+        self.verticalLayout.setObjectName("verticalLayout")
+
+        # build the name label depending on the mode this is being built in
+        font = QtGui.QFont()
+        font.setPointSize(24)
+        self.entity_name = QtWidgets.QLineEdit(self)
+        self.entity_name.setObjectName("entity_name")
+        self.entity_name.setFont(font)
+        self.entity_name.setText("temp")
+
+        self.verticalLayout.addWidget(self.entity_name)
+        self.central_panes = QtWidgets.QHBoxLayout()
+        self.left_pane = QtWidgets.QFormLayout()
+        line = 0
+        if isinstance(self, MobileWidget):
+            self.speed_lbl = QtWidgets.QLabel(self)
+            self.speed_lbl.setObjectName("speed_lbl")
+            self.speed_lbl.setText("Speed:")
+            self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.speed_lbl) #FieldRole SpanningRole
+            self.speed_edit = QtWidgets.QDoubleSpinBox(self)
+            self.speed_edit.setObjectName("speed_edit")
+            self.speed_edit.setMinimum(0)
+            self.speed_edit.setSingleStep(0.1)
+            self.speed_edit.setDecimals(1)
+            self.speed_edit.setMaximum(100.)
+            self.left_pane.setWidget(line, QtWidgets.QFormLayout.FieldRole, self.speed_edit)
+            line+=1
+
+        self.description_lbl = QtWidgets.QLabel(self)
+        self.description_lbl.setObjectName("description_lbl")
+        self.description_lbl.setText("Description: \n")
+        self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.description_lbl)
+        line+=1
+        self.description_edit = QtWidgets.QTextEdit(self)
+        self.description_edit.setObjectName("description_edit")
+
+        self.left_pane.setWidget(line, QtWidgets.QFormLayout.SpanningRole, self.description_edit)
+        self.right_pane = QtWidgets.QVBoxLayout()
+        self.icon_combo = QtWidgets.QComboBox(self)
+        self.icon_combo.setObjectName("icon_combo")
+
+        self.pictures = glob(os.path.join(self.art_dir, "*.svg"))
+        for each in self.pictures:
+            name = os.path.basename(each)
+            self.icon_combo.addItem( QtGui.QIcon(QtGui.QPixmap(each)), name )
+
+        self.picture_box = QtWidgets.QLabel(self)
+        self.picture_box.setObjectName("picture_box")
+        self.picture_box.setPixmap(QtGui.QPixmap(os.path.join(self.art_dir,self.pictures[self.icon_combo.currentIndex()])).scaledToWidth(400))
+        self.right_pane.addWidget(self.picture_box)
+        self.right_pane.addWidget(self.icon_combo)
+        # Picture spot
+
+        self.central_panes.addItem(self.left_pane)
+        self.central_panes.addItem(self.right_pane)
+        self.verticalLayout.addItem(self.central_panes)
+
+        self.icon_combo.currentIndexChanged.connect(self.combo_change)
+
+        self.set_configuration(config_entity)
+
+        #self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.speed_lbl) #FieldRole SpanningRole
+
+    def combo_change(self):
+        self.picture_box.setPixmap(QtGui.QPixmap(os.path.join(self.art_dir,self.pictures[self.icon_combo.currentIndex()])).scaledToWidth(400))
+
+    def set_configuration(self, entity):
+        """
+        Takes an entity and applies the GUIs current configuration to it
+
+        returns the modified entity 
+        """
+        GenericTab.set_configuration(self, entity)
+
+        entity.name = self.entity_name.text()
+        entity.description = self.description_edit.toPlainText()
+        entity.icon = self.icon_combo.currentText()
+        return(entity)
+
+    def get_configuration(self, entity):
+        """
+        Gets the configuration of the entity provided, and uses that to configure the gui
+
+        returns void
+        """
+        GenericTab.get_configuration(self, entity)
+
+        self.entity_name.setText(entity.name)
+        self.description_edit.setText(entity.description)
+
+class GovernmentWidget(GenericTab):
+    def __init__(self, parent=None, config_entity=None):
+        GenericTab.__init__(self, parent, config_entity)
+        self.setObjectName("GovernmentWidget")
+
+        self.formlayout = QtWidgets.QFormLayout(self)
+
+        self.orderlbl = QtWidgets.QLabel(self)
+        self.orderlbl.setObjectName("orderlbl")
+        self.orderlbl.setText("Order: ")
+        self.formlayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.orderlbl)
+        self.orderbar = QtWidgets.QSlider(self)
+        self.orderbar.setOrientation(QtCore.Qt.Horizontal)
+        self.orderbar.setObjectName("orderbar")
+        self.formlayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.orderbar)
+
+        self.warlbl = QtWidgets.QLabel(self)
+        self.warlbl.setObjectName("warlbl")
+        self.warlbl.setText("War: ")
+        self.formlayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.warlbl)
+        self.warbar = QtWidgets.QSlider(self)
+        self.warbar.setOrientation(QtCore.Qt.Horizontal)
+        self.warbar.setObjectName("warbar")
+        self.formlayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.warbar)
+
+        self.spiritlbl = QtWidgets.QLabel(self)
+        self.spiritlbl.setObjectName("spiritlbl")
+        self.spiritlbl.setText("Spirit: ")
+        self.formlayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.spiritlbl)
+        self.spiritbar = QtWidgets.QSlider(self)
+        self.spiritbar.setOrientation(QtCore.Qt.Horizontal)
+        self.spiritbar.setObjectName("spiritbar")
+        self.formlayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spiritbar)
+
+        self.set_configuration(config_entity)
+
+    def get_configuration(self, entity):
+        GenericTab.get_configuration(self, entity)
+        if not isinstance(entity, Government):
+            raise TypeError("Expected {}, got {}".format(Government, type(entity)))
+
+        entity.war = self.warbar.value()/100.
+        entity.spirit = self.spiritbar.value()/100.
+        entity.order = self.orderbar.value()/100.
+        return(entity)
+
+    def set_configuration(self, entity):
+        GenericTab.set_configuration(self, entity)
+        if not isinstance(entity, Government):
+            raise TypeError("Expected {}, got {}".format(Government, type(entity)))
+
+        self.warbar.setValue(entity.war*100)
+        self.spiritbar.setValue(entity.spirit*100)
+        self.orderbar.setValue(entity.order*100)
+
 class Government():
     """
     A Generic implementation of 'government.' Intended to not be used on its own, but as a parent class to other objects. 
@@ -130,6 +308,17 @@ class Government():
         if not ( isinstance(new,int) or isinstance(new,float)):
             raise TypeError("Invalid type {} for spirit, expected {}".format(type(new), float ))
         self._spirit =  min( 1.0, max( 0.0, new))
+
+    @staticmethod
+    def widget(cls):
+        return [GovernmentWidget]
+
+class SettlementWidget(GenericTab):
+    def __init__(self, parent=None, config_entity=None):
+        GenericTab.__init__(self, parent, config_entity)
+        self.setObjectName("SettlementWidget")
+
+        self.set_configuration(config_entity)
 
 class Settlement(Entity, Government):
     """
@@ -190,7 +379,9 @@ class Settlement(Entity, Government):
         self._demographics = new_demo
         self._norm_demographics()
 
-
+    @staticmethod
+    def widget(self):
+        return Entity.widget(self)+Government.widget(self)+[SettlementWidget]
 
     def get_demographics_as_str(self):
         """
@@ -465,4 +656,8 @@ class Mobile( Entity ):
         self._speed = new_speed
 
 
+class MobileWidget(EntityWidget):
+    def __init__(self,parent=None, config_entity=None):
+        EntityWidget.__init__(self,parent)
     
+        self.set_configuration(config_entity)

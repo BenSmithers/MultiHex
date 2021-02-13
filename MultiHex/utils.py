@@ -6,9 +6,9 @@ from MultiHex.core import Hexmap
 
 from MultiHex.logger import Logger
 
-from panas import DataFrame, read_csv
+from pandas import DataFrame, read_csv
 import os
-
+import sys
 
 def get_base_dir():
     # set up the save directory

@@ -1,11 +1,12 @@
 from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
 from PyQt5.QtWidgets import QAction
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
 
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
+from MultiHex.logger import Logger
 # from MultiHex.map_types.overland import Road, River
 
 
@@ -13,6 +14,61 @@ import os # used for some of the icons
 
 from math import sqrt, pi
 rthree =  sqrt(3)
+
+class EntityDialogGUI(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Dialog")
+        Dialog.resize(600,400)
+        self.verticalLayout = QtWidgets.QVBoxLayout(Dialog)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.tabWidget = QtWidgets.QTabWidget(Dialog)
+        self.tabWidget.setObjectName("tabWidget")
+
+        self.tabs = []
+
+        self.verticalLayout.addWidget(self.tabWidget)
+        self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Save)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.retranslateUi(Dialog)
+        self.tabWidget.setCurrentIndex(0)
+        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.rejected.connect(Dialog.reject)
+        QtCore.QMetaObject.connectSlotsByName(Dialog)
+
+    def retranslateUi(self, Dialog):
+        _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "Entity Editor"))
+
+class EntityDialog(QtWidgets.QDialog):
+    def __init__(self,parent, config_object):
+        super(EntityDialog, self).__init__(parent)
+        self.ui = EntityDialogGUI()
+        self.ui.setupUi(self)
+
+        if not isinstance(config_object, Entity):
+            raise TypeError("Cannot configure {} object!".format(type(config_object)))
+        
+        # yeah the syntax here is really ugly, but this function is a static method so it can also be called on 
+        #  an un-instantiated class 
+        
+        # this returns a list of widgets, each of which gets its own tab! 
+        widget_list = config_object.widget(config_object)
+        for entry in widget_list:
+            newtab = QtWidgets.QWidget(self)
+            
+            layout = QtWidgets.QVBoxLayout(newtab)
+            this_widg = entry(newtab, config_object)
+            newtab.setObjectName( this_widg.objectName() )
+            layout.addWidget(this_widg)
+            newtab.setLayout(layout)
+
+            self.ui.tabWidget.addTab(newtab, this_widg.objectName())
+            self.ui.tabs.append(newtab)
+
 
 class MultiHexAction(QAction):
     def __init__(self, name, id=None):
@@ -32,7 +88,7 @@ class basic_tool:
     """
     def __init__(self, parent=None):
         if not (isinstance(parent, QMainWindow) or (parent is None)):
-            raise TypeError("Parent should be of type {}, not {}".format(clicker_control, type(parent)))
+            raise TypeError("Parent should be of type {}, not {}".format(QMainWindow, type(parent)))
         self.parent = parent
 
     def primary_mouse_depressed(self,event):
@@ -94,7 +150,9 @@ class basic_tool:
         """
         return([])
     def do_action(self, action):
-        pass
+        if not isinstance(action, MultiHexAction):
+            Logger.Fatal("Expected {} in some kind of brush, got {}".format(MultiHexAction, type(action)), TypeError)
+
 
     def clear(self):
         """
@@ -784,7 +842,7 @@ class entity_brush(basic_tool):
 
         # these are used for the ghosted prospective placement icon of a new entity
         self._ghosted_placement = None
-        self._icon_size = 32 #int(self.parent.main_map._drawscale*2)
+        self._icon_size = None
 
         # whether or not assets have been loaded
         self._loaded = False
@@ -796,8 +854,13 @@ class entity_brush(basic_tool):
         self.draw_entities = True
         self.draw_settlements = True
 
+        self.dialog = None
+
         self._settlement = Settlement
     
+    def configure_icon_size(self):
+        self._icon_size = int(self.parent.main_map._drawscale*2)
+
     def select_hex(self, which):
         if not isinstance( which, int):
             raise TypeError("")
@@ -966,8 +1029,21 @@ class entity_brush(basic_tool):
 
 
     def get_context_options(self, event):
-        return(["one", "two"])
+        if self._placing==-1:
+            place = Point( event.scenePos().x(), event.scenePos().y())
+            loc_id = self.parent.main_map.get_id_from_point( place )
+            if loc_id in self.parent.main_map.eid_map:
+                return([ (self.parent.main_map.eid_catalog[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
     
+    def do_action(self, action):
+        self.select_entity( action.id )
+
+        # now we need to open up that dialog 
+        print("eid {}".format(action.id))
+        self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[action.id])
+        self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.dialog.exec_()
+
     def load_assets(self):
         """
         Loads all the artwork into an Icon object held 
