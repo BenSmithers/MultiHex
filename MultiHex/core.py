@@ -1,4 +1,4 @@
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 from MultiHex.objects import Entity, Mobile
 
 try:
@@ -14,7 +14,7 @@ from MultiHex.logger import Logger
 
 """
 Ben Smithers
-b.smithers.actual@gmail.com 
+b.smithers.actual (at) gmail.com 
 
 Core objects for MultiHex
 
@@ -1084,7 +1084,6 @@ class Hexmap:
                 iteration += 1
 
             perimeter_points = [ i+center for i in perimeter_points ]
-            Logger.Trace("{}\n".format(perimeter_points))
             return( perimeter_points ) 
 
     def points_to_draw( self, list_of_points ):
@@ -1364,6 +1363,39 @@ class RegionMergeError( Exception ):
 class RegionPopError( Exception ):
     pass
 
+class RegionTab(QtWidgets.QWidget):
+    def __init__(self, parent=None, config_region=None):
+        QtWidgets.QWidget.__init__(self, parent=parent)
+        if not isinstance(config_region, Region):
+            Logger.Fatal("Expected {}, got {}".format(Entity, type(config_region)), TypeError)
+
+        # color
+        # name
+        # symbol? 
+        # Buttons to  add/remove hexes
+        # delete button
+
+        self.layout = QtWidgets.QFormLayout(self)
+        self.namelbl = QtWidgets.QLineEdit(self)
+        self.namelbl.setObjectName("namelbl")
+        self.layout.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.namelbl)
+
+        self.colorbutton = QtWidgets.QPushButton(self)
+        self.colorbutton.setObjectName("colorbutton")
+        self.colorbutton.setText("Set Color")
+
+
+
+        #self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.speed_lbl) #FieldRole SpanningRole
+
+    def set_configuration(self, region):
+        if not isinstance(region, Region):
+            raise TypeError("Cannot configure object of type {}".format(type(region)))
+
+    def get_configuration(self, region):
+        if not isinstance(region, Region):
+            raise TypeError("Cannot configure object of type {}".format(type(region)))
+
 class Region:
     """
     A Region is a colleciton of neighboring of Hexes on a Hexmap. Regions are continuous.
@@ -1456,7 +1488,7 @@ class Region:
         if hex_id in self.ids:
             return #nothing to do...
         
-        temp_region = Region( hex_id , self.parent )
+        temp_region = self.__class__( hex_id , self.parent )
         self.merge_with_region( temp_region )
         self.known_neighbors = False 
 

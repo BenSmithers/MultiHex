@@ -37,6 +37,8 @@ class main_window(QMainWindow):
         self.ui.setupUi(self) 
         self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__),'Artwork','wiki_images','multihex_small_logo.svg')))
 
+        self.icons = Icons()
+
         # now we need to set up the default tools 
         self.hex_control = OHex_Brush(self)
         self.entity_control = OEntity_Brush(self)
@@ -79,8 +81,6 @@ class main_window(QMainWindow):
         file_object.close()
         self.params = []
 
-        self.icons = Icons()
-
         self.gen_params = []
 
         self.unsaved_changes = False
@@ -111,7 +111,15 @@ class main_window(QMainWindow):
         image.save(temp)
 
     def smart_ui_chooser(self):
-        self.switch_to_terrain()
+        """
+        Idea being here, it looks at what you've already saved and chooses the appropriate gui
+        """
+        if False: #condition for when map-use-mode has been used
+            pass
+        elif len(self.main_map.eid_catalog.keys())!=0: # we have entities
+            self.switch_to_civilization()
+        else:
+            self.switch_to_terrain()
 
     def switch_to_terrain(self):
         self.scene.drop()
@@ -146,6 +154,7 @@ class main_window(QMainWindow):
         self.biome_control.small_font=True
         self._redraw_counties()
         self._redraw_biomes()
+        self.scene.select(self.entity_control)
 
     def switch_to_map_use(self):
         self.scene.drop()
@@ -241,7 +250,9 @@ class main_window(QMainWindow):
             for rid in self.main_map.rid_catalog['biome']:
                 self.biome_control.redraw_region( rid )
     def _redraw_entities(self):
-        for hexID in self.main_map.eid_map:
+        # we loop over the hexIDs since it can be the case that a hex has multiple entities
+        # so we call this function to draw this appropriately 
+        for hexID in self.main_map.eid_map: 
             self.entity_control.redraw_entities_at_hex( hexID )
     def _redraw_roads(self):
         if self.path_control._path_key in self.main_map.path_catalog:

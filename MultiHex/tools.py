@@ -24,8 +24,6 @@ class EntityDialogGUI(object):
         self.tabWidget = QtWidgets.QTabWidget(Dialog)
         self.tabWidget.setObjectName("tabWidget")
 
-        self.tabs = []
-
         self.verticalLayout.addWidget(self.tabWidget)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
@@ -48,6 +46,9 @@ class EntityDialog(QtWidgets.QDialog):
         super(EntityDialog, self).__init__(parent)
         self.ui = EntityDialogGUI()
         self.ui.setupUi(self)
+        self.parent = parent
+
+        self.ui.buttonBox.accepted.connect(self.accept)
 
         if not isinstance(config_object, Entity):
             raise TypeError("Cannot configure {} object!".format(type(config_object)))
@@ -56,6 +57,10 @@ class EntityDialog(QtWidgets.QDialog):
         #  an un-instantiated class 
         
         # this returns a list of widgets, each of which gets its own tab! 
+
+        self._configuring = config_object
+        self._tabs = []
+
         widget_list = config_object.widget(config_object)
         for entry in widget_list:
             newtab = QtWidgets.QWidget(self)
@@ -66,9 +71,14 @@ class EntityDialog(QtWidgets.QDialog):
             layout.addWidget(this_widg)
             newtab.setLayout(layout)
 
+            self._tabs.append(this_widg)
             self.ui.tabWidget.addTab(newtab, this_widg.objectName())
-            self.ui.tabs.append(newtab)
+        
+    def accept(self):
+        for i_tab in range(len(self._tabs)):
+            self._configuring = self._tabs[i_tab].set_configuration(self._configuring)
 
+        super().accept()
 
 class MultiHexAction(QAction):
     def __init__(self, name, id=None):
@@ -117,6 +127,8 @@ class basic_tool:
         """
         Called continuously while the right mouse button is moved and depressed 
         """
+        pass
+    def double_click_event(self, event):
         pass
     def secondary_mouse_released(self, event ):
         """
@@ -368,6 +380,9 @@ class clicker_control(QGraphicsScene):
             self._active.secondary_mouse_held( event )
  
         self._active.mouse_moved( event )
+
+    def mouseDoubleClickEvent(self, event):
+        self._active.double_click_event( event )
 
     @property
     def active(self):
@@ -1019,6 +1034,12 @@ class entity_brush(basic_tool):
             self.update_wrt_new_eid()
             self.redraw_entities_at_hex( loc_id )
 
+            self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[self._selected_eid])
+            self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+            self.dialog.exec_()
+
+            self.redraw_entities_at_hex( loc_id )
+
             if self._placing == 0:
                 self.update_wrt_new_hex()
 
@@ -1035,6 +1056,19 @@ class entity_brush(basic_tool):
             if loc_id in self.parent.main_map.eid_map:
                 return([ (self.parent.main_map.eid_catalog[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
     
+    def double_click_event(self, event):
+        if self._placing==-1:
+            place = Point( event.scenePos().x(), event.scenePos().y())
+            loc_id = self.parent.main_map.get_id_from_point( place )
+
+            if loc_id in self.parent.main_map.eid_map:
+                eid = self.parent.main_map.eid_map[loc_id][0]
+                self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[eid])
+                self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+                self.dialog.exec_()
+
+                self.redraw_entities_at_hex( loc_id )
+
     def do_action(self, action):
         self.select_entity( action.id )
 
@@ -1043,6 +1077,8 @@ class entity_brush(basic_tool):
         self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[action.id])
         self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.dialog.exec_()
+
+        self.redraw_entities_at_hex( loc_id )
 
     def load_assets(self):
         """
@@ -1055,8 +1091,10 @@ class entity_brush(basic_tool):
         """
         Redraws the entities at the hexID provided. This function decides which entity to draw. 
         """
+        if not self._loaded:
+            self.load_assets()
 
-        if hID == -1:
+        if hID == -1: #not on map
             return
         if hID not in self.parent.main_map.eid_map:
             raise ValueError("HexID {} has no entry in eID map: {}".format(hID, self.parent.main_map.eid_map[hID]))

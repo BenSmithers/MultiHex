@@ -2,9 +2,9 @@
   "continental": {
     "land": {
       "values": {
-        "land_spread": 0.16,
-        "land_width": 0.08,
-        "mnt_thicc": 1.0,
+        "land_spread": 0.22,
+        "land_width": 0.16,
+        "mnt_thicc": 2.0,
         "water_spread": 0.02,
         "water_width": 0.01
       },
@@ -18,12 +18,12 @@
     },
     "mountains": {
       "values": {
-        "avg_range": 6.0,
-        "dimx": 2000,
-        "dimy": 1000,
-        "n_peaks": 4,
+        "avg_range": 10.0,
+        "dimx": 4000,
+        "dimy": 2000,
+        "n_peaks": 6,
         "sigma": 40,
-        "zones": 16
+        "zones": 3
       },
       "desc": {
         "avg_range": "Average length of generated ridgelines",
@@ -52,8 +52,8 @@
     },
     "regions": {
       "values": {
-        "n_regions": 30,
-        "reg_size": 20
+        "n_regions": 15,
+        "reg_size": 10
       },
       "desc": {
         "n_regions": "Number of Biomes generated",
@@ -74,9 +74,9 @@
   "custom": {
     "land": {
       "values": {
-        "land_spread": 0.16,
-        "land_width": 0.08,
-        "mnt_thicc": 1.0,
+        "land_spread": 0.22,
+        "land_width": 0.16,
+        "mnt_thicc": 2.0,
         "water_spread": 0.02,
         "water_width": 0.01
       },
@@ -90,12 +90,12 @@
     },
     "mountains": {
       "values": {
-        "avg_range": 6.0,
-        "dimx": 2000,
-        "dimy": 1000,
-        "n_peaks": 4,
+        "avg_range": 10.0,
+        "dimx": 4000,
+        "dimy": 2000,
+        "n_peaks": 6,
         "sigma": 40,
-        "zones": 16
+        "zones": 3
       },
       "desc": {
         "avg_range": "Average length of generated ridgelines",
@@ -124,8 +124,8 @@
     },
     "regions": {
       "values": {
-        "n_regions": 30,
-        "reg_size": 20
+        "n_regions": 15,
+        "reg_size": 10
       },
       "desc": {
         "n_regions": "Number of Biomes generated",

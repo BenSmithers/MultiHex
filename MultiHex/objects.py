@@ -110,7 +110,7 @@ class GenericTab(QtWidgets.QWidget):
     def set_configuration(self, entity):
         if not isinstance(entity, Entity):
             raise TypeError("Cannot configure object of type {}".format(type(entity)))
-
+        return(entity)
 
     def get_configuration(self, entity):
         if not isinstance(entity, Entity):
@@ -170,6 +170,8 @@ class EntityWidget(GenericTab):
         self.icon_combo.setObjectName("icon_combo")
 
         self.pictures = glob(os.path.join(self.art_dir, "*.svg"))
+        self.pictures = [entry.split(".")[0] for entry in self.pictures]
+
         for each in self.pictures:
             name = os.path.basename(each)
             self.icon_combo.addItem( QtGui.QIcon(QtGui.QPixmap(each)), name )
@@ -187,7 +189,8 @@ class EntityWidget(GenericTab):
 
         self.icon_combo.currentIndexChanged.connect(self.combo_change)
 
-        self.set_configuration(config_entity)
+        if config_entity is not None:
+            self.get_configuration(config_entity)
 
         #self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.speed_lbl) #FieldRole SpanningRole
 
@@ -207,6 +210,8 @@ class EntityWidget(GenericTab):
         entity.icon = self.icon_combo.currentText()
         return(entity)
 
+
+
     def get_configuration(self, entity):
         """
         Gets the configuration of the entity provided, and uses that to configure the gui
@@ -217,6 +222,11 @@ class EntityWidget(GenericTab):
 
         self.entity_name.setText(entity.name)
         self.description_edit.setText(entity.description)
+        which = self.icon_combo.findText( entity.icon )
+        if which==-1:
+            Logger.Warn("Could not find icon of name: {}".format(entity.icon))
+        else:
+            self.icon_combo.setCurrentIndex(which)
 
 class GovernmentWidget(GenericTab):
     def __init__(self, parent=None, config_entity=None):
@@ -252,20 +262,20 @@ class GovernmentWidget(GenericTab):
         self.spiritbar.setObjectName("spiritbar")
         self.formlayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.spiritbar)
 
-        self.set_configuration(config_entity)
-
-    def get_configuration(self, entity):
-        GenericTab.get_configuration(self, entity)
-        if not isinstance(entity, Government):
-            raise TypeError("Expected {}, got {}".format(Government, type(entity)))
-
-        entity.war = self.warbar.value()/100.
-        entity.spirit = self.spiritbar.value()/100.
-        entity.order = self.orderbar.value()/100.
-        return(entity)
+        self.get_configuration(config_entity)
 
     def set_configuration(self, entity):
         GenericTab.set_configuration(self, entity)
+        if not isinstance(entity, Government):
+            raise TypeError("Expected {}, got {}".format(Government, type(entity)))
+
+        entity.set_war(self.warbar.value()/100.)
+        entity.set_spirit(self.spiritbar.value()/100.)
+        entity.set_order(self.orderbar.value()/100.)
+        return(entity)
+
+    def get_configuration(self, entity):
+        GenericTab.get_configuration(self, entity)
         if not isinstance(entity, Government):
             raise TypeError("Expected {}, got {}".format(Government, type(entity)))
 
@@ -318,7 +328,29 @@ class SettlementWidget(GenericTab):
         GenericTab.__init__(self, parent, config_entity)
         self.setObjectName("SettlementWidget")
 
-        self.set_configuration(config_entity)
+        self.get_configuration(config_entity)
+
+        self.formlayout = QtWidgets.QFormLayout(self)
+
+        self.populationlbl = QtWidgets.QLabel(self)
+        self.populationlbl.setObjectName("populationlbl")
+        self.populationlbl.setText("Population: ")
+        self.formlayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.populationlbl)
+        self.populationedit = QtWidgets.QSpinBox(self)
+        self.populationedit.setMaximum(10000)
+        self.populationedit.setMinimum(0)
+        self.populationedit.setObjectName("populationedit")
+        self.formlayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.populationedit)
+
+        self.wealthlbl = QtWidgets.QLabel(self)
+        self.wealthlbl.setObjectName("wealthlbl")
+        self.wealthlbl.setText("Wealth: ")
+        self.formlayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.wealthlbl)
+        self.wealthedit = QtWidgets.QSpinBox(self)
+        self.wealthedit.setMaximum(10000)
+        self.wealthedit.setMinimum(0)
+        self.wealthedit.setObjectName("wealthedit")
+        self.formlayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.wealthedit)
 
 class Settlement(Entity, Government):
     """
@@ -660,4 +692,4 @@ class MobileWidget(EntityWidget):
     def __init__(self,parent=None, config_entity=None):
         EntityWidget.__init__(self,parent)
     
-        self.set_configuration(config_entity)
+        self.get_configuration(config_entity)
