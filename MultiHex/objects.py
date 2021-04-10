@@ -328,29 +328,64 @@ class SettlementWidget(GenericTab):
         GenericTab.__init__(self, parent, config_entity)
         self.setObjectName("SettlementWidget")
 
-        self.get_configuration(config_entity)
-
         self.formlayout = QtWidgets.QFormLayout(self)
+
+        self.nameedit = QtWidgets.QLineEdit(self)
+        self.nameedit.setObjectName("nameedit")
+        self.nameedit.setText("City Name")
+        self.formlayout.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.nameedit)
 
         self.populationlbl = QtWidgets.QLabel(self)
         self.populationlbl.setObjectName("populationlbl")
         self.populationlbl.setText("Population: ")
-        self.formlayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.populationlbl)
+        self.formlayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.populationlbl)
         self.populationedit = QtWidgets.QSpinBox(self)
         self.populationedit.setMaximum(10000)
         self.populationedit.setMinimum(0)
         self.populationedit.setObjectName("populationedit")
-        self.formlayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.populationedit)
+        self.formlayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.populationedit)
 
         self.wealthlbl = QtWidgets.QLabel(self)
         self.wealthlbl.setObjectName("wealthlbl")
         self.wealthlbl.setText("Wealth: ")
-        self.formlayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.wealthlbl)
+        self.formlayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.wealthlbl)
         self.wealthedit = QtWidgets.QSpinBox(self)
         self.wealthedit.setMaximum(10000)
         self.wealthedit.setMinimum(0)
         self.wealthedit.setObjectName("wealthedit")
-        self.formlayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.wealthedit)
+        self.formlayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.wealthedit)
+
+        self.wardCombo = QtWidgets.QComboBox(self)
+        self.wardCombo.setObjectName("wardCombo")
+        self.formlayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.wardCombo)
+
+        self.wardCombo.addItem("City Center")
+        self.wardCombo.addItem("Add New Ward")
+
+        self.wardCombo.currentIndexChanged.connect(self.prep_ward_widget)
+
+        self.get_configuration(config_entity)
+
+    def prep_ward_widget(self):
+        index = self.wardCombo.currentIndex()
+
+    def set_configuration(self, entity):
+        GenericTab.set_configuration(self, entity)
+        if not isinstance(entity, Settlement):
+            raise TypeError("Expected {}, got {}".format(Settlement, type(entity)))
+
+        return(entity)
+
+    def get_configuration(self, entity):
+        GenericTab.get_configuration(self, entity)
+        if not isinstance(entity, Settlement):
+            raise TypeError("Expected {}, got {}".format(Settlement, type(entity)))
+
+        self.wealthedit.setValue(entity.wealth)
+        self.populationedit.setValue(entity.population)
+        for ward in entity.wards:
+            self.wardCombo.insertItem(self.wardConmbo.count() - 1, ward.name)
+
 
 class Settlement(Entity, Government):
     """
