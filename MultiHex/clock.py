@@ -311,6 +311,23 @@ class Time:
         """
         return( (not self.__lt__(other)) and (self.minute!=other.minute))
 
+    def __mul__(self, other):
+        if not isinstance(other, int):
+            raise TypeError("Cannot multiply by type {}".format(type(other)))
+
+        add = other>=0
+        other = abs(other)
+        mins = self.minute*other
+        hours = self.hour*other
+        days = self.day*other
+        mons = self.month*other
+        years = self.year*other
+        return Time(mins,hours,days,mons,years)
+
+    def __rmul__(self,other):
+        return self.__mul__(other)
+
+
     def __eq__(self,other):
         """
         Implements the "==" operator. 
@@ -325,6 +342,11 @@ class Time:
         value += minutes_in_hour*self.hour + minutes_in_day*self.day + minutes_in_month*self.month + minutes_in_year*self.year
         return(value)
 
+minute = Time(minute=1)
+hour = Time(hour=1)
+day = Time(day=1)
+month = Time(month=1)
+year = Time(year=1)
 
 
 class Clock:
