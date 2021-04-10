@@ -951,7 +951,7 @@ class Hexmap:
 
         @param target_id - the ID of the removed hex
         """ 
-        del self.catalog[target_id] #delete the hex 
+        self.catalog[target_id] = None # remove reference to hex, let garbage collector get it 
         if target_id == self._active_id:
             self._active_id = None
         elif self._party_hex == self._active_id:

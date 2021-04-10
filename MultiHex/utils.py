@@ -1,14 +1,23 @@
 from enum import Enum 
+from collections import deque
 
 from MultiHex.objects import Mobile, Entity 
 from MultiHex.clock import Clock, Time
-from MultiHex.core import Hexmap
+from MultiHex.core import Hexmap, Hex
 
 from MultiHex.logger import Logger
 
 from pandas import DataFrame, read_csv
 import os
 import sys
+
+"""
+Notes for future Ben! All hexmap edits need to be done through these actions
+Tools will construct an action object and pass it through the action manager
+The clicker control will have the action manager
+The action manager needs a "do now" feature
+"""
+
 
 def get_base_dir():
     # set up the save directory
@@ -27,16 +36,13 @@ class mapActionItem(Enum):
     move = 1
 
 class MapEvent:
-    def __init__(self, kind,recurring=None, **kwargs):
+    def __init__(self,recurring=None, **kwargs):
         """
         An event used by the Action Manager. 
 
-        kind - mapActionItem enum entry. Specifies what kind of event this is 
         recurring - a Time object. Represents how frequently the event happens. 'None' for one-time events. When this kind of event is triggered, a new one is auto-queued 
         kwargs - arguments specific to this kind of event. Varies 
         """
-        if not isinstance(kind, mapActionItem):
-            Logger.Fatal("Can only create action of type {}, not {}".format(mapActionItem, type(kind)), TypeError)
 
         if recurring is not None:
             if not isinstance(recurring, Time):
@@ -49,36 +55,93 @@ class MapEvent:
         # whether or not the event should appear in the Event List
         self._show = True
 
+        self.needed = []
+        self.verify(kwargs)
+    
+    def verify(self,kwargs):
+        """
+        This function verifies we received all the arguments
+        """
+        for entry in self.needed:
+            if entry not in kwargs:
+                Logger.Fatal("Missing entry {} in kwargs".format(entry), ValueError)
+
     @property
     def show(self):
         return(self._show)
 
-
 class MapAction(MapEvent):
-    def __init__(self, kind,recurring=None, **kwargs):
+    def __init__(self, recurring=None, **kwargs):
+        MapEvent.__init__(self,recurring=None, **kwargs)
+        self.verify(kwargs)
+
+    def __call__(self, map):
         """
-        Implementation of MapEvent that actually does something. 
+        This function is accessed through the `action(map)` syntax
+
+        This then does the action defined by this object, and returns the inverse of the action
         """
-        MapEvent.__init__(self, kind, recurring, **kwargs)
+        raise NotImplementedError("Must override base implementation!")
 
-        if kind==mapActionItem.move:
-            needed =["eID", "to"]
-            for entry in needed:
-                if entry not in kwargs:
-                    Logger.Fatal("Missing entry {} in kwargs".format(entry), ValueError)
-            self.eid = kwargs["eID"]
-            self.to = kwargs["to"]
+class Add_Remove_Hex(MapAction):
+    def __init__(self, **kwargs):
+        """
+        This action addds hexes to the map where there was either 
+            1. a hex already there 
+            2. no hex already there 
+        """
 
-            def this_action(map):
-                if not isinstance(map, Hexmap):
-                    Logger.Fatal("Can only act on {}, not {}".format(Hexmap, type(map)), ValueError)
-                map.eid_catalog[self.eid].set_location(self.to)
+        self.needed = ["hexID","hex"]
+        self.verify(kwargs)
+        self.newHex = kwargs["hex"]
+        self.hexID = kwargs["hexID"]
+        if not isinstance(self.newHex, (Hex, None)):
+            Logger.Fatal("AddHex actions require {} or {}, not {}".format(Hex, None, type(self.newHex)), TypeError)
 
-            self.do = this_action
-            
+    def __call__(self, map)
+        if (self.hexID not in map.catalog) and (self.newHex is None):
+            Logger.Fatal("Tried removing hex from tile that doesn't exist.", ValueError)
+        
+        # we set aside what was already there (if anything), and tell the map to get rid of it. 
+        # then we register the new hex and make the inverter function 
+        if self.hexID in map.catalog:
+            old_hex = map.catalog[self.hex_id]
+            map.remove_hex(self.hexID)
         else:
-            Logger.Fatal("Unrecognized kind: {}".format(kind), NotImplementedError)
+            old_hex = None
+        
+        if isinstance(self.newHex, Hex):
+            map.register_hex(self.newHex, self.hexID)
+        
+        return( Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
+        
 
+
+
+class MapMove(MapAction):
+    def __init__(self, **kwargs):
+        """
+        Move an entity from one place to another. 
+
+        Required 
+            - eID (entity ID)
+            - to   (hexID for where we're moving the entity)
+        """
+        MapAction.__init__(self, recurring=None, **kwargs)
+        self.needed =["eID", "to"]
+        self.verify(kwargs)
+        
+        self.eid = kwargs["eID"]
+        self.to = kwargs["to"]
+
+    def __call__(self, map):
+        if not isinstance(map, Hexmap):
+            Logger.Fatal("Can only act on {}, not {}".format(Hexmap, type(map)), ValueError)
+
+        inverse = MapMove(eID = self.eid, to=map.eid_catalog[self.eid].location)
+        map.eid_catalog[self.eid].set_location(self.to)
+
+        return(inverse)
 
 
 class ActionManager:
@@ -97,6 +160,49 @@ class ActionManager:
 
         self.database_dir = get_base_dir()
         self.database_filename = "event_database.csv"
+
+        # we keep a list of Actions' inverses we've done, so we can always go back through
+        self.n_history_max = 50 
+        self.redo_history = deque()
+        self.undo_history = deque()
+
+    def do_now(self, event):
+        if not isinstance(event, MapAction):
+            Logger.Fatal("Asked to do action of type {}, not {}".format(type(event), MapAction))
+        
+        inverse = event(self.parent)
+        self.undo_history.appendleft(inverse)
+        while len(self.undo_history)>self.n_history_max:
+            self.undo_history.pop()
+        
+        if len(self.redo_history)!=0:
+            self.redo_history = deque()
+
+        
+    
+    def _generic_do(self, list1, list2):
+        """
+        This handles the undo and redo functions
+
+        When you do something in a deque, you call the 0th entry, invert the action, and append it at the start of other deque.
+        This is done to give undo/redo functionality.
+        """
+        if len(list1)==0:
+            return
+
+        
+        inverse = list1[0](self.parent)
+        list2.appendleft(inverse)
+        while len(list2)>self.n_history_max:
+            list2.pop()
+        
+        list1.popleft()
+
+    def undo(self):
+        self._generic_do(self.undo_history, self.redo_history)
+    def redo(self):
+        self._generic_do(self.redo_history, self.undo_history)
+
 
 
     def add_event(self, event, time):
