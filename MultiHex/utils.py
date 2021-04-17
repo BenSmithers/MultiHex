@@ -98,14 +98,14 @@ class Add_Remove_Hex(MapAction):
         if not isinstance(self.newHex, (Hex, None)):
             Logger.Fatal("AddHex actions require {} or {}, not {}".format(Hex, None, type(self.newHex)), TypeError)
 
-    def __call__(self, map)
+    def __call__(self, map):
         if (self.hexID not in map.catalog) and (self.newHex is None):
             Logger.Fatal("Tried removing hex from tile that doesn't exist.", ValueError)
         
         # we set aside what was already there (if anything), and tell the map to get rid of it. 
         # then we register the new hex and make the inverter function 
         if self.hexID in map.catalog:
-            old_hex = map.catalog[self.hex_id]
+            old_hex = map.catalog[self.hexID]
             map.remove_hex(self.hexID)
         else:
             old_hex = None
@@ -113,7 +113,7 @@ class Add_Remove_Hex(MapAction):
         if isinstance(self.newHex, Hex):
             map.register_hex(self.newHex, self.hexID)
         
-        return( Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
+        return Add_Remove_Hex(hex=old_hex, hexID=self.hexID) 
         
 
 
