@@ -111,6 +111,7 @@ class Add_Remove_Hex(MapAction):
                 map.remove_hex(self.hexID)
             else:
                 old_hex = None
+
         
             if isinstance(self.newHex, Hex):
                 map.register_hex(self.newHex, self.hexID)
