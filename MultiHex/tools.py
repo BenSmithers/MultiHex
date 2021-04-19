@@ -8,7 +8,7 @@ from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path,
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 from MultiHex.logger import Logger
 # from MultiHex.map_types.overland import Road, River
-
+from MultiHex.utils import MapAction, ActionManager, MetaAction
 
 import os # used for some of the icons
 
@@ -317,12 +317,32 @@ class clicker_control(QGraphicsScene):
         self._secondary_held = False
 
         self.parent = parent #QGraphicsView
-        self.master = master #MainMap
+        self.master = master #main window
 
         self._alt_held = False
 
+        # we assign these to these macros so we can swap left/right button. Could be useful for future left/right handed mouse support 
         self._primary = QtCore.Qt.LeftButton
         self._secondary = QtCore.Qt.RightButton
+
+        self._actionmanager = ActionManager(self.master.main_map)
+        self._meta_event_holder = None
+
+    @property
+    def ActionManager(self):
+        return self._actionmanager
+
+    def do_action(self, action):
+        if not ((action is None) or isinstance(action, MapAction)):
+            Logger.Fatal("Can no 'do' action of type {}, need {}".format(type(action), MapAction))
+
+        self._actionmanager.do_now(action)
+
+    def undo(self):
+        self._actionmanager.undo()
+       
+    def redo(self):
+        self._actionmanager.redo()
 
     def keyPressEvent(self, event):
         event.accept()
@@ -347,7 +367,7 @@ class clicker_control(QGraphicsScene):
         if event.button()==self._primary:
             event.accept() # accept the event
             self._primary_held = True # say that the mouse is being held 
-            self._active.primary_mouse_depressed( event )
+
         elif event.button()==self._secondary:
             event.accept()
             self._secondary_held = True
@@ -360,13 +380,15 @@ class clicker_control(QGraphicsScene):
             # usually a brush event 
             event.accept()
             self._primary_held = False
-            self._active.primary_mouse_released(event)
+            action = self._active.primary_mouse_released(event)
+            self.do_action(action)
 
         elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
             self._secondary_held = False
-            self._active.secondary_mouse_released( event )
+            action = self._active.secondary_mouse_released( event )
+            self.do_action(action)
 
    #mouseMoveEvent 
     def mouseMoveEvent(self,event):
@@ -374,10 +396,22 @@ class clicker_control(QGraphicsScene):
         called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
         """
         event.accept()
-        if self._primary_held:
-            self._active.primary_mouse_held( event )
-        if self._secondary_held:
-            self._active.secondary_mouse_held( event )
+        if self._primary_held or self._secondary_held:
+            if self._meta_event_holder is None:
+                self._meta_event_holder = MetaAction()
+
+            # we want to do these actions before adding them. That way we show the results of them while using the tool
+            # 
+            if self._primary_held:
+                action = self._active.primary_mouse_held( event )
+                self._meta_event_holder.add_to(action)
+                self.do_action( action )
+            if self._secondary_held:
+                action = self._active.secondary_mouse_held( event )
+                self._meta_event_holder.add_to(action)
+                self.do_action( action )
+
+             
  
         self._active.mouse_moved( event )
 

@@ -75,11 +75,12 @@ class MapAction(MapEvent):
         MapEvent.__init__(self,recurring=None, **kwargs)
         self.verify(kwargs)
 
-    def __call__(self, map):
+    def __call__(self, map, actionskip=False):
         """
         This function is accessed through the `action(map)` syntax
 
-        This then does the action defined by this object, and returns the inverse of the action
+        This then does the action defined by this object, and returns the inverse of the action.
+        The actionskip argument tells the action to not do, and just return the inverse 
         """
         raise NotImplementedError("Must override base implementation!")
 
@@ -98,25 +99,48 @@ class Add_Remove_Hex(MapAction):
         if not isinstance(self.newHex, (Hex, None)):
             Logger.Fatal("AddHex actions require {} or {}, not {}".format(Hex, None, type(self.newHex)), TypeError)
 
-    def __call__(self, map)
+    def __call__(self, map, actionskip=False):
         if (self.hexID not in map.catalog) and (self.newHex is None):
             Logger.Fatal("Tried removing hex from tile that doesn't exist.", ValueError)
         
-        # we set aside what was already there (if anything), and tell the map to get rid of it. 
-        # then we register the new hex and make the inverter function 
-        if self.hexID in map.catalog:
-            old_hex = map.catalog[self.hex_id]
-            map.remove_hex(self.hexID)
-        else:
-            old_hex = None
+        if not actionskip:
+            # we set aside what was already there (if anything), and tell the map to get rid of it. 
+            # then we register the new hex and make the inverter function 
+            if self.hexID in map.catalog:
+                old_hex = map.catalog[self.hex_id]
+                map.remove_hex(self.hexID)
+            else:
+                old_hex = None
         
-        if isinstance(self.newHex, Hex):
-            map.register_hex(self.newHex, self.hexID)
+            if isinstance(self.newHex, Hex):
+                map.register_hex(self.newHex, self.hexID)
         
-        return( Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
+        return Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
         
+class MetaAction(MapAction):
+    """
+    A combination of actions treated as one. 
 
+    This would be useful when working with large brushes 
+    """
+    def __init__(self, *args):
+        for arg in args:
+            if not isinstane(arg, MapAction):
+                Logger.Fatal("Cannot make metaaction with object of type {}".format(type(arg)), TypeError)
+        self._actions = list(args)
 
+    def add_to(self, action):
+        if not isinstance(aciton, MapAction):
+            Logger.Fatal("Cannot add {} type to MetaAction.".format(type(action)))
+        self._actions.append(action)
+
+    @property
+    def actions(self):
+        return self._actions
+
+    def __call__(self, map, actionskip=False):
+        inverses = (action(map, actionskip) for action in self._actions)
+        return MetaAction(inverses)
 
 class MapMove(MapAction):
     def __init__(self, **kwargs):
@@ -134,12 +158,13 @@ class MapMove(MapAction):
         self.eid = kwargs["eID"]
         self.to = kwargs["to"]
 
-    def __call__(self, map):
+    def __call__(self, map, actionskip=False):
         if not isinstance(map, Hexmap):
             Logger.Fatal("Can only act on {}, not {}".format(Hexmap, type(map)), ValueError)
 
         inverse = MapMove(eID = self.eid, to=map.eid_catalog[self.eid].location)
-        map.eid_catalog[self.eid].set_location(self.to)
+        if not actionskip:
+            map.eid_catalog[self.eid].set_location(self.to)
 
         return(inverse)
 
