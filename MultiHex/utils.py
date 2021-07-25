@@ -174,15 +174,16 @@ class ActionManager:
     """
     This keeps track of upcoming events (and actions) and the time.
     It allows you to add new events and 
-    """
-    def __init__(self, parent_map):
-        if not isinstance(parent_map, Hexmap):
-            Logger.Fatal("Parent must be {}, received {}".format(Hexmap, type(parent_map)), TypeError)
 
+    This is made before on launch before the map is loaded, so it doesn't do anything until the map is loaded. 
+    """
+    def __init__(self, parent_map=None):
         self._queue = []
 
         self.clock = Clock()
-        self._parent = parent_map
+        self._configured = False
+        if parent_map is not None:
+            self.configure(parent_map)
 
         self.database_dir = get_base_dir()
         self.database_filename = "event_database.csv"
@@ -192,10 +193,16 @@ class ActionManager:
         self.redo_history = deque()
         self.undo_history = deque()
 
+    def configure_with_map(self, parent_map:Hexmap):
+        self._configured = True
+        self._parent = parent_map
+
     def do_now(self, event):
         if not isinstance(event, MapAction):
             Logger.Fatal("Asked to do action of type {}, not {}".format(type(event), MapAction))
-        
+        if not self._configured:
+            return
+
         inverse = event(self.parent)
         self.undo_history.appendleft(inverse)
         while len(self.undo_history)>self.n_history_max:
@@ -213,9 +220,10 @@ class ActionManager:
         When you do something in a deque, you call the 0th entry, invert the action, and append it at the start of other deque.
         This is done to give undo/redo functionality.
         """
+        if not self._configured:
+            return
         if len(list1)==0:
             return
-
         
         inverse = list1[0](self.parent)
         list2.appendleft(inverse)

@@ -225,6 +225,8 @@ class main_window(QMainWindow):
 
         self.ui.graphicsView.update()
         self.main_map = load_map( self.filename )
+        self.scene.ActionManager.configure_with_map(self.main_map)
+        
         self.entity_control.configure_icon_size()
         self.smart_ui_chooser()
         self.params = get_tileset_params( self.main_map.tileset )
@@ -344,6 +346,12 @@ class WorldGenerationThread(QtCore.QRunnable):
 
 
 class new_load_dialog(QDialog):
+    """
+    This here is the main menu. We have three buttons: Load Map, New Map, and Quit
+
+    Should probably add an "About" button
+    #TODO set up a way to customize tilesets, 
+    """
     def __init__(self, parent):
         super(new_load_dialog, self).__init__(parent)
         self.ui = new_load_gui()

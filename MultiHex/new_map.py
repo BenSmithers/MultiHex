@@ -1,17 +1,26 @@
 from MultiHex.guis.advanced_map_generation import advanced_map_dialog, new_preset_dialog
 from MultiHex.guis.basic_map_generation import basic_map_dialog
 
+from logger import Logger
+
 import os
 import json #open the configuration stuff
+import copy
 
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtWidgets import QDialog
 
 """
-This file defines the classes for the two dialogs used in map generation
+This file defines the classes for the two dialogs used in map generation. 
 """
 
 class basicMapDialog(QDialog):
+    """
+    The basic map dialog allows us the user to choose a "map type", a "generation type", and a "generation preset"
+        map type - overall type of map we're making. Like, an overland map, a city map, a space map, etc
+        generation type - which generation algorithm we use (specific to map types)
+        generation preset - which arrangement of settings to send to the generator (specific to generation type)
+    """
     def __init__(self,parent=None,default_name="generated.hexmap"):
         QDialog.__init__(self,parent)
         self.ui=basic_map_dialog()
@@ -37,15 +46,17 @@ class basicMapDialog(QDialog):
         """
         Calls when the user selects the advanced generation button. Opens the advanced generation dialog window. 
         """
-        adv_dialog = advancedMapDialog(self)
+        # use the appropriate 
+        adv_dialog = advancedMapDialog(self, baseline=self.ui.gen_preset_combo.currentText().lower())
         adv_dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         adv_dialog.exec_()
 
     def button_generate(self, custom=False):
         """
-        Calls when the generate button is clicked. Starts the generation process.
+        Calls when the generate button is clicked. Starts the generation process
         """
-        arg = 'custom' if custom else self.ui.gen_preset_combo.currentText()
+        # we check if we're using a custom (advanced) generation set
+        arg = 'custom' if custom else self.ui.gen_preset_combo.currentText().lower()
         self.parent.gen_params = [arg.lower(), self.ui.fileNameEntry.text()]
         self.close()
 
@@ -94,6 +105,12 @@ class basicMapDialog(QDialog):
 
 
 class advancedMapDialog(QDialog):
+    """
+    Here, the user has specified they want to configure a preset with more detail
+
+    So we copy the preset over into a "custom" category, and edit that one directly 
+    We go tab by tab configuring groups of presets - these groups are used individually by different steps in the generation procedure
+    """
     def __init__(self,parent=None,baseline="continental"):
         QDialog.__init__(self,parent)
         self.ui=advanced_map_dialog()
@@ -135,7 +152,8 @@ class advancedMapDialog(QDialog):
         """
         Copies whatever the basline is into the custom key in the generation 'config' json file
         """
-        self.config[self.custom_key] = self.config[self.baseline]
+        # if we don't use the copy thing then we just edit the baseline parameters too :grimace: 
+        self.config[self.custom_key] = copy.deepcopy(self.config[self.baseline])
 
     def write_config_file(self,new_name=None):
         """
@@ -185,6 +203,9 @@ class advancedMapDialog(QDialog):
         config_dialog.exec_()
 
     def add_entry(self, key, type_int):
+        """
+        For this group of entries we add a bunch of spinboxes to edit each parameter needed by the configuration thingy 
+        """
         name = str(key).lower()
         name = name[0].upper() + name[1:]
         subkey = self.ui.param_combo.currentText().lower()
@@ -222,6 +243,10 @@ class advancedMapDialog(QDialog):
         self.row_number+=1
 
     def continue_button(self):
+        """
+        Load up the next group or generate. If the later, write the config file (which has the curtom tab) and run the generator. 
+        If the later, we add in all the spin boxes
+        """
         if self.ui.param_combo.currentIndex() == (self.ui.param_combo.count()-1):
             self.write_config_file()
             self.parent.button_generate(True)
@@ -249,7 +274,12 @@ class newPresetDialog(QDialog):
 
     def accept(self):
         print("accept")
-        self.parent.write_config_file( str(self.ui.line.text()) )
+        new_preset_name = str(self.ui.line.text()) 
+        forbid = ["continental", "islands", "custom"]
+        if new_preset_name in forbid:
+            # TODO show a dialog warning that this is invalid 
+            Logger.Warn("Invalid name for preset")
+        self.parent.write_config_file(new_preset_name)
         QDialog.accept(self)
 
     def reject(self):
