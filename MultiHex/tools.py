@@ -304,7 +304,7 @@ class clicker_control(QGraphicsScene):
     """
     Manages the mouse interface for to the canvas.
     """
-    def __init__(self, parent=None, master=None):
+    def __init__(self, parent, master):
         QGraphicsScene.__init__(self, parent)
 
         if not isinstance(master, QMainWindow):
@@ -1937,7 +1937,7 @@ class region_brush(Basic_Brush):
         drop = QGraphicsDropShadowEffect()
         drop.setOffset(1)
         center, extent = reg_obj.get_center_size()
-        font = QtGui.QFont("Fantasy")
+        font = QtGui.QFont("Decorative")
         new_color= QtGui.QColor( 250, 250, 250)
         if self.small_font:
             font_size = 10
