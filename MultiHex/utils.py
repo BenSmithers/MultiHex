@@ -1,6 +1,8 @@
 from enum import Enum 
 from collections import deque
 
+from PyQt5.QtCore import Null
+
 from MultiHex.objects import Mobile, Entity 
 from MultiHex.clock import Clock, Time
 from MultiHex.core import Hexmap, Hex
@@ -16,6 +18,8 @@ Notes for future Ben! All hexmap edits need to be done through these actions
 Tools will construct an action object and pass it through the action manager
 The clicker control will have the action manager
 The action manager needs a "do now" feature
+
+None of these do any drawing of a map! They EXCLUSIVELY edit things ON the map
 """
 
 
@@ -34,6 +38,12 @@ def get_base_dir():
 
 class mapActionItem(Enum):
     move = 1
+
+class actionDrawTypes(Enum):
+    hex = 1
+    region = 2
+    entity = 3
+    path = 4
 
 class MapEvent:
     def __init__(self,recurring=None, **kwargs):
@@ -71,9 +81,26 @@ class MapEvent:
         return(self._show)
 
 class MapAction(MapEvent):
+    """
+    These are MapEvents that actually effect the map. We call these when they come up. 
+
+    We have a drawtype entry to specify whether or not this Action has an associated redraw command 
+    """
     def __init__(self, recurring=None, **kwargs):
         MapEvent.__init__(self,recurring=None, **kwargs)
-        self.verify(kwargs)
+
+        self._drawtype = False
+    
+    @property
+    def drawtype(self)->bool:
+        return self._drawtype
+
+    def draw(self)->tuple:
+        """
+        This will return a tuple describing 
+        """
+        if not self.drawtype:
+            raise NotImplementedError("Must override base implementatino")
 
     def __call__(self, map, actionskip=False):
         """
@@ -84,6 +111,15 @@ class MapAction(MapEvent):
         """
         raise NotImplementedError("Must override base implementation!")
 
+class NullAction(MapAction):
+    """
+    An action used to do nothing 
+    """
+    def __init__(self, **kwargs):
+        MapAction.__init__(self, recurring=None, **kwargs)
+    def __call__(self, map, actionskip=False):
+        pass
+
 class Add_Remove_Hex(MapAction):
     def __init__(self, **kwargs):
         """
@@ -91,6 +127,7 @@ class Add_Remove_Hex(MapAction):
             1. a hex already there 
             2. no hex already there 
         """
+        MapAction.__init__(self, recurring=None,**kwargs)
 
         self.needed = ["hexID","hex"]
         self.verify(kwargs)
@@ -98,6 +135,11 @@ class Add_Remove_Hex(MapAction):
         self.hexID = kwargs["hexID"]
         if not isinstance(self.newHex, (Hex, None)):
             Logger.Fatal("AddHex actions require {} or {}, not {}".format(Hex, None, type(self.newHex)), TypeError)
+
+        self._drawtype = True
+    
+    def draw(self):
+        return(actionDrawTypes.hex, "", self.hexID)
 
     def __call__(self, map, actionskip=False):
         if (self.hexID not in map.catalog) and (self.newHex is None):
@@ -117,7 +159,46 @@ class Add_Remove_Hex(MapAction):
                 map.register_hex(self.newHex, self.hexID)
         
         return Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
-        
+
+class Add_Remove_Entity(MapAction):
+    def __init__(self, **kwargs):
+        """
+        This action adds entities to the map where there was either 
+            1. a Hex already there or 
+            2. there was no hex already there 
+        """
+        MapAction.__init__(self, recurring=None, **kwargs)
+        needed = ["eID", "entity"]
+        self.verify(kwargs)
+
+class EditEntity(MapAction):
+    """
+    Edits one entity parameter 
+    """
+    def __init__(self, **kwargs):
+        """
+        This action edits an entity 
+        """
+        MapAction.__init__(self, recurring=None, **kwargs)
+        needed = ["eID", "parameter", "new_value"]
+        self.verify(kwargs)
+        self.eID = kwargs["eID"]
+        self.parameter = kwargs["parameter"]
+        self.new_value = kwargs["new_value"]
+
+    def __call__(self, map:Hexmap, actionskip=False):
+        if not actionskip:
+            if not self.eID in map.eid_catalog:
+                Logger.Warn("Action Failed! {} not in catalog".format(self.eID))
+                return
+            else:
+                entity = map.eid_catalog[self.eID]
+                inverse = EditEntity(eID=self.eID, parameter=self.parameter, new_value=getattr(entity, self.parameter))
+                setattr(entity, self.parameter, self.new_value)
+                return inverse 
+
+
+
 class MetaAction(MapAction):
     """
     A combination of actions treated as one. 
@@ -126,21 +207,26 @@ class MetaAction(MapAction):
     """
     def __init__(self, *args):
         for arg in args:
-            if not isinstane(arg, MapAction):
+            if not isinstance(arg, MapAction):
                 Logger.Fatal("Cannot make metaaction with object of type {}".format(type(arg)), TypeError)
         self._actions = list(args)
 
-    def add_to(self, action):
-        if not isinstance(aciton, MapAction):
-            Logger.Fatal("Cannot add {} type to MetaAction.".format(type(action)))
-        self._actions.append(action)
+    def add_to(self, action:MapAction):
+        if not isinstance(action, NullAction):
+            if isinstance(action, MetaAction):
+                self._actions += action._actions
+            else:
+                self._actions.append(action)
 
     @property
     def actions(self):
         return self._actions
 
-    def __call__(self, map, actionskip=False):
-        inverses = (action(map, actionskip) for action in self._actions)
+    def __call__(self, map):
+        """
+        The actions are already done, so just make the inverses and return them in inverse-order 
+        """
+        inverses = [action(map, True) for action in self._actions][::-1]
         return MetaAction(inverses)
 
 class MapMove(MapAction):
@@ -197,9 +283,7 @@ class ActionManager:
         self._configured = True
         self._parent = parent_map
 
-    def do_now(self, event):
-        if not isinstance(event, MapAction):
-            Logger.Fatal("Asked to do action of type {}, not {}".format(type(event), MapAction))
+    def do_now(self, event: MapAction):
         if not self._configured:
             return
 
@@ -225,6 +309,7 @@ class ActionManager:
         if len(list1)==0:
             return
         
+        #does the action, stores inverse #does the action, stores inverse 
         inverse = list1[0](self.parent)
         list2.appendleft(inverse)
         while len(list2)>self.n_history_max:

@@ -1,14 +1,13 @@
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
 from PyQt5.QtWidgets import QAction
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PyQt5 import QtGui, QtCore, QtWidgets, Qt
 
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 from MultiHex.logger import Logger
-# from MultiHex.map_types.overland import Road, River
-from MultiHex.utils import MapAction, ActionManager, MetaAction
+from MultiHex.utils import MapAction, ActionManager, MetaAction, Add_Remove_Hex, NullAction
 
 import os # used for some of the icons
 
@@ -107,14 +106,14 @@ class basic_tool:
 
         @param event 
         """
-        pass
+        return NullAction()
     def primary_mouse_released(self, event):
         """
         This is called when the right mouse button is released from a localized click. 
 
         @param event - location of release
         """
-        pass
+        return NullAction()
     def primary_mouse_held(self,event ):
         """
         Called continuously while the right mouse button is moved and depressed 
@@ -122,28 +121,28 @@ class basic_tool:
         @param event - current mouse location
         @param setp  - vector pointing from last called location to @place
         """
-        pass
+        return NullAction()
     def secondary_mouse_held(self, event):
         """
         Called continuously while the right mouse button is moved and depressed 
         """
-        pass
+        return NullAction()
     def double_click_event(self, event):
-        pass
+        return NullAction()
     def secondary_mouse_released(self, event ):
         """
         Left click released event, used to select something
 
         @param event - Qt event object. has where the mouse is
         """
-        pass
+        return NullAction()
     def mouse_moved(self, event):
         """
         Called continuously while the mouse is in the widget
 
         @param place - where the mouse is 
         """
-        pass
+        return NullAction()
     def drop(self):
         """
         Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles). This is needed when closing one of the guis 
@@ -164,7 +163,6 @@ class basic_tool:
     def do_action(self, action):
         if not isinstance(action, MultiHexAction):
             Logger.Fatal("Expected {} in some kind of brush, got {}".format(MultiHexAction, type(action)), TypeError)
-
 
     def clear(self):
         """
@@ -262,6 +260,7 @@ class Basic_Brush(basic_tool):
             
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
             self._outline_obj.setZValue(10)
+        return NullAction()
 
     def get_color(self):
         new = self.QPen.color()
@@ -304,20 +303,15 @@ class clicker_control(QGraphicsScene):
     """
     Manages the mouse interface for to the canvas.
     """
-    def __init__(self, parent, master):
+    def __init__(self, parent:QGraphicsView, master:QMainWindow):
         QGraphicsScene.__init__(self, parent)
-
-        if not isinstance(master, QMainWindow):
-            raise TypeError("Clicker control master must be {}, got {}".format(QMainWindow, type(master)))
-        if not isinstance(parent, QGraphicsView):
-            raise TypeError("Clicker control parent must be {}, got {}".format(QGraphicsView, type(parent)))
 
         self._active = None #basic_tool object
         self._primary_held = False
         self._secondary_held = False
 
-        self.parent = parent #QGraphicsView
-        self.master = master #main window
+        self.parent = parent #QGraphicsView - this is the graphics view that QT needs
+        self.master = master #main window - this is the main window that _I_ need
 
         self._alt_held = False
 
@@ -332,11 +326,17 @@ class clicker_control(QGraphicsScene):
     def ActionManager(self):
         return self._actionmanager
 
-    def do_action(self, action):
-        if not ((action is None) or isinstance(action, MapAction)):
-            Logger.Fatal("Can no 'do' action of type {}, need {}".format(type(action), MapAction))
+    def do_action(self, action:MapAction):
+        """
+        Tell the action manager to do an action now so long as it isn't a NullAction 
+        """
+        if not isinstance(action, NullAction):
+            # if it's a draw-type action, pass the draw-tuple up to the master 
+            if action.drawtype:
+                drawing = action.draw()
+                self.mater.interpret_draw_tuple(drawing) 
 
-        self._actionmanager.do_now(action)
+            self._actionmanager.do_now(action)
 
     def undo(self):
         self._actionmanager.undo()
@@ -359,6 +359,15 @@ class clicker_control(QGraphicsScene):
         if event.key() == QtCore.Qt.Key_Minus or event.key()==QtCore.Qt.Key_PageDown or event.key()==QtCore.Qt.Key_BracketLeft:
             self.parent.scale( 0.95, 0.95 )
 
+        # check if the user did Ctrl+Z for undo or Ctrl+R for redo 
+        if QApplication.keyboardModifiers() == Qt.ControlModifier():
+            if event.key==QtCore.Qt.Key_Z:
+                self.ActionManager.undo()
+            if event.key==QtCore.Qt.Key_R:
+                self.ActionManager.redo()
+            if event.key==QtCore.Qt.Key_S:
+                self.master.save_map()
+
 
     def mousePressEvent(self, event):
         """
@@ -379,14 +388,21 @@ class clicker_control(QGraphicsScene):
         if event.button()==self._primary:
             # usually a brush event 
             event.accept()
-            self._primary_held = False
             action = self._active.primary_mouse_released(event)
-            self.do_action(action)
+
+            if self._meta_event_holder is not None:
+                self._meta_event_holder.add_to(action)
+                self.do_action(self._meta_event_holder)
+                self._meta_event_holder = None
+            else:
+                self.do_action(action)
+            self._primary_held = False
+
 
         elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
-            self._secondary_held = False
+            self._secondary_held = False   
             action = self._active.secondary_mouse_released( event )
             self.do_action(action)
 
@@ -396,23 +412,18 @@ class clicker_control(QGraphicsScene):
         called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
         """
         event.accept()
-        if self._primary_held or self._secondary_held:
+        if self._primary_held:
             if self._meta_event_holder is None:
                 self._meta_event_holder = MetaAction()
 
             # we want to do these actions before adding them. That way we show the results of them while using the tool
-            # 
-            if self._primary_held:
-                action = self._active.primary_mouse_held( event )
+            action = None
+            action = self._active.primary_mouse_held( event )
+            
+            if action is not None:
                 self._meta_event_holder.add_to(action)
                 self.do_action( action )
-            if self._secondary_held:
-                action = self._active.secondary_mouse_held( event )
-                self._meta_event_holder.add_to(action)
-                self.do_action( action )
-
              
- 
         self._active.mouse_moved( event )
 
     def mouseDoubleClickEvent(self, event):
@@ -1112,7 +1123,7 @@ class entity_brush(basic_tool):
         self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.dialog.exec_()
 
-        self.redraw_entities_at_hex( loc_id )
+        self.redraw_entities_at_hex( action.id )
 
     def load_assets(self):
         """
@@ -1326,7 +1337,7 @@ class Map_Use_Tool(basic_tool):
 
     def do_action(self, action):
         if not isinstance(action, MultiHexAction):
-            raise TypeError("Somehow got a {}, not a {}".format(type(action), MMultiHexAction))
+            raise TypeError("Somehow got a {}, not a {}".format(type(action), MultiHexAction))
 
         if action.id is not None:
             self.select(action.id)
@@ -1503,22 +1514,24 @@ class hex_brush(Basic_Brush):
         """
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        try:
+
+        if loc_id in self.drawn_hexes:
             self.parent.scene.removeItem( self.drawn_hexes[ loc_id ] ) 
             del self.drawn_hexes[loc_id]
-            self.parent.main_map.remove_hex(loc_id)
-        except KeyError:
-            pass 
+        action = Add_Remove_Hex(hexID=loc_id, hex=None)
 
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors(loc_id)
+            actions = MetaAction(action)
             for neighbor in neighbors:
-                try:
+                if neighbor in self.drawn_hexes:
                     self.parent.scene.removeItem( self.drawn_hexes[neighbor])
                     del self.drawn_hexes[neighbor]
-                    self.parent.main_map.remove_hex( neighbor )
-                except KeyError:
-                    pass
+                actions.add_to(Add_Remove_Hex(hexID=loc_id, hex=None))
+                
+            return actions
+        else: 
+            return action
 
     def write(self, event):
         """

@@ -1,8 +1,11 @@
 from MultiHex.guis.advanced_map_generation import advanced_map_dialog, new_preset_dialog
 from MultiHex.guis.basic_map_generation import basic_map_dialog
+from MultiHex.guis.new_load_gui import new_load_gui
+
 
 from logger import Logger
 
+import sys
 import os
 import json #open the configuration stuff
 import copy
@@ -13,6 +16,92 @@ from PyQt5.QtWidgets import QDialog
 """
 This file defines the classes for the two dialogs used in map generation. 
 """
+
+
+class LoadingBarGui(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Loading")
+        self.vbox = QtWidgets.QVBoxLayout(Dialog)
+        self.progress = QtWidgets.QProgressBar(Dialog)
+        self.progress.setMinimum(0)
+        self.progress.setMaximum(0)
+        self.vbox.addWidget(self.progress)
+
+class WorldGenLoadingBar(QDialog):
+    def __init__(self,parent, gen_type, filename):
+        QDialog.__init__(self,parent)
+        # QtCore.Qt.WindowStaysOnTopHint
+        self.ui=LoadingBarGui()
+        self.ui.setupUi(self)
+        self.parent = parent
+        self.setWindowTitle("Generating Map...")
+
+        self.gen_type = gen_type
+        self.filename = filename
+
+        self.threadpool = QtCore.QThreadPool()
+        self.run()
+
+    def run(self):
+        worldGen = WorldGenerationThread(self.gen_type, self.filename)
+        worldGen.signals.signal.connect(self.finished)
+        self.threadpool.start(worldGen)
+
+    def finished(self,other=None):
+        self.close()
+
+class Signaler(QtCore.QObject):
+    signal = QtCore.pyqtSignal()
+
+class WorldGenerationThread(QtCore.QRunnable):
+    def __init__(self, gen_type, filename):
+        super(WorldGenerationThread,self).__init__()
+        self.gen_type = gen_type
+        self.filename = filename
+        self.setAutoDelete(True)
+
+        self.signals = Signaler()
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        from MultiHex.generator.full_chain import full_sim
+        self.test = full_sim(self.gen_type,self.filename)
+        self.signals.signal.emit()
+
+
+class new_load_dialog(QDialog):
+    """
+    This here is the main menu. We have three buttons: Load Map, New Map, and Quit
+
+    Should probably add an "About" button
+    #TODO set up a way to customize tilesets, 
+    """
+    def __init__(self, parent):
+        super(new_load_dialog, self).__init__(parent)
+        self.ui = new_load_gui()
+        self.ui.setupUi(self)
+
+        self.ui.new_map_button.clicked.connect(self.button_new)
+        self.ui.load_map_button.clicked.connect(self.button_load)
+        self.ui.quit_button.clicked.connect(self.button_quit)
+        self.parent = parent
+
+    def button_new(self):
+        """
+        Tells the parent Window to try making a new map. This will launch the New Map Interface
+        """
+        self.parent.new()
+        self.accept()
+
+    def button_load(self):
+        """
+        This tells the parent window to load a map. Opens the open file dialog! 
+        """
+        self.parent.load()
+        self.accept()
+
+    def button_quit(self):
+        sys.exit()
 
 class basicMapDialog(QDialog):
     """

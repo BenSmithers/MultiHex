@@ -13,15 +13,15 @@ from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import basic_tool, Map_Use_Tool
 from MultiHex.objects import Icons
 from MultiHex.map_types.overland import OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
-from MultiHex.about_class import about_dialog
 from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
-from MultiHex.utils import get_base_dir
+from MultiHex.utils import get_base_dir, actionDrawTypes
 
 # import other guis! 
 from MultiHex.guis.terrain_editor_gui import terrain_ui
 from MultiHex.guis.civ_gui import civ_ui
-from MultiHex.guis.new_load_gui import new_load_gui
 from MultiHex.guis.map_use_gui import map_use_ui
+
+from MultiHex.new_map import new_load_dialog, WorldGenLoadingBar
 
 #import some dialogs
 from MultiHex.new_map import basicMapDialog
@@ -39,6 +39,8 @@ class main_window(QMainWindow):
         self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.dirname(__file__),'Artwork','wiki_images','multihex_small_logo.svg')))
 
         self.icons = Icons()
+
+        self.main_map = None
 
         # now we need to set up the default tools 
         self.hex_control = OHex_Brush(self)
@@ -226,7 +228,7 @@ class main_window(QMainWindow):
         self.ui.graphicsView.update()
         self.main_map = load_map( self.filename )
         self.scene.ActionManager.configure_with_map(self.main_map)
-        
+
         self.entity_control.configure_icon_size()
         self.smart_ui_chooser()
         self.params = get_tileset_params( self.main_map.tileset )
@@ -241,6 +243,36 @@ class main_window(QMainWindow):
         self._redraw_entities()
         self._redraw_roads()
         self._redraw_counties()
+
+    def interpret_draw_tuple(self, draw:tuple):
+        """
+        The clicker control gets draw commands from some actions, and those are passed up through this function 
+
+        It's basically a switch statement 
+        """
+        if not len(draw)==3:
+            Logger.Fatal("Not sure what to do with this draw-tuple: {}".format(draw),ValueError)
+
+        if draw[0]==actionDrawTypes.hex:
+            self.hex_control.draw_hex(draw[2])
+        elif draw[0]==actionDrawTypes.region:
+            if draw[1]=="biome":
+                self.biome_control.redraw_region(draw[2])
+            elif draw[1]=="county":
+                self.county_control.redraw_region(draw[2])
+            else:
+                Logger.Fatal("Unfamiliar draw code {}".format(draw), ValueError)
+        elif draw[0]==actionDrawTypes.entity:
+            # the id here should be a hexID
+            self.entity_control.redraw_entities_at_hex(draw[2])
+            
+        elif draw[0]==actionDrawTypes.path:
+            if draw[1]=="road":
+                self.path_control.draw_path(draw[2])
+            elif draw[1]=="river":
+                self.river_control.draw_path(draw[2])
+        else:
+            Logger.Fatal("Unknown action draw type {}".format(draw[0]), NotImplementedError)
 
     def _draw_hexes(self):
         for ID in self.main_map.catalog: 
@@ -294,90 +326,6 @@ class main_window(QMainWindow):
             save_map( self.main_map, self.filename)
             self.unsaved_changes = False
     
-class LoadingBarGui(object):
-    def setupUi(self, Dialog):
-        Dialog.setObjectName("Loading")
-        self.vbox = QtWidgets.QVBoxLayout(Dialog)
-        self.progress = QtWidgets.QProgressBar(Dialog)
-        self.progress.setMinimum(0)
-        self.progress.setMaximum(0)
-        self.vbox.addWidget(self.progress)
-
-class WorldGenLoadingBar(QDialog):
-    def __init__(self,parent, gen_type, filename):
-        QDialog.__init__(self,parent)
-        # QtCore.Qt.WindowStaysOnTopHint
-        self.ui=LoadingBarGui()
-        self.ui.setupUi(self)
-        self.parent = parent
-        self.setWindowTitle("Generating Map...")
-
-        self.gen_type = gen_type
-        self.filename = filename
-
-        self.threadpool = QtCore.QThreadPool()
-        self.run()
-
-    def run(self):
-        worldGen = WorldGenerationThread(self.gen_type, self.filename)
-        worldGen.signals.signal.connect(self.finished)
-        self.threadpool.start(worldGen)
-
-    def finished(self,other=None):
-        self.close()
-
-class Signaler(QtCore.QObject):
-    signal = QtCore.pyqtSignal()
-
-class WorldGenerationThread(QtCore.QRunnable):
-    def __init__(self, gen_type, filename):
-        super(WorldGenerationThread,self).__init__()
-        self.gen_type = gen_type
-        self.filename = filename
-        self.setAutoDelete(True)
-
-        self.signals = Signaler()
-
-    @QtCore.pyqtSlot()
-    def run(self):
-        from MultiHex.generator.full_chain import full_sim
-        self.test = full_sim(self.gen_type,self.filename)
-        self.signals.signal.emit()
-
-
-class new_load_dialog(QDialog):
-    """
-    This here is the main menu. We have three buttons: Load Map, New Map, and Quit
-
-    Should probably add an "About" button
-    #TODO set up a way to customize tilesets, 
-    """
-    def __init__(self, parent):
-        super(new_load_dialog, self).__init__(parent)
-        self.ui = new_load_gui()
-        self.ui.setupUi(self)
-
-        self.ui.new_map_button.clicked.connect(self.button_new)
-        self.ui.load_map_button.clicked.connect(self.button_load)
-        self.ui.quit_button.clicked.connect(self.button_quit)
-        self.parent = parent
-
-    def button_new(self):
-        """
-        Tells the parent Window to try making a new map. This will launch the New Map Interface
-        """
-        self.parent.new()
-        self.accept()
-
-    def button_load(self):
-        """
-        This tells the parent window to load a map. Opens the open file dialog! 
-        """
-        self.parent.load()
-        self.accept()
-
-    def button_quit(self):
-        sys.exit()
 
 app = QApplication(sys.argv)
 app_instance = main_window()
