@@ -14,6 +14,8 @@ import os
 from glob import glob
 
 from copy import deepcopy, copy
+from math import sqrt
+
 
 from MultiHex.logger import Logger
 
@@ -418,13 +420,13 @@ class Settlement(Entity, Government):
             avg_war = (self.partial_population/self.population)*self.war/(1+len(self.wards))
             avg_spi = (self.partial_population/self.population)*self.spirit/(1+len(self.wards))
 
-            for ward in wards:
+            for ward in self.wards:
                 avg_ord += (ward.population/self.population)*ward.order/(1+len(self.wards))
                 avg_war += (ward.population/self.population)*ward.war/(1+len(self.wards))
                 avg_spi += (ward.population/self.population)*ward.spirit/(1+len(self.wards))
 
             wip = (self.partial_population/self.population)*( ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2)
-            for ward in wards:
+            for ward in self.wards:
                 wip += (ward.population/self.population)*((avg_ord - ward.order)**2 + (avg_war - ward.war)**2 + (avg_spi - ward.spirit)**2)
 
             wip = sqrt(wip)
