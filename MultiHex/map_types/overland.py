@@ -1,6 +1,8 @@
 from MultiHex.core import Hex, Point, Region, Path, Hexmap
 from MultiHex.core import RegionMergeError, RegionPopError
 
+from MultiHex.logger import Logger
+
 from MultiHex.objects import Settlement, Government
 from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
 
@@ -136,7 +138,7 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = (134, 183, 207)
+        self.color = (134*0.8, 183*0.8, 207*0.8) #shallows color, but rescaled to 0.0 altitude 
 
         self.width = 1
 
@@ -242,12 +244,12 @@ class County(Region, Government):
             
             avg_ord = self.order/( 1+len(towns))
             avg_war = self.war/( 1+len(towns))
-            avg_spi = self_spi/( 1+len(towns))
+            avg_spi = self.spi/( 1+len(towns))
             
             for town in towns:
-                avg_ord += (town.population/self.population)*ward.order/(1+len(towns))
-                avg_war += (town.population/self.population)*ward.war/(1+len(towns))
-                avg_spi += (town.population/self.population)*ward.spirit/(1+len(towns))
+                avg_ord += (town.population/self.population)*town.order/(1+len(towns))
+                avg_war += (town.population/self.population)*town.war/(1+len(towns))
+                avg_spi += (town.population/self.population)*town.spirit/(1+len(towns))
 
             wip = ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2
             for town in towns:
@@ -984,6 +986,11 @@ class OHex_Brush( hex_brush ):
                 which._altitude_base = 0
 
     def get_color_for_param_overwrite(self,parameter_name, parameter_value):
+        """
+        For the heatmaps, we use a parameter to set the color of a hex
+
+        So here we give this brush a parameter name and value, and it returns what the color would be. Different parameters have different color scales 
+        """
         if parameter_name=="_altitude_base":
             return(QtGui.QColor( 50, max(0,min(230 - 100*parameter_value,255)), max(0,min(255,(130 + 100*parameter_value)))))
         elif parameter_name=="_rainfall_base":
