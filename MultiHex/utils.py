@@ -1,8 +1,6 @@
 from enum import Enum 
 from collections import deque
 
-from PyQt5.QtCore import Null
-
 from MultiHex.objects import Mobile, Entity 
 from MultiHex.clock import Clock, Time
 from MultiHex.core import Hexmap, Hex
@@ -87,9 +85,9 @@ class MapAction(MapEvent):
     We have a drawtype entry to specify whether or not this Action has an associated redraw command 
     """
     def __init__(self, recurring=None, **kwargs):
+        self._drawtype = False
         MapEvent.__init__(self,recurring=None, **kwargs)
 
-        self._drawtype = False
     
     @property
     def drawtype(self)->bool:
@@ -100,7 +98,7 @@ class MapAction(MapEvent):
         This will return a tuple describing 
         """
         if not self.drawtype:
-            raise NotImplementedError("Must override base implementatino")
+            raise NotImplementedError("Must override base implementation")
 
     def __call__(self, map, actionskip=False):
         """
@@ -206,12 +204,16 @@ class MetaAction(MapAction):
     This would be useful when working with large brushes 
     """
     def __init__(self, *args):
+        MapAction.__init__(self,*args)
         for arg in args:
             if not isinstance(arg, MapAction):
                 Logger.Fatal("Cannot make metaaction with object of type {}".format(type(arg)), TypeError)
         self._actions = list(args)
 
     def add_to(self, action:MapAction):
+        if action is None:
+            return
+        
         if not isinstance(action, NullAction):
             if isinstance(action, MetaAction):
                 self._actions += action._actions
@@ -227,7 +229,7 @@ class MetaAction(MapAction):
         The actions are already done, so just make the inverses and return them in inverse-order 
         """
         inverses = [action(map, True) for action in self._actions][::-1]
-        return MetaAction(inverses)
+        return MetaAction(*inverses)
 
 class MapMove(MapAction):
     def __init__(self, **kwargs):

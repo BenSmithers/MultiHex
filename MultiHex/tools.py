@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsDropShadowEffect
 from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
 from PyQt5.QtWidgets import QAction
-from PyQt5 import QtGui, QtCore, QtWidgets, Qt
+from PyQt5 import QtGui, QtCore, QtWidgets
 
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
@@ -232,6 +232,8 @@ class Basic_Brush(basic_tool):
     def mouse_moved(self, event):
         """
         While moving it continuously removes and redraws the outline - reimplimentation of the 'move' function in the hex brush
+
+        This changes the pen color, erases any previously drawn outline, and then draws the new outline 
         """
         
         # the default 0-state represents no drawing of the outline, and no brushing 
@@ -248,12 +250,12 @@ class Basic_Brush(basic_tool):
         self.QPen.setStyle(1)
 
         if self._selected_id == center_id:
-            pass
+            pass #don't update
         else:
             self._selected_id = center_id
             outline = self.parent.main_map.get_neighbor_outline( center_id , self._brush_size)
-            #self.QPen.setColor(QtGui.QColor(self._selected_color[0], self._selected_color[1], self._selected_color[2]))
-            self.QBrush.setStyle(0)
+            self.QPen.setColor(QtGui.QColor( self._color[0], self._color[1], self._color[2])) # set the pen color 
+            self.QBrush.setStyle(0) #transparent
 
             if self._outline_obj is not None:
                 self.parent.scene.removeItem( self._outline_obj )
@@ -263,8 +265,9 @@ class Basic_Brush(basic_tool):
         return NullAction()
 
     def get_color(self):
-        new = self.QPen.color()
-        return((new.red(),new.green(),new.blue()))
+        return self._color
+        #new = self.QPen.color()
+        #return((new.red(),new.green(),new.blue()))
             
     def set_color( self, color):
         """
@@ -272,6 +275,7 @@ class Basic_Brush(basic_tool):
 
         @param color    - the specified color. Needs to be an length-3 indexable with integer entries >0 and < 255
         """
+        
         if not (isinstance( color, list) or isinstance(color, tuple)):
             raise TypeError("Expected list-like for Arg 'color', got {}".format(type(color)))
         
@@ -285,7 +289,7 @@ class Basic_Brush(basic_tool):
             if entry<0 or entry>255:
                 raise ValueError("Entry {} in {} should be valued between 0 and 255".format(entry, color))
 
-        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 60))
+        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 120))
         self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
         self._color = color
 
@@ -330,7 +334,7 @@ class clicker_control(QGraphicsScene):
         """
         Tell the action manager to do an action now so long as it isn't a NullAction 
         """
-        if not isinstance(action, NullAction):
+        if (not isinstance(action, NullAction)) and (action is not None):
             # if it's a draw-type action, pass the draw-tuple up to the master 
             if action.drawtype:
                 drawing = action.draw()
@@ -359,13 +363,14 @@ class clicker_control(QGraphicsScene):
         if event.key() == QtCore.Qt.Key_Minus or event.key()==QtCore.Qt.Key_PageDown or event.key()==QtCore.Qt.Key_BracketLeft:
             self.parent.scale( 0.95, 0.95 )
 
-        # check if the user did Ctrl+Z for undo or Ctrl+R for redo 
-        if QApplication.keyboardModifiers() == Qt.ControlModifier():
-            if event.key==QtCore.Qt.Key_Z:
+        # check if the user did Ctrl+Z for undo or Ctrl+R for redo
+        if QApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+            if event.key()==QtCore.Qt.Key_Z:
                 self.ActionManager.undo()
-            if event.key==QtCore.Qt.Key_R:
+            if event.key()==QtCore.Qt.Key_R:
                 self.ActionManager.redo()
-            if event.key==QtCore.Qt.Key_S:
+            if event.key()==QtCore.Qt.Key_S:
+                Logger.Log("Saving!")
                 self.master.save_map()
 
 
@@ -376,7 +381,6 @@ class clicker_control(QGraphicsScene):
         if event.button()==self._primary:
             event.accept() # accept the event
             self._primary_held = True # say that the mouse is being held 
-
         elif event.button()==self._secondary:
             event.accept()
             self._secondary_held = True
@@ -398,7 +402,6 @@ class clicker_control(QGraphicsScene):
                 self.do_action(action)
             self._primary_held = False
 
-
         elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
@@ -419,7 +422,7 @@ class clicker_control(QGraphicsScene):
             # we want to do these actions before adding them. That way we show the results of them while using the tool
             action = None
             action = self._active.primary_mouse_held( event )
-            
+
             if action is not None:
                 self._meta_event_holder.add_to(action)
                 self.do_action( action )
@@ -1430,9 +1433,12 @@ class hex_brush(Basic_Brush):
     def adjust_hex( self, which, params=None ):
         """
         Adjust the given hex to the configured parameters (or a set of given parameters)
+
+        Nominally, this uses the tileset we're configured with to choose the color for the hex 
         """
         if not isinstance(which, Hex):
             raise TypeError("Expected {}, got {}.".format(Hex, type(which)))
+
 
         if params is None:
             use = self._brush_params
@@ -1482,7 +1488,6 @@ class hex_brush(Basic_Brush):
             self.parent.scene.removeItem(self._selection_outline_obj)
 
         if (loc_id is not None) and (loc_id in self.parent.main_map.catalog):
-            temp = self.get_color()
             self.QPen.setColor(QtGui.QColor(0, 220,220))
             self.QPen.setStyle(1)
             self.QBrush.setStyle(0)
@@ -1540,7 +1545,6 @@ class hex_brush(Basic_Brush):
         Same story for larger brush size. Try building and registering hexes for all the IDs neighboring the central ID 
 
         """
-        
         if not self._activated:
             # Brush hasn't been configured with any parameters yet! 
             return
@@ -1555,7 +1559,7 @@ class hex_brush(Basic_Brush):
         # register that hex in the hexmap 
         try:
             if (loc_id in self.parent.main_map.catalog) and self.overwrite:
-                # if we're overwriting, delete any hex that exists here
+                # if we're overwriting, delete any hex that exists herecd
                 self.adjust_hex( self.parent.main_map.catalog[loc_id])
                 self.parent.main_map.catalog[loc_id].rescale_color()
             else:
