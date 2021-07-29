@@ -2,9 +2,9 @@
   "continental": {
     "land": {
       "values": {
-        "land_spread": 0.22,
-        "land_width": 0.16,
-        "mnt_thicc": 2.0,
+        "land_spread": 0.15,
+        "land_width": 0.2,
+        "mnt_thicc": 2.5,
         "water_spread": 0.02,
         "water_width": 0.01
       },
@@ -21,8 +21,8 @@
         "avg_range": 10.0,
         "dimx": 4000,
         "dimy": 2000,
-        "n_peaks": 6,
-        "sigma": 40,
+        "n_peaks": 7,
+        "sigma": 35,
         "zones": 3
       },
       "desc": {
@@ -74,9 +74,9 @@
   "custom": {
     "land": {
       "values": {
-        "land_spread": 0.22,
-        "land_width": 0.16,
-        "mnt_thicc": 2.0,
+        "land_spread": 0.15,
+        "land_width": 0.2,
+        "mnt_thicc": 2.5,
         "water_spread": 0.02,
         "water_width": 0.01
       },
@@ -93,8 +93,8 @@
         "avg_range": 10.0,
         "dimx": 4000,
         "dimy": 2000,
-        "n_peaks": 6,
-        "sigma": 40,
+        "n_peaks": 7,
+        "sigma": 35,
         "zones": 3
       },
       "desc": {
@@ -148,7 +148,7 @@
       "values": {
         "land_spread": 0.16,
         "land_width": 0.08,
-        "mnt_thicc": 1.0,
+        "mnt_thicc": 0.98,
         "water_spread": 0.02,
         "water_width": 0.01
       },
@@ -162,12 +162,12 @@
     },
     "mountains": {
       "values": {
-        "avg_range": 6.0,
+        "avg_range": 3.0,
         "dimx": 6000,
         "dimy": 3000,
-        "n_peaks": 4,
+        "n_peaks": 2,
         "sigma": 40,
-        "zones": 16
+        "zones": 20
       },
       "desc": {
         "avg_range": "Average length of generated ridgelines",

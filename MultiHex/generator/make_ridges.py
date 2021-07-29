@@ -63,7 +63,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
                 new_hex = make_basic_hex(new_hex_center, main_map._drawscale)
                 new_hex.genkey = '11000000'
-                new_hex.fill = (99,88,60)
+                new_hex._fill = (99,88,60)
                 try:
                     main_map.register_hex( new_hex, loc_id )
                     ids_to_propagate.append( loc_id )
@@ -115,7 +115,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             
                 new_hex = make_basic_hex( place , main_map._drawscale)
                 new_hex.genkey = '11000000'
-                new_hex.fill = (99,88,60)
+                new_hex._fill = (99,88,60)
             
 
                 try:

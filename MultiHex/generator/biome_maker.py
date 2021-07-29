@@ -44,16 +44,15 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
     for ID in main_map.catalog:
         if main_map.catalog[ID].genkey[0]=='1':
-            main_map.catalog[ID].fill = (99,88,60)
+            main_map.catalog[ID]._fill = (99,88,60)
             main_map.catalog[ID].biome = "mountain"
             continue
         if main_map.catalog[ID].genkey[1]=='1':
-            main_map.catalog[ID].fill = (158,140,96)
+            main_map.catalog[ID]._fill = (158,140,96)
             main_map.catalog[ID].biome = "mountain"
             continue
       
         this_climatizer.apply_climate_to_hex( main_map.catalog[ID] )
-        main_map.catalog[ID].rescale_color()
 
 
     #                      MAKE BIOMES (REGIONS)

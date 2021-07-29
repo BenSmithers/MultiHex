@@ -336,17 +336,23 @@ class clicker_control(QGraphicsScene):
         """
         if (not isinstance(action, NullAction)) and (action is not None):
             # if it's a draw-type action, pass the draw-tuple up to the master 
-            if action.drawtype:
-                drawing = action.draw()
-                self.mater.interpret_draw_tuple(drawing) 
+            self.master.unsaved_changes = True
 
             self._actionmanager.do_now(action)
+            if action.drawtype:
+                drawing = action.draw()
+                self.master.interpret_draw_tuple(drawing) 
+
 
     def undo(self):
-        self._actionmanager.undo()
+        drawing = self._actionmanager.undo()
+        if drawing is not None:
+            self.master.interpret_draw_tuple(drawing) 
        
     def redo(self):
-        self._actionmanager.redo()
+        drawing = self._actionmanager.redo()
+        if drawing is not None:
+            self.master.interpret_draw_tuple(drawing)
 
     def keyPressEvent(self, event):
         event.accept()
@@ -363,15 +369,23 @@ class clicker_control(QGraphicsScene):
         if event.key() == QtCore.Qt.Key_Minus or event.key()==QtCore.Qt.Key_PageDown or event.key()==QtCore.Qt.Key_BracketLeft:
             self.parent.scale( 0.95, 0.95 )
 
+        if event.key == QtCore.Qt.Key_Escape:
+            self.drop()
+
         # check if the user did Ctrl+Z for undo or Ctrl+R for redo
         if QApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
             if event.key()==QtCore.Qt.Key_Z:
-                self.ActionManager.undo()
+                self.undo()
             if event.key()==QtCore.Qt.Key_R:
-                self.ActionManager.redo()
+                self.redo()
             if event.key()==QtCore.Qt.Key_S:
                 Logger.Log("Saving!")
                 self.master.save_map()
+                self.unsaved_changes = False
+
+            if event.key()==QtCore.Qt.Key_N:
+                # new map? 
+                pass 
 
 
     def mousePressEvent(self, event):
@@ -1443,7 +1457,7 @@ class hex_brush(Basic_Brush):
         if params is None:
             use = self._brush_params
             skip = self._skip_params
-            which.fill = self.get_color()
+            which._fill = self.get_color()
         else:
             if not isinstance(params, dict):
                 raise TypeError("'params', if used, should be {}, not {}".format(dict, type(params)))
@@ -1460,25 +1474,25 @@ class hex_brush(Basic_Brush):
         if self._state==0:
             self.select_evt(event)
         elif self._state == 1:
-            self.write(event)
+            return self.write(event)
 
     def primary_mouse_held(self, event):
         if self._state==0:
             pass
         elif self._state == 1:
-            self.primary_mouse_released(event)
+            return self.primary_mouse_released(event)
 
     def secondary_mouse_held(self, event):
         if self._state==0:
             pass
         elif self._state==1:
-            self.secondary_mouse_released(event)
+            return self.secondary_mouse_released(event)
     
     def secondary_mouse_released(self,event):
         if self._state==0:
             self.deselect_evt(event)
         elif self._state == 1:
-            self.erase(event)
+            return self.erase(event)
 
     def select(self, loc_id=None ):
         Basic_Brush.select(self, loc_id)
@@ -1520,9 +1534,6 @@ class hex_brush(Basic_Brush):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
 
-        if loc_id in self.drawn_hexes:
-            self.parent.scene.removeItem( self.drawn_hexes[ loc_id ] ) 
-            del self.drawn_hexes[loc_id]
         action = Add_Remove_Hex(hexID=loc_id, hex=None)
 
         if self._brush_size ==2:
@@ -1561,7 +1572,6 @@ class hex_brush(Basic_Brush):
             if (loc_id in self.parent.main_map.catalog) and self.overwrite:
                 # if we're overwriting, delete any hex that exists herecd
                 self.adjust_hex( self.parent.main_map.catalog[loc_id])
-                self.parent.main_map.catalog[loc_id].rescale_color()
             else:
                 # create a hex at that point, with a radius given by the current drawscale 
                 new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
@@ -1578,7 +1588,6 @@ class hex_brush(Basic_Brush):
                 try:
                     if (neighbor in self.parent.main_map.catalog) and self.overwrite:
                         self.adjust_hex( self.parent.main_map.catalog[neighbor])
-                        self.parent.main_map.catalog[neighbor].rescale_color()
                     else:
                         new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
                         self.parent.main_map.register_hex( new_hex, neighbor )            
@@ -1602,10 +1611,9 @@ class hex_brush(Basic_Brush):
             del self.drawn_hexes[hex_id]
 
     def draw_hex(self, hex_id):
-        try:
-            this_hex = self.parent.main_map.catalog[ hex_id ]
-        except KeyError:
+        if hex_id not in self.parent.main_map.catalog:
             return
+        this_hex = self.parent.main_map.catalog[ hex_id ]
 
         if self.use_param_as_color=='':
             self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))

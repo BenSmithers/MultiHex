@@ -257,7 +257,6 @@ class Hex:
     Datastructure to represent a single hex on a hex map
 
     @ build_name            - creates a name for hex biome - not implemented
-    @ rescale_color         - recalculates the color based off of the current color and altitude
     """
     def __init__(self, center=default_p, radius=1.0 ):
         if not isinstance(center, Point):
@@ -268,11 +267,19 @@ class Hex:
         self._center = center
         self._radius = radius
         
-        self.outline= (240,240,240)
-        self.fill   = (100,100,100) 
+        self._outline= (240,240,240)
+        self._fill   = (100,100,100) 
 
         # used in procedural generation
         self.genkey            = '00000000'
+
+    @property
+    def outline(self):
+        return self._outline
+    
+    @property
+    def fill(self):
+        return self._fill
 
     def get_cost(self, other):
         """
@@ -318,7 +325,8 @@ class Hex:
         return(same)
 
     def __repr__(self):
-        return("{}@{}".format(self.__class__))
+        return("{}@{}".format("Hex", self.center))
+
 
     
 
@@ -941,7 +949,7 @@ class Hexmap:
         for hex_id in self.rid_catalog[r_layer][rID_loser].ids:
             self.id_map[r_layer][ hex_id ] = rID_main
 
-        # delete the old region
+        # delete the old regionNone
         del self.rid_catalog[r_layer][ rID_loser ]
 
 
@@ -951,7 +959,7 @@ class Hexmap:
 
         @param target_id - the ID of the removed hex
         """ 
-        self.catalog[target_id] = None # remove reference to hex, let garbage collector get it 
+        del self.catalog[target_id]
         if target_id == self._active_id:
             self._active_id = None
         elif self._party_hex == self._active_id:
@@ -971,7 +979,6 @@ class Hexmap:
             self.catalog[new_id] = target_hex
             self.catalog[new_id]._altitude_base = temp_altitude
             self.catalog[new_id]._temperature_base = temp_temp
-            self.catalog[new_id].rescale_color()
         else:
             self.catalog[new_id] = target_hex
 

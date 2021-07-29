@@ -492,7 +492,6 @@ class Detail_Brush( basic_tool ):
         if center_id in self.parent.main_map.catalog:
             setattr(self.parent.main_map.catalog[center_id], self.configuring, getattr(self.parent.main_map.catalog[center_id], self.configuring) + sign*self.magnitude)
             self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[center_id])
-            self.parent.main_map.catalog[center_id].rescale_color()
             self.parent.hex_control.redraw_hex(center_id)
 
         reduced = self.magnitude
@@ -505,7 +504,6 @@ class Detail_Brush( basic_tool ):
                     new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalog[each], self.configuring) + sign*reduced))
                     setattr(self.parent.main_map.catalog[each], self.configuring, new_value)
                     self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[each])
-                    self.parent.main_map.catalog[each].rescale_color()
                     self.parent.hex_control.redraw_hex(each)
             iter+=1
 
@@ -1097,9 +1095,15 @@ class OHex(Hex):
             raise TypeError("Expected type {}, got {}".format(float, type(what)))
         self._temperature_base = what
         
-    def rescale_color(self):
-        self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
-                        min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
-                        min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+    @property
+    def fill(self):
+        return(min( 255, max( 0, self._fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+    @property
+    def outline(self):
+        return(min( 255, max( 0, self._outline[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._outline[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._outline[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
 
 

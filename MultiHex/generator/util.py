@@ -118,7 +118,7 @@ class Climatizer:
 
         super, sub = self.get_sup_sub( temp )
 
-        target.fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
+        target._fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
         target.biome = sub
 
 
@@ -413,10 +413,10 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
                 # this may have made ocean become land and land become ocean... 
                 if main_map.catalog[ID]._altitude_base < 0.:
                     main_map.catalog[ID]._is_land = False
-                    main_map.catalog[ID].fill = new_color( False, total / float(existing))
+                    main_map.catalog[ID]._fill = new_color( False, total / float(existing))
                 else:
                     main_map.catalog[ID]._is_land = True
-                    main_map.catalog[ID].fill = new_color( True, total/float(existing))
+                    main_map.catalog[ID]._fill = new_color( True, total/float(existing))
 
         if 'rain' in what:
             if this_one._is_land and not (this_one.genkey[0]=='1'): 
@@ -435,7 +435,7 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
                     print("Warn! Setting rainfall > 1: {}".format(total/float(existing)))
 
                 green = 100 +  int(min( [120, max([ 120*main_map.catalog[ID]._rainfall_base, 0.0  ])]))
-                main_map.catalog[ID].fill = ( 155, green, 0)
+                main_map.catalog[ID]._fill = ( 155, green, 0)
             else:
                 # we're not smoothing the rainfall for the ocean
                 pass 

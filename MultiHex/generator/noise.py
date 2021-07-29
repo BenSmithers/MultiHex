@@ -272,6 +272,5 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
         # use the Hexes location to skew the specified attribute of the hex 
         new_value = getattr(this_hex, attr) + magnitude*sample_noise(cent.x, cent.y, 1.1*main_map.dimensions[0], 1.1*main_map.dimensions[1], texture)
         setattr( this_hex, attr, new_value)
-        this_hex.rescale_color()
     save_map( main_map, which )
 

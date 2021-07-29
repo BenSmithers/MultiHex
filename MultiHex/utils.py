@@ -131,7 +131,7 @@ class Add_Remove_Hex(MapAction):
         self.verify(kwargs)
         self.newHex = kwargs["hex"]
         self.hexID = kwargs["hexID"]
-        if not isinstance(self.newHex, (Hex, None)):
+        if not isinstance(self.newHex, Hex) and (self.newHex is not None):
             Logger.Fatal("AddHex actions require {} or {}, not {}".format(Hex, None, type(self.newHex)), TypeError)
 
         self._drawtype = True
@@ -147,7 +147,7 @@ class Add_Remove_Hex(MapAction):
             # we set aside what was already there (if anything), and tell the map to get rid of it. 
             # then we register the new hex and make the inverter function 
             if self.hexID in map.catalog:
-                old_hex = map.catalog[self.hex_id]
+                old_hex = map.catalog[self.hexID]
                 map.remove_hex(self.hexID)
             else:
                 old_hex = None
@@ -166,7 +166,7 @@ class Add_Remove_Entity(MapAction):
             2. there was no hex already there 
         """
         MapAction.__init__(self, recurring=None, **kwargs)
-        needed = ["eID", "entity"]
+        self.needed = ["eID", "entity"]
         self.verify(kwargs)
 
 class EditEntity(MapAction):
@@ -178,7 +178,7 @@ class EditEntity(MapAction):
         This action edits an entity 
         """
         MapAction.__init__(self, recurring=None, **kwargs)
-        needed = ["eID", "parameter", "new_value"]
+        self.needed = ["eID", "parameter", "new_value"]
         self.verify(kwargs)
         self.eID = kwargs["eID"]
         self.parameter = kwargs["parameter"]
@@ -271,7 +271,7 @@ class ActionManager:
         self.clock = Clock()
         self._configured = False
         if parent_map is not None:
-            self.configure(parent_map)
+            self.configure_with_map(parent_map)
 
         self.database_dir = get_base_dir()
         self.database_filename = "event_database.csv"
@@ -313,16 +313,25 @@ class ActionManager:
         
         #does the action, stores inverse #does the action, stores inverse 
         inverse = list1[0](self.parent)
+        
+        # check if we'll need to redraw anything 
+        draw = None
+        if list1[0].drawtype:
+            draw = list1[0].draw()
+
         list2.appendleft(inverse)
         while len(list2)>self.n_history_max:
             list2.pop()
         
         list1.popleft()
 
+        # check if the thing we did has a draw command, if it does, pass that up
+        return draw
+
     def undo(self):
-        self._generic_do(self.undo_history, self.redo_history)
+        return self._generic_do(self.undo_history, self.redo_history)
     def redo(self):
-        self._generic_do(self.redo_history, self.undo_history)
+        return self._generic_do(self.redo_history, self.undo_history)
 
 
 

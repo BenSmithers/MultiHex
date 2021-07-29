@@ -254,7 +254,7 @@ class main_window(QMainWindow):
             Logger.Fatal("Not sure what to do with this draw-tuple: {}".format(draw),ValueError)
 
         if draw[0]==actionDrawTypes.hex:
-            self.hex_control.draw_hex(draw[2])
+            self.hex_control.redraw_hex(draw[2])
         elif draw[0]==actionDrawTypes.region:
             if draw[1]=="biome":
                 self.biome_control.redraw_region(draw[2])
