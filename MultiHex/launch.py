@@ -1,6 +1,7 @@
 #!/usr/bin/python3.8
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QMainWindow, QFileDialog, QDialog, QApplication, QWidget
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QMainWindow, QFileDialog, QApplication, QWidget, QDialog
+from PyQt5.QtPrintSupport import QPrintDialog, QPrinter, QPrintPreviewDialog
 
 import os
 import sys 
@@ -112,6 +113,21 @@ class main_window(QMainWindow):
         self.scene.render(painter)
         painter.end()
         image.save(temp)
+
+    def print(self):
+        printer = QPrinter()
+        dialog = QPrintPreviewDialog(printer)
+        def render(printer):
+            size   = QtCore.QSize(self.main_map.dimensions[0], self.main_map.dimensions[1])
+            image  = QtGui.QImage(size,QtGui.QImage.Format_ARGB32_Premultiplied)
+            painter= QtGui.QPainter(printer)
+            self.scene.render(painter)
+            painter.end()
+
+        dialog.paintRequested.connect(render)
+        dialog.exec_()
+
+
 
     def smart_ui_chooser(self):
         """
