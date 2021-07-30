@@ -43,6 +43,7 @@ class actionDrawTypes(Enum):
     region = 2
     entity = 3
     path = 4
+    meta = 5
 
 class MapEvent:
     def __init__(self,recurring=None, **kwargs):
@@ -159,7 +160,7 @@ class Add_Remove_Hex(MapAction):
         
         return Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
 
-class AdjustExistingHex(MapAction):
+class SwapExistingHex(MapAction):
     def __init__(self, **kwargs):
         """
         This action changes an existing hex to have the given set of parameters
@@ -190,7 +191,7 @@ class AdjustExistingHex(MapAction):
             if not actionskip:
                 setattr(map.catalog[self.hexID], key, self.params[key])
         
-        return AdjustExistingHex(params=old_params, hexID=self.hexID)
+        return SwapExistingHex(params=old_params, hexID=self.hexID)
 
 class Add_Remove_Entity(MapAction):
     def __init__(self, **kwargs):
@@ -246,6 +247,14 @@ class MetaAction(MapAction):
             Logger.Fatal("Cannot make a meta action of no actions {}".format(len(args)))
         
         self._actions = [arg for arg in args]
+        
+    def draw(self):
+        return (actionDrawTypes.meta, "", [action.draw() for action in self.actions])
+
+    @property
+    def drawtype(self) -> bool:
+        thisbool = (not all([(not action.drawtype) for action in self._actions]))
+        return thisbool
 
     def add_to(self, action:MapAction):
         if action is None:

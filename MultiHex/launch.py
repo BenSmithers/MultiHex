@@ -266,8 +266,6 @@ class main_window(QMainWindow):
 
         It's basically a switch statement 
         """
-        if not len(draw)==3:
-            Logger.Fatal("Not sure what to do with this draw-tuple: {}".format(draw),ValueError)
 
         if draw[0]==actionDrawTypes.hex:
             self.hex_control.redraw_hex(draw[2])
@@ -287,6 +285,9 @@ class main_window(QMainWindow):
                 self.path_control.draw_path(draw[2])
             elif draw[1]=="river":
                 self.river_control.draw_path(draw[2])
+        elif draw[0]==actionDrawTypes.meta:
+            for entry in draw[2]:
+                self.interpret_draw_tuple(entry)
         else:
             Logger.Fatal("Unknown action draw type {}".format(draw[0]), NotImplementedError)
 

@@ -1,11 +1,10 @@
 from MultiHex.core import Hex, Point, Region, Path, Hexmap
-from MultiHex.core import RegionMergeError, RegionPopError
 
 from MultiHex.logger import Logger
 
 from MultiHex.objects import Settlement, Government
 from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
-from MultiHex.utils import AdjustExistingHex
+from MultiHex.utils import MetaAction, SwapExistingHex
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
@@ -469,16 +468,16 @@ class Detail_Brush( basic_tool ):
             self._hover_circle = self.parent.scene.addEllipse(real_place.x-eff_rad , real_place.y-eff_rad, 2*eff_rad, 2*eff_rad , pen=self.pen, brush=self.brush)
 
     def primary_mouse_held(self, event):
-        self.primary_mouse_released(event)
+        return self.primary_mouse_released(event)
 
     def secondary_mouse_held(self, event):
-        self.secondary_mouse_released(event)
+        return self.secondary_mouse_released(event)
 
     def primary_mouse_released(self, event):
-        self.brushy_brushy(event, 1)
+        return self.brushy_brushy(event, 1)
 
     def secondary_mouse_released(self, event):
-        self.brushy_brushy(event, -1)
+        return self.brushy_brushy(event, -1)
 
     def brushy_brushy( self, event, sign=1):
         """
@@ -491,31 +490,25 @@ class Detail_Brush( basic_tool ):
         center_id = self.parent.main_map.get_id_from_point(place)
 
         if center_id in self.parent.main_map.catalog:
-            setattr(self.parent.main_map.catalog[center_id], self.configuring, getattr(self.parent.main_map.catalog[center_id], self.configuring) + sign*self.magnitude)
-            if self.parent.main_map.catalog[center_id]._altitude_base > 0.0:
-                self.parent.main_map.catalog[center_id]._is_land = True
-            else:
-                self.parent.main_map.catalog[center_id]._is_land = False
-            self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[center_id])
-            self.parent.hex_control.redraw_hex(center_id)
+            action = OverlandAdjust(hexID=center_id,
+                                    params={self.configuring:getattr(self.parent.main_map.catalog[center_id], self.configuring) + sign*self.magnitude},
+                                    climatizer=self.parent.climatizer)
 
         reduced = self.magnitude
         iter = 1
+        actions = MetaAction(action)
         while iter <= self.radius:
             reduced *= 2./3
             neighbors = self.parent.main_map.get_hex_neighbors(center_id, iter)
             for each in neighbors:
                 if each in self.parent.main_map.catalog:
                     new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalog[each], self.configuring) + sign*reduced))
-                    setattr(self.parent.main_map.catalog[each], self.configuring, new_value)
-                    if self.parent.main_map.catalog[each]._altitude_base > 0.0:
-                        self.parent.main_map.catalog[each]._is_land = True
-                    else:
-                        self.parent.main_map.catalog[each]._is_land = False
-                    self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[each])
-                    self.parent.hex_control.redraw_hex(each)
+                    action = OverlandAdjust(hexID=each,
+                                    params={self.configuring:new_value},
+                                    climatizer=self.parent.climatizer)
+                    actions.add_to(action)
             iter+=1
-
+        return actions
     def drop(self):
         if self._hover_circle is not None:
             self.parent.scene.removeItem(self._hover_circle)
@@ -969,12 +962,33 @@ class OEntity_Brush( entity_brush ):
         entity_brush.__init__(self, parent)
         self._settlement = Town
 
-class OverlandAdjust(AdjustExistingHex):
+class OverlandAdjust(SwapExistingHex):
     """
-    We need to set it up so that if we raise sea enough it becomes land
+    Now here, we're changing the parameters of a hex. Rather than setting the altitude to zero, here we change whether or not it is sea
+    """
+    def __init__(self, **kwargs):
+        SwapExistingHex.__init__(self, **kwargs)
+        self.needed.append("climatizer")
+
+        self.climatizer = kwargs["climatizer"]
+
+    def __call__(self, map, actionskip=False):
+        inverse = SwapExistingHex.__call__(self, map, False)
+        which = map.catalog[self.hexID]
+        if which._altitude_base > 0.0:
+            which._is_land = True
+        else:
+            which._is_land = False
+        self.climatizer.apply_climate_to_hex(which)
+        return OverlandAdjust(params=inverse.params, hexID=self.hexID, climatizer=self.climatizer)
+
+class OverlandSwap(SwapExistingHex):
+    """
+    This is used to swap an existing hex with one from the palette. When we draw a new hex, we check the altitude,
+    and set it to zero if we're doing a land/sea swap. 
     """
     def __call__(self, map, actionskip=False):
-        inverse = AdjustExistingHex.__call__(self, map, actionskip)
+        inverse = SwapExistingHex.__call__(self, map, actionskip)
         if not actionskip:
             which = map.catalog[self.hexID]
             which._is_land = bool(which._is_land)
@@ -984,7 +998,7 @@ class OverlandAdjust(AdjustExistingHex):
             else:
                 if which._altitude_base > 0:
                     which._altitude_base = 0.0
-        return OverlandAdjust(params=inverse.params, hexID=self.hexID)
+        return OverlandSwap(params=inverse.params, hexID=self.hexID)
 
 
 class OHex_Brush( hex_brush ):
@@ -996,7 +1010,7 @@ class OHex_Brush( hex_brush ):
 
         self._river_drawn = []
 
-        self._adjustAction = OverlandAdjust
+        self._adjustAction = OverlandSwap
 
     def get_color_for_param_overwrite(self,parameter_name, parameter_value):
         """

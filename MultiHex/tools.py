@@ -8,7 +8,7 @@ from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path,
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 from MultiHex.logger import Logger
 from MultiHex.utils import MapAction, ActionManager, NullAction, actionDrawTypes
-from MultiHex.utils import MetaAction, Add_Remove_Hex, AdjustExistingHex
+from MultiHex.utils import MetaAction, Add_Remove_Hex, SwapExistingHex
 
 import copy
 
@@ -1424,7 +1424,7 @@ class hex_brush(Basic_Brush):
         # what type of Hex does this brush draw
         self._brush_type = Hex
         self._addAction = Add_Remove_Hex
-        self._adjustAction = AdjustExistingHex
+        self._adjustAction = SwapExistingHex
         # parameters (like rainfall, temperature, etc) and their defaults 
         self._brush_params = {}
         # which of these to skip when overwriting an existing hex 
