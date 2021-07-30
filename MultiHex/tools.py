@@ -7,7 +7,10 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 from MultiHex.logger import Logger
-from MultiHex.utils import MapAction, ActionManager, MetaAction, Add_Remove_Hex, NullAction
+from MultiHex.utils import MapAction, ActionManager, NullAction, actionDrawTypes
+from MultiHex.utils import MetaAction, Add_Remove_Hex, AdjustExistingHex
+
+import copy
 
 import os # used for some of the icons
 
@@ -317,20 +320,18 @@ class clicker_control(QGraphicsScene):
         self.parent = parent #QGraphicsView - this is the graphics view that QT needs
         self.master = master #main window - this is the main window that _I_ need
 
-        self._alt_held = False
-
         # we assign these to these macros so we can swap left/right button. Could be useful for future left/right handed mouse support 
         self._primary = QtCore.Qt.LeftButton
         self._secondary = QtCore.Qt.RightButton
 
         self._actionmanager = ActionManager(self.master.main_map)
-        self._meta_event_holder = None
+        self._meta_event_holder = False
 
     @property
     def ActionManager(self):
         return self._actionmanager
 
-    def do_action(self, action:MapAction):
+    def do_action(self, action:MapAction, action_skip=False):
         """
         Tell the action manager to do an action now so long as it isn't a NullAction 
         """
@@ -338,31 +339,35 @@ class clicker_control(QGraphicsScene):
             # if it's a draw-type action, pass the draw-tuple up to the master 
             self.master.unsaved_changes = True
 
-            self._actionmanager.do_now(action)
+            self._actionmanager.do_now(action, False, action_skip)
             if action.drawtype:
                 drawing = action.draw()
                 self.master.interpret_draw_tuple(drawing) 
-
+            if isinstance(action, MetaAction):
+                for act in action.actions:
+                    if act.drawtype:
+                        self.master.interpret_draw_tuple(act.draw())
 
     def undo(self):
+        """
+        For the undo and redo, the action manager calls up the actions, then collects and returns the draw tuples
+
+        We iterate over those draw tuples and send them up to the parent, who handles the drawing. 
+        The cool thing is this is totally agnostic to any future draw functions. We don't have to know what kind of actions or drawing is going on! 
+        """
         drawing = self._actionmanager.undo()
-        if drawing is not None:
-            self.master.interpret_draw_tuple(drawing) 
-       
+        for draw in drawing:
+            self.master.interpret_draw_tuple(draw) 
     def redo(self):
         drawing = self._actionmanager.redo()
-        if drawing is not None:
-            self.master.interpret_draw_tuple(drawing)
+        for draw in drawing:
+            self.master.interpret_draw_tuple(draw)
 
-    def keyPressEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = True
     def keyReleaseEvent(self, event):
+        """
+        We use this to handle the situations where the user presses a key! 
+        """
         event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = False
-
         if event.key() == QtCore.Qt.Key_Plus or event.key()==QtCore.Qt.Key_PageUp or event.key()==QtCore.Qt.Key_BracketRight:
             self.parent.scale( 1.05, 1.05 )
 
@@ -386,6 +391,12 @@ class clicker_control(QGraphicsScene):
             if event.key()==QtCore.Qt.Key_N:
                 # new map? 
                 pass 
+            if event.key()==QtCore.Qt.Key_P:
+                # print 
+                self.master.print()
+
+        if QApplication.keyboardModifiers()==QtCore.Qt.AltModifier:
+            pass
 
 
     def mousePressEvent(self, event):
@@ -402,26 +413,34 @@ class clicker_control(QGraphicsScene):
     def mouseReleaseEvent( self, event):
         """
         Called when a mouse button is released 
+
+        we do the action, and if we're working on a meta action we finish it up and do the drawing
+        if we aren't then we just send it on to this clicker control's do function 
         """
         if event.button()==self._primary:
             # usually a brush event 
             event.accept()
-            action = self._active.primary_mouse_released(event)
-
-            if self._meta_event_holder is not None:
-                self._meta_event_holder.add_to(action)
-                self.do_action(self._meta_event_holder)
-                self._meta_event_holder = None
-            else:
-                self.do_action(action)
             self._primary_held = False
-
+            action = self._active.primary_mouse_released(event)                
+            
         elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
             self._secondary_held = False   
             action = self._active.secondary_mouse_released( event )
-            self.do_action(action)
+        
+        if event.button()==self._primary or event.button()==self._secondary:
+            if action is not None:
+                if self._meta_event_holder:
+                    self.ActionManager.add_to_meta(action)
+                    self.ActionManager.finish_meta()
+                    
+                    self._meta_event_holder = False
+                else:
+                    self.do_action(action)
+            
+                if action.drawtype:
+                    self.master.interpret_draw_tuple(action.draw())
 
    #mouseMoveEvent 
     def mouseMoveEvent(self,event):
@@ -429,19 +448,26 @@ class clicker_control(QGraphicsScene):
         called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
         """
         event.accept()
-        if self._primary_held:
-            if self._meta_event_holder is None:
-                self._meta_event_holder = MetaAction()
-
+        if self._primary_held and self._secondary_held:
+            self._primary_held = False
+            self._secondary_held = False
+            return
+        elif self._primary_held:
             # we want to do these actions before adding them. That way we show the results of them while using the tool
-            action = None
             action = self._active.primary_mouse_held( event )
+        elif self._secondary_held:
+            action = self._active.secondary_mouse_held(event)
 
+        if self._primary_held or self._secondary_held:
             if action is not None:
-                self._meta_event_holder.add_to(action)
-                self.do_action( action )
-             
+                self.ActionManager.add_to_meta(action)
+                self._meta_event_holder=True
+                
+                if action.drawtype:
+                    self.master.interpret_draw_tuple(action.draw())
+
         self._active.mouse_moved( event )
+
 
     def mouseDoubleClickEvent(self, event):
         self._active.double_click_event( event )
@@ -1397,6 +1423,8 @@ class hex_brush(Basic_Brush):
         Basic_Brush.__init__(self,parent)
         # what type of Hex does this brush draw
         self._brush_type = Hex
+        self._addAction = Add_Remove_Hex
+        self._adjustAction = AdjustExistingHex
         # parameters (like rainfall, temperature, etc) and their defaults 
         self._brush_params = {}
         # which of these to skip when overwriting an existing hex 
@@ -1441,34 +1469,31 @@ class hex_brush(Basic_Brush):
             raise TypeError("Expected number-like for 'radius', got {}".format(type(radius)))
 
         new = self._brush_type(where, radius)
-        self.adjust_hex( new )
+        params = self.get_params()
+        for key in params:
+            setattr(new, key, params[key])
         return(new)
 
-    def adjust_hex( self, which, params=None ):
+    def get_params( self, params=None ):
         """
         Adjust the given hex to the configured parameters (or a set of given parameters)
 
         Nominally, this uses the tileset we're configured with to choose the color for the hex 
         """
-        if not isinstance(which, Hex):
-            raise TypeError("Expected {}, got {}.".format(Hex, type(which)))
-
 
         if params is None:
             use = self._brush_params
             skip = self._skip_params
-            which._fill = self.get_color()
         else:
             if not isinstance(params, dict):
                 raise TypeError("'params', if used, should be {}, not {}".format(dict, type(params)))
             use = params
             skip = []
 
-        for param in use:
-            if param in skip:
-                continue
-            else:
-                setattr( which, param, use[param])
+        # get all the brush parameters that aren't explicitly being skipped
+        params = {key: use[key] for key in filter(lambda val: val not in skip, use)}
+        params["_fill"]=self.get_color() 
+        return params
 
     def primary_mouse_released(self, event):
         if self._state==0:
@@ -1500,12 +1525,13 @@ class hex_brush(Basic_Brush):
         # remove any selection outline
         if self._selection_outline_obj is not None:
             self.parent.scene.removeItem(self._selection_outline_obj)
+            self._selection_outline_obj = None
 
         if (loc_id is not None) and (loc_id in self.parent.main_map.catalog):
             self.QPen.setColor(QtGui.QColor(0, 220,220))
             self.QPen.setStyle(1)
             self.QBrush.setStyle(0)
-            outline = self.parent.main_map.get_neighbor_outline( loc_id , self._brush_size)
+            outline = self.parent.main_map.get_neighbor_outline( loc_id , 1)
 
             self._selection_outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
             self._selection_outline_obj.setZValue(10)
@@ -1513,10 +1539,8 @@ class hex_brush(Basic_Brush):
     def select_evt(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        try:
-            self.parent.extra_ui.det_show_selected(loc_id)
-        except AttributeError:
-            pass
+    
+        self.parent.extra_ui.det_show_selected(loc_id if loc_id in self.parent.main_map.catalog else None)
         self.select( loc_id ) #select
 
 
@@ -1534,16 +1558,16 @@ class hex_brush(Basic_Brush):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
 
-        action = Add_Remove_Hex(hexID=loc_id, hex=None)
+        if loc_id in self.parent.main_map.catalog:
+            action = self._addAction(hexID=loc_id, hex=None)
+        else:
+            action = NullAction()
 
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors(loc_id)
             actions = MetaAction(action)
             for neighbor in neighbors:
-                if neighbor in self.drawn_hexes:
-                    self.parent.scene.removeItem( self.drawn_hexes[neighbor])
-                    del self.drawn_hexes[neighbor]
-                actions.add_to(Add_Remove_Hex(hexID=loc_id, hex=None))
+                actions.add_to(self._addAction(hexID=neighbor, hex=None))
                 
             return actions
         else: 
@@ -1568,32 +1592,30 @@ class hex_brush(Basic_Brush):
         new_hex_center = self.parent.main_map.get_point_from_id( loc_id )
         
         # register that hex in the hexmap 
-        try:
-            if (loc_id in self.parent.main_map.catalog) and self.overwrite:
-                # if we're overwriting, delete any hex that exists herecd
-                self.adjust_hex( self.parent.main_map.catalog[loc_id])
-            else:
-                # create a hex at that point, with a radius given by the current drawscale 
-                new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
-                self.parent.main_map.register_hex( new_hex, loc_id )
-            self.redraw_hex( loc_id )
-        except NameError:
+        if (loc_id in self.parent.main_map.catalog) and self.overwrite:
+            # if we're overwriting, delete any hex that exists herecd
+            action = self._adjustAction(hexID=loc_id,params=self.get_params())
+            
+        else:
+            # create a hex at that point, with a radius given by the current drawscale 
+            new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
+            action = self._addAction(hexID=loc_id, hex=new_hex)
+
             # if we aren't overwriting, the register_hex function will raise a NameError. That's okay 
-            pass
 
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors( loc_id )
+            actions = MetaAction(action)
             for neighbor in neighbors:
                 new_hex_center = self.parent.main_map.get_point_from_id( neighbor )
-                try:
-                    if (neighbor in self.parent.main_map.catalog) and self.overwrite:
-                        self.adjust_hex( self.parent.main_map.catalog[neighbor])
-                    else:
-                        new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
-                        self.parent.main_map.register_hex( new_hex, neighbor )            
-                    self.redraw_hex( neighbor )
-                except NameError:
-                    pass
+                if (neighbor in self.parent.main_map.catalog) and self.overwrite:
+                    actions.add_to(self._adjustAction(hexID=neighbor,params=self.get_params()))
+                else:
+                    new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
+                    actions.add_to(self._addAction(hexID=neighbor, hex=new_hex))
+            return actions
+        else:
+            return action
 
     def get_color_for_param_overwrite(self, parameter_name, parameter_value):
         """

@@ -8,6 +8,7 @@ from MultiHex.core import Hexmap, Hex
 from MultiHex.logger import Logger
 
 from pandas import DataFrame, read_csv
+from copy import copy
 import os
 import sys
 
@@ -143,20 +144,53 @@ class Add_Remove_Hex(MapAction):
         if (self.hexID not in map.catalog) and (self.newHex is None):
             Logger.Fatal("Tried removing hex from tile that doesn't exist.", ValueError)
         
-        if not actionskip:
-            # we set aside what was already there (if anything), and tell the map to get rid of it. 
-            # then we register the new hex and make the inverter function 
-            if self.hexID in map.catalog:
-                old_hex = map.catalog[self.hexID]
+        # we set aside what was already there (if anything), and tell the map to get rid of it. 
+        # then we register the new hex and make the inverter function 
+        if self.hexID in map.catalog:
+            old_hex = map.catalog[self.hexID]
+            if not actionskip:
                 map.remove_hex(self.hexID)
-            else:
-                old_hex = None
+        else:
+            old_hex = None
 
-        
-            if isinstance(self.newHex, Hex):
-                map.register_hex(self.newHex, self.hexID)
+    
+        if isinstance(self.newHex, Hex) and (not actionskip):
+            map.register_hex(self.newHex, self.hexID)
         
         return Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
+
+class AdjustExistingHex(MapAction):
+    def __init__(self, **kwargs):
+        """
+        This action changes an existing hex to have the given set of parameters
+        """
+        MapAction.__init__(self, recurring=None,**kwargs)
+
+        self.needed = ["hexID","params"]
+        self.verify(kwargs)
+        self.hexID = kwargs["hexID"]
+        self.params = kwargs["params"]
+        if not isinstance(self.params, dict):
+            Logger.Fatal("Adjust hex actions require {}, not {}".format(dict, type(self.params)))
+
+        self._drawtype = True
+    
+    def draw(self):
+        return(actionDrawTypes.hex, "", self.hexID)
+
+    def __call__(self, map, actionskip=False):
+        if self.hexID not in map.catalog:
+            Logger.Fatal("Tried adjusting hex that doesn't exist.", ValueError)
+        
+        # we set aside what was already there (if anything), and tell the map to get rid of it. 
+        # then we register the new hex and make the inverter function 
+        old_params = {}
+        for key in self.params:
+            old_params[key] = copy(getattr(map.catalog[self.hexID], key))
+            if not actionskip:
+                setattr(map.catalog[self.hexID], key, self.params[key])
+        
+        return AdjustExistingHex(params=old_params, hexID=self.hexID)
 
 class Add_Remove_Entity(MapAction):
     def __init__(self, **kwargs):
@@ -185,15 +219,15 @@ class EditEntity(MapAction):
         self.new_value = kwargs["new_value"]
 
     def __call__(self, map:Hexmap, actionskip=False):
-        if not actionskip:
-            if not self.eID in map.eid_catalog:
-                Logger.Warn("Action Failed! {} not in catalog".format(self.eID))
-                return
-            else:
-                entity = map.eid_catalog[self.eID]
-                inverse = EditEntity(eID=self.eID, parameter=self.parameter, new_value=getattr(entity, self.parameter))
+        if not self.eID in map.eid_catalog:
+            Logger.Warn("Action Failed! {} not in catalog".format(self.eID))
+            return
+        else:
+            entity = map.eid_catalog[self.eID]
+            inverse = EditEntity(eID=self.eID, parameter=self.parameter, new_value=getattr(entity, self.parameter))
+            if not actionskip:
                 setattr(entity, self.parameter, self.new_value)
-                return inverse 
+            return inverse 
 
 
 
@@ -203,12 +237,15 @@ class MetaAction(MapAction):
 
     This would be useful when working with large brushes 
     """
-    def __init__(self, *args):
-        MapAction.__init__(self,*args)
+    def __init__(self, *args,**kwargs):
+        MapAction.__init__(self,**kwargs)
         for arg in args:
             if not isinstance(arg, MapAction):
-                Logger.Fatal("Cannot make metaaction with object of type {}".format(type(arg)), TypeError)
-        self._actions = list(args)
+                Logger.Fatal("Cannot make MetaAction with object of type {}".format(type(arg)), TypeError)
+        if len(args)==0:
+            Logger.Fatal("Cannot make a meta action of no actions {}".format(len(args)))
+        
+        self._actions = [arg for arg in args]
 
     def add_to(self, action:MapAction):
         if action is None:
@@ -224,11 +261,11 @@ class MetaAction(MapAction):
     def actions(self):
         return self._actions
 
-    def __call__(self, map):
+    def __call__(self, map:Hexmap, actionskip=True):
         """
         The actions are already done, so just make the inverses and return them in inverse-order 
         """
-        inverses = [action(map, True) for action in self._actions][::-1]
+        inverses = [action(map, actionskip) for action in self.actions][::-1]
         return MetaAction(*inverses)
 
 class MapMove(MapAction):
@@ -281,23 +318,69 @@ class ActionManager:
         self.redo_history = deque()
         self.undo_history = deque()
 
+        self._making_meta = False
+        self._meta_inverses = []
+
     def configure_with_map(self, parent_map:Hexmap):
         self._configured = True
         self._parent = parent_map
 
-    def do_now(self, event: MapAction):
+    def add_to_meta(self, action:MapAction):
+        """
+        For these special meta actions, we do the things as they are sent. Once we do something non-meta related (or call the finish meta function), 
+        we bundle these up in a single MetaAction that can be reversed as one. 
+
+        This is important for doing sweeping brush strokes! 
+        """
+        self._making_meta = True
+        if not isinstance(action, NullAction):
+            inverse = action(self.parent)
+            self._meta_inverses.append(inverse)
+
+
+    def finish_meta(self):
+        """
+        Use the inverses we've collected to make a new MetaEvent, then manually pop that on our undo queue
+
+        return the draw thingy from the meta action 
+        """
+        this_meta = MetaAction(*self._meta_inverses[::-1])
+            
+        self.undo_history.appendleft(this_meta)
+        while len(self.undo_history)>self.n_history_max:
+            self.undo_history.pop()
+
+            if len(self.redo_history)!=0:
+                self.redo_history=deque()
+
+        self._meta_inverses=[]
+        self._meta = None
+        self._making_meta = False
+
+    def do_now(self, event: MapAction, ignore_history = False, action_skip=False):
+        """
+        Tells the action manager to do an action
+            - ignore history, bypass the undo/redo functionality. Useful with MetaActions. We can do those actions as we build up the MetaAction
+                    then pass the MetaAction through here again and use it with the undo/redo
+            - action skip, adds this to the undo/redo queues without actually doing anything. Used with the above! 
+        """
         if not self._configured:
             return
 
-        inverse = event(self.parent)
-        self.undo_history.appendleft(inverse)
-        while len(self.undo_history)>self.n_history_max:
-            self.undo_history.pop()
-        
-        if len(self.redo_history)!=0:
-            self.redo_history = deque()
+        if self._making_meta:
+            self.finish_meta()
 
-        
+
+        inverse = event(self.parent, action_skip)
+        if not ignore_history:
+            self.undo_history.appendleft(inverse)
+            while len(self.undo_history)>self.n_history_max:
+                self.undo_history.pop()
+            
+            if len(self.redo_history)!=0:
+                self.redo_history = deque()
+
+        return inverse
     
     def _generic_do(self, list1, list2):
         """
@@ -307,17 +390,20 @@ class ActionManager:
         This is done to give undo/redo functionality.
         """
         if not self._configured:
-            return
+            return []
         if len(list1)==0:
-            return
+            return []
         
-        #does the action, stores inverse #does the action, stores inverse 
-        inverse = list1[0](self.parent)
+        #does the action, stores inverse 
+        inverse = list1[0](self.parent, False)
         
         # check if we'll need to redraw anything 
         draw = None
         if list1[0].drawtype:
-            draw = list1[0].draw()
+            draw = [list1[0].draw(),]
+        if isinstance(list1[0], MetaAction):
+
+            draw = [entry.draw() for entry in filter(lambda ex:ex.drawtype, list1[0].actions)]
 
         list2.appendleft(inverse)
         while len(list2)>self.n_history_max:
@@ -329,6 +415,9 @@ class ActionManager:
         return draw
 
     def undo(self):
+        if self._making_meta:
+            self.finish_meta()
+        
         return self._generic_do(self.undo_history, self.redo_history)
     def redo(self):
         return self._generic_do(self.redo_history, self.undo_history)

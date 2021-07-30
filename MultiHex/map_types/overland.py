@@ -5,6 +5,7 @@ from MultiHex.logger import Logger
 
 from MultiHex.objects import Settlement, Government
 from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
+from MultiHex.utils import AdjustExistingHex
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
@@ -491,6 +492,10 @@ class Detail_Brush( basic_tool ):
 
         if center_id in self.parent.main_map.catalog:
             setattr(self.parent.main_map.catalog[center_id], self.configuring, getattr(self.parent.main_map.catalog[center_id], self.configuring) + sign*self.magnitude)
+            if self.parent.main_map.catalog[center_id]._altitude_base > 0.0:
+                self.parent.main_map.catalog[center_id]._is_land = True
+            else:
+                self.parent.main_map.catalog[center_id]._is_land = False
             self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[center_id])
             self.parent.hex_control.redraw_hex(center_id)
 
@@ -503,6 +508,10 @@ class Detail_Brush( basic_tool ):
                 if each in self.parent.main_map.catalog:
                     new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalog[each], self.configuring) + sign*reduced))
                     setattr(self.parent.main_map.catalog[each], self.configuring, new_value)
+                    if self.parent.main_map.catalog[each]._altitude_base > 0.0:
+                        self.parent.main_map.catalog[each]._is_land = True
+                    else:
+                        self.parent.main_map.catalog[each]._is_land = False
                     self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalog[each])
                     self.parent.hex_control.redraw_hex(each)
             iter+=1
@@ -960,6 +969,24 @@ class OEntity_Brush( entity_brush ):
         entity_brush.__init__(self, parent)
         self._settlement = Town
 
+class OverlandAdjust(AdjustExistingHex):
+    """
+    We need to set it up so that if we raise sea enough it becomes land
+    """
+    def __call__(self, map, actionskip=False):
+        inverse = AdjustExistingHex.__call__(self, map, actionskip)
+        if not actionskip:
+            which = map.catalog[self.hexID]
+            which._is_land = bool(which._is_land)
+            if which._is_land:
+                if which._altitude_base < 0:
+                    which._altitude_base = 0.0
+            else:
+                if which._altitude_base > 0:
+                    which._altitude_base = 0.0
+        return OverlandAdjust(params=inverse.params, hexID=self.hexID)
+
+
 class OHex_Brush( hex_brush ):
     def __init__(self, parent):
         hex_brush.__init__(self, parent)
@@ -969,19 +996,7 @@ class OHex_Brush( hex_brush ):
 
         self._river_drawn = []
 
-    def adjust_hex(self, which, params=None):
-        """
-        Sets the specified Hex to the specified parameters
-        """
-        hex_brush.adjust_hex(self, which, params)
-
-        which._is_land = bool(which._is_land)
-        if which._is_land:
-            if which._altitude_base < 0:
-                which._altitude_base = 0.
-        else:
-            if which._altitude_base > 0:
-                which._altitude_base = 0
+        self._adjustAction = OverlandAdjust
 
     def get_color_for_param_overwrite(self,parameter_name, parameter_value):
         """
@@ -998,11 +1013,6 @@ class OHex_Brush( hex_brush ):
         else:
             # default to red->green
             return(QtGui.QColor(max(0,min(255, 230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
-
-
- 
-
-
     
 class OHex(Hex):
     """

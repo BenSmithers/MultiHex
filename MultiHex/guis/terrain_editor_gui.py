@@ -619,7 +619,6 @@ class terrain_ui:
                 continue
 
             self.parent.climatizer.apply_climate_to_hex( self.parent.main_map.catalog[hexID] )
-            self.parent.main_map.catalog[hexID].rescale_color()
             self.parent.hex_control.redraw_hex(hexID)
 
 
