@@ -2,13 +2,16 @@ from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsDropShadowEff
 from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
 from PyQt5.QtWidgets import QAction
 from PyQt5 import QtGui, QtCore, QtWidgets
+from numpy.lib.function_base import select
 
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
 from MultiHex.logger import Logger
-from MultiHex.utils import MapAction, ActionManager, NullAction, actionDrawTypes
+
+from MultiHex.utils import MapAction, ActionManager, NullAction
 from MultiHex.utils import MetaAction, Add_Remove_Hex, SwapExistingHex
+from MultiHex.utils import Region_Add_Remove, New_Region_Action, Delete_Region_Action, Merge_Regions_Action
 
 import copy
 
@@ -331,7 +334,7 @@ class clicker_control(QGraphicsScene):
     def ActionManager(self):
         return self._actionmanager
 
-    def do_action(self, action:MapAction, action_skip=False):
+    def do_action(self, action:MapAction):
         """
         Tell the action manager to do an action now so long as it isn't a NullAction 
         """
@@ -339,7 +342,7 @@ class clicker_control(QGraphicsScene):
             # if it's a draw-type action, pass the draw-tuple up to the master 
             self.master.unsaved_changes = True
 
-            self._actionmanager.do_now(action, False, action_skip)
+            self._actionmanager.do_now(action, False)
             if action.drawtype:
                 drawing = action.draw()
                 self.master.interpret_draw_tuple(drawing) 
@@ -1745,7 +1748,7 @@ class region_brush(Basic_Brush):
         """
         Do the same thing as if the mouse was released
         """
-        self.secondary_mouse_released(event)
+        return self.secondary_mouse_released(event)
 
     def secondary_mouse_released(self, event):
         """
@@ -1760,10 +1763,10 @@ class region_brush(Basic_Brush):
             if self.selected is None:
                 self.set_state(0)
             else:
-                self.reg_remove( event )
+                return self.reg_remove( event )
 
     def primary_mouse_held(self, event):
-        self.primary_mouse_released( event )
+        return self.primary_mouse_released( event )
 
     def primary_mouse_released(self, event):
         """
@@ -1786,9 +1789,9 @@ class region_brush(Basic_Brush):
 
         else:
             if self._writing:
-                self.reg_add(event)
+                return self.reg_add(event)
             else:
-                self.reg_remove(event)
+                return self.reg_remove(event)
 
     def toggle_mode(self, force=None):
         """
@@ -1818,7 +1821,6 @@ class region_brush(Basic_Brush):
         if loc_id not in self.parent.main_map.catalog:
             return
 
-
         if self.selected is None:
             # if the hex here is not mapped to a registered region, 
             if (loc_id not in self.parent.main_map.id_map[self.r_layer]):
@@ -1826,58 +1828,58 @@ class region_brush(Basic_Brush):
                 new_reg = self._type( loc_id, self.parent.main_map )
                                 
                 # get the newely created rid, set it to active 
-                self.select( self.parent.main_map.register_new_region( new_reg, self.r_layer ) )
-                new_reg.name = self.default_name +" "+ str( self.selected )
+                # the selection is done as part of this action's draw stage 
+                rid=self.parent.main_map.get_next_rid(self.r_layer)
+                new_reg.name=self.default_name+" {}".format(rid)
+                action = New_Region_Action(region=new_reg, rlayer=self.r_layer, rID=rid)
 
                 # self.parent.main_map.id_map( loc_id )
                 
                 if self._brush_size == 2:
+                    actions = MetaAction(action)
                     # build a new region around this one
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        self.parent.main_map.add_to_region( self.selected, ID, self.r_layer )
-
-                self.redraw_region( self.selected )
+                        #self.parent.main_map.add_to_region( self.selected, ID, self.r_layer )
+                        actions.add_to(Region_Add_Remove(rID=rid, rlayer=self.r_layer, hexID=ID))
+                    return actions
+                else:
+                    return action
             else:
                 # no active region, but the hex here belongs to a region. 
                 # set this hexes' region to the active one 
-                self.select( self.parent.main_map.id_map[self.r_layer][ loc_id ] )
+                rid = self.parent.main_map.id_map[self.r_layer][ loc_id ] 
+                return Region_Add_Remove( hexID=loc_id, rID=rid, rlayer=self.r_layer)
         else:
             if self._brush_size==1:
-                try:
-                    # try adding it
-                    # if it can't, it raises a RegionMergeError exception
-                    other_rid = self.parent.main_map.add_to_region(self.selected , loc_id, self.r_layer )
-                    
-                    if (other_rid!=-1) and (other_rid is not None): 
-                        # add_to_region returns an rid if it removes a hex from another region.
-                        # it returns -1, it didn't remove anything from anywhere 
-                        self.redraw_region( other_rid )
-                    self.redraw_region( self.selected )
-                except RegionMergeError:
-                    pass
-                except RegionPopError:
-                    pass
+                # check if the hex here is already in the region
+                if loc_id in self.parent.main_map.id_map[self.r_layer]:
+                    if self.selected==self.parent.main_map.id_map[self.r_layer][loc_id]:
+                        return NullAction()
+                
+                return Region_Add_Remove(hexID=loc_id, rID=self.selected, rlayer=self.r_layer)
+                #other_rid = self.parent.main_map.add_to_region(self.selected , loc_id, self.r_layer )
+                 
             elif self._brush_size==2:
-                # This seems to cause some instability...
-                # ...
                 if loc_id not in self.parent.main_map.id_map[self.r_layer]:
+                    # rather than adding each hex individually, which could cause execution order issues
+                    # we make a new region and merge it into the main one! 
+
                     # create and register a region
                     temp_region = self._type( loc_id , self.parent.main_map )
-                    new_rid = self.parent.main_map.register_new_region( temp_region, self.r_layer )
+                    new_rid = self.parent.main_map.get_next_rid(self.r_layer)
+                    temp_region.name=self.default_name+" {}".format(new_rid)
+
+                    actions = MetaAction(New_Region_Action(rlayer=self.r_layer, region=temp_region, rID=new_rid))
 
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        try:
-                            self.parent.main_map.add_to_region( new_rid, ID , self.r_layer )
-                        except (RegionMergeError, RegionPopError):
-                            pass
+                        if ID in self.parent.main_map.id_map[self.r_layer]:
+                            if self.selected==self.parent.main_map.id_map[self.r_layer][ID]:
+                                continue
+                        actions.add_to(Region_Add_Remove(rID=new_rid, rlayer=self.r_layer, hexID=ID))
 
                     # now merge the regions
-                    try: 
-                        self.parent.main_map.merge_regions( self.selected , new_rid , self.r_layer)
-                        self.redraw_region( self.selected )
-                    except RegionMergeError:
-                        # delete that region, remove it
-                        self.parent.main_map.remove_region( new_rid , self.r_layer )
+                    actions.add_to(Merge_Regions_Action(rID1=self.selected, rID2=new_rid, rlayer=self.r_layer))
+                    
 
     def reg_remove(self, event):
         """
@@ -1890,17 +1892,9 @@ class region_brush(Basic_Brush):
 
         if loc_id not in self.parent.main_map.id_map[self.r_layer]:
             # nothing to pop
-            return
+            return NullAction()
         else:
-            # get this hexes's region id 
-            this_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
-            # remvoe this hex from that region
-            try:
-                self.parent.main_map.remove_from_region( loc_id, self.r_layer )
-                # redraw that region
-                self.redraw_region( this_rid )
-            except RegionPopError:
-                pass
+            return Region_Add_Remove(rID=None, hexID=loc_id, rlayer=self.r_layer)
 
     def redraw_region(self, reg_id ):
         """

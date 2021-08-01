@@ -1,11 +1,15 @@
 from enum import Enum 
 from collections import deque
 
+from numpy.core.fromnumeric import ravel
+
 from MultiHex.objects import Mobile, Entity 
 from MultiHex.clock import Clock, Time
-from MultiHex.core import Hexmap, Hex
+from MultiHex.core import Hexmap, Hex, Region
 
 from MultiHex.logger import Logger
+
+from MultiHex.core import  RegionMergeError, RegionPopError
 
 from pandas import DataFrame, read_csv
 from copy import copy
@@ -39,6 +43,7 @@ class mapActionItem(Enum):
     move = 1
 
 class actionDrawTypes(Enum):
+    null = 0
     hex = 1
     region = 2
     entity = 3
@@ -100,16 +105,15 @@ class MapAction(MapEvent):
         This will return a tuple describing 
         """
         if not self.drawtype:
-            raise NotImplementedError("Must override base implementation")
+            raise NotImplementedError("Must override base implementation in {}".format(self.__class__))
 
-    def __call__(self, map, actionskip=False):
+    def __call__(self, map):
         """
         This function is accessed through the `action(map)` syntax
 
         This then does the action defined by this object, and returns the inverse of the action.
-        The actionskip argument tells the action to not do, and just return the inverse 
         """
-        raise NotImplementedError("Must override base implementation!")
+        raise NotImplementedError("Must override base implementation in {}".format(self.__class__))
 
 class NullAction(MapAction):
     """
@@ -117,8 +121,11 @@ class NullAction(MapAction):
     """
     def __init__(self, **kwargs):
         MapAction.__init__(self, recurring=None, **kwargs)
-    def __call__(self, map, actionskip=False):
-        pass
+        self._drawtype=False
+    def draw(self):
+        return(actionDrawTypes.null,"","")
+    def __call__(self, map:Hexmap):
+        return NullAction()
 
 class Add_Remove_Hex(MapAction):
     def __init__(self, **kwargs):
@@ -141,7 +148,7 @@ class Add_Remove_Hex(MapAction):
     def draw(self):
         return(actionDrawTypes.hex, "", self.hexID)
 
-    def __call__(self, map, actionskip=False):
+    def __call__(self, map):
         if (self.hexID not in map.catalog) and (self.newHex is None):
             Logger.Fatal("Tried removing hex from tile that doesn't exist.", ValueError)
         
@@ -149,16 +156,162 @@ class Add_Remove_Hex(MapAction):
         # then we register the new hex and make the inverter function 
         if self.hexID in map.catalog:
             old_hex = map.catalog[self.hexID]
-            if not actionskip:
-                map.remove_hex(self.hexID)
+            map.remove_hex(self.hexID)
         else:
             old_hex = None
 
     
-        if isinstance(self.newHex, Hex) and (not actionskip):
+        if isinstance(self.newHex, Hex):
             map.register_hex(self.newHex, self.hexID)
         
         return Add_Remove_Hex(hex=old_hex, hexID=self.hexID)
+
+class New_Region_Action(MapAction):
+    """
+    This action registers a region in the Hexmap
+    Requires knowledge of next available rid! 
+    """
+    def __init__(self, **kwargs):
+        MapAction.__init__(self, recurring=None, **kwargs)
+        self.needed=["rlayer", "region","rID"]
+        self.verify(kwargs)
+        self.rlayer=kwargs["rlayer"]
+        self.region=kwargs["region"]
+        self.rID=kwargs["rID"]
+
+        self._drawtype = True
+    def draw(self):
+        return(actionDrawTypes.region,self.rlayer, self.rID)
+
+    def __call__(self, map:Hexmap):
+        map.register_new_region( self.region, self.rlayer )
+        return Delete_Region_Action(rID=self.rID, region=self.region, rlayer=self.rlayer)
+
+class Delete_Region_Action(MapAction):
+    """
+    This action deletes a region from a Hexmap
+    """
+    def __init__(self, **kwargs):
+        MapAction.__init__(self, recurring=None, **kwargs)
+        self.needed=["rlayer", "rID"]
+        self.verify(kwargs)
+        self.rlayer=kwargs["rlayer"]
+        self.rID=kwargs["rID"]
+
+        self._drawtype = True
+    def draw(self):
+        return(actionDrawTypes.region,self.rlayer, self.rID)
+
+    def __call__(self, map:Hexmap):
+        old_region = map.rid_catalog[self.rlayer][self.rID]
+        map.remove_region(self.rID, self.rlayer)
+
+        return New_Region_Action(region=old_region, rlayer=self.rlayer, rID=self.rID)
+
+class Region_Add_Remove(MapAction):
+    def __init__(self, **kwargs):
+        MapAction.__init__(self, recurring=None, **kwargs)
+        self.needed = ["rID", 'hexID', 'rlayer']
+        self.verify(kwargs)
+        self.rID = kwargs["rID"]
+        self.hexID = kwargs["hexID"]
+        self.rlayer = kwargs["rlayer"]
+        
+        self.old_rid = None
+
+        self._drawtype = True
+    def draw(self):
+        # if we were removing, we need to know the rID of the region we remove from
+        # since we always call before we draw, we can *trust* that we set the "old_rid" before we actually draw
+        # so we check if it was a removal, and if it was we use that to draw 
+        if self.rID is None:
+            return(actionDrawTypes.region,self.rlayer, self.old_rid)
+        else:
+            return(actionDrawTypes.region,self.rlayer, self.rID)
+
+    def __call__(self, map:Hexmap):
+        if self.rlayer not in map.rid_catalog:
+            Logger.Fatal("Been asked to add to region layer {}, only see {}".format(self.rlayer, map.rid_catalog.keys()))
+
+        if self.rID is None: # removing this hex from a region
+            if self.hexID not in map.id_map[self.rlayer]:
+                Logger.Fatal("Trying to remove hex {} from its region, but I don't see it in any region".format(self.hexID))
+
+            self.old_rid = map.id_map[self.rlayer][self.hexID]
+            old_region = copy(map.rid_catalog[self.rlayer][self.old_rid])
+
+            try:
+                map.remove_from_region( self.hexID, self.rlayer )
+            except (RegionMergeError, RegionPopError):
+                return NullAction()
+
+            # this might have deleted the region, check if its still part of the catalog
+            if self.old_rid not in map.rid_catalog[self.rlayer]:
+                # if it did, the inverse is to make a new region with the old rid
+                return New_Region_Action(rID=self.old_rid, rlayer=self.rlayer, region=old_region)
+            else:
+                # if it didn't delete the region, then we just add the hex back in
+                return Region_Add_Remove(rID=self.old_rid, hexID=self.hexID, rlayer=self.rlayer)
+        else:
+            # there's a chance this action is the inverse of one that deleted the region we're adding back to
+
+            if self.rID not in map.rid_catalog[self.rlayer]:
+                # should be creating a new region
+                Logger.Fatal("Cannot add to region {}, which doesn't exist".format(self.rID), ValueError)
+            else:
+                try:
+                    map.add_to_region(self.rID , self.hexID, self.rlayer ) 
+                except (RegionMergeError, RegionPopError):
+                    return NullAction()
+            
+            return Region_Add_Remove(rID=None, hexID=self.hexID, rlayer=self.rlayer)
+
+class Merge_Regions_Action(MapAction):
+    def __init__(self, **kwargs):
+        MapAction.__init__(self, recurring=None, **kwargs)
+        self.needed=["rID2","rID2","rlayer"]
+        self.verify(kwargs)
+        self.rid1 = kwargs["rID1"]
+        self.rid2 = kwargs["rID2"]
+        self.rlayer = kwargs["rlayer"]
+
+        self._drawtype=True
+    
+    def draw(self):
+        d2 = ((actionDrawTypes.region, self.rlayer, self.rid1), (actionDrawTypes.region, self.rlayer, self.rid2))
+        return (actionDrawTypes.meta, "", d2)
+    
+    def __call__(self, map:Hexmap):
+        """
+        Merging these is easy, the inverse is a little hard. 
+
+        We have to delete the combined region (Region 1), then create the sub-regions (1 and 2)
+        We need to also be sure to make the sub-regions in order of increasing region number 
+        """
+        try:
+            map.merge_regions(self.rid1, self.rid2, self.rlayer)
+        except RegionMergeError:
+            return NullAction()
+
+        region1 = map.rid_catalog[self.rlayer][self.rid1]
+        region2 = map.rid_catalog[self.rlayer][self.rid2]
+        inverse = MetaAction(Delete_Region_Action(rID=self.rid1, rlayer=self.rlayer))
+        add1 = New_Region_Action(rID=self.rid1, region=region1, rlayer=self.rlayer)
+        add2 = New_Region_Action(rID=self.rid2, region=region2, rlayer=self.rlayer)
+        """
+         the order matters! 
+         if these are in the wrong order we may go 
+                    do      undo         redo
+         rid1+rid2 --> rid1 --> rid2+rid1 --> rid2 
+        """
+        if self.rid1>self.rid2:
+            inverse.add_to(add2)
+            inverse.add_to(add1)
+        else:
+            inverse.add_to(add1)
+            inverse.add_to(add2)
+        return(inverse)
+
 
 class SwapExistingHex(MapAction):
     def __init__(self, **kwargs):
@@ -179,7 +332,7 @@ class SwapExistingHex(MapAction):
     def draw(self):
         return(actionDrawTypes.hex, "", self.hexID)
 
-    def __call__(self, map, actionskip=False):
+    def __call__(self, map:Hexmap):
         if self.hexID not in map.catalog:
             Logger.Fatal("Tried adjusting hex that doesn't exist.", ValueError)
         
@@ -188,8 +341,7 @@ class SwapExistingHex(MapAction):
         old_params = {}
         for key in self.params:
             old_params[key] = copy(getattr(map.catalog[self.hexID], key))
-            if not actionskip:
-                setattr(map.catalog[self.hexID], key, self.params[key])
+            setattr(map.catalog[self.hexID], key, self.params[key])
         
         return SwapExistingHex(params=old_params, hexID=self.hexID)
 
@@ -219,15 +371,14 @@ class EditEntity(MapAction):
         self.parameter = kwargs["parameter"]
         self.new_value = kwargs["new_value"]
 
-    def __call__(self, map:Hexmap, actionskip=False):
+    def __call__(self, map:Hexmap):
         if not self.eID in map.eid_catalog:
             Logger.Warn("Action Failed! {} not in catalog".format(self.eID))
             return
         else:
             entity = map.eid_catalog[self.eID]
             inverse = EditEntity(eID=self.eID, parameter=self.parameter, new_value=getattr(entity, self.parameter))
-            if not actionskip:
-                setattr(entity, self.parameter, self.new_value)
+            setattr(entity, self.parameter, self.new_value)
             return inverse 
 
 
@@ -249,7 +400,7 @@ class MetaAction(MapAction):
         self._actions = [arg for arg in args]
         
     def draw(self):
-        return (actionDrawTypes.meta, "", [action.draw() for action in self.actions])
+        return (actionDrawTypes.meta, "", [action.draw() for action in filter(lambda ex:ex.drawtype, self.actions)])
 
     @property
     def drawtype(self) -> bool:
@@ -270,11 +421,11 @@ class MetaAction(MapAction):
     def actions(self):
         return self._actions
 
-    def __call__(self, map:Hexmap, actionskip=True):
+    def __call__(self, map:Hexmap):
         """
         The actions are already done, so just make the inverses and return them in inverse-order 
         """
-        inverses = [action(map, actionskip) for action in self.actions][::-1]
+        inverses = [action(map) for action in self.actions][::-1]
         return MetaAction(*inverses)
 
 class MapMove(MapAction):
@@ -293,13 +444,12 @@ class MapMove(MapAction):
         self.eid = kwargs["eID"]
         self.to = kwargs["to"]
 
-    def __call__(self, map, actionskip=False):
+    def __call__(self, map):
         if not isinstance(map, Hexmap):
             Logger.Fatal("Can only act on {}, not {}".format(Hexmap, type(map)), ValueError)
 
         inverse = MapMove(eID = self.eid, to=map.eid_catalog[self.eid].location)
-        if not actionskip:
-            map.eid_catalog[self.eid].set_location(self.to)
+        map.eid_catalog[self.eid].set_location(self.to)
 
         return(inverse)
 
@@ -353,6 +503,8 @@ class ActionManager:
 
         return the draw thingy from the meta action 
         """
+        if len(self._meta_inverses)==0:
+            return
         this_meta = MetaAction(*self._meta_inverses[::-1])
             
         self.undo_history.appendleft(this_meta)
@@ -363,10 +515,9 @@ class ActionManager:
                 self.redo_history=deque()
 
         self._meta_inverses=[]
-        self._meta = None
         self._making_meta = False
 
-    def do_now(self, event: MapAction, ignore_history = False, action_skip=False):
+    def do_now(self, event: MapAction, ignore_history = False):
         """
         Tells the action manager to do an action
             - ignore history, bypass the undo/redo functionality. Useful with MetaActions. We can do those actions as we build up the MetaAction
@@ -380,7 +531,7 @@ class ActionManager:
             self.finish_meta()
 
 
-        inverse = event(self.parent, action_skip)
+        inverse = event(self.parent)
         if not ignore_history:
             self.undo_history.appendleft(inverse)
             while len(self.undo_history)>self.n_history_max:
@@ -404,7 +555,7 @@ class ActionManager:
             return []
         
         #does the action, stores inverse 
-        inverse = list1[0](self.parent, False)
+        inverse = list1[0](self.parent)
         
         # check if we'll need to redraw anything 
         draw = None

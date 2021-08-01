@@ -813,12 +813,14 @@ class Biome_Brush( region_brush):
         self._type = Biome
 
     def primary_mouse_released(self, event):
-        region_brush.primary_mouse_released(self, event)
+        action = region_brush.primary_mouse_released(self, event)
         self.parent.extra_ui.biome_update_gui()
-     
+        return action
+
     def secondary_mouse_released(self, event):
-        region_brush.secondary_mouse_released(self, event)
+        action = region_brush.secondary_mouse_released(self, event)
         self.parent.extra_ui.biome_update_gui()
+        return action
 
 class County_Brush( region_brush ):
     def __init__(self, parent):
@@ -833,11 +835,12 @@ class County_Brush( region_brush ):
         self.in_nation = None
 
     def secondary_mouse_released(self, event):
-        region_brush.secondary_mouse_released( self, event )
+        return region_brush.secondary_mouse_released( self, event )
 
     def primary_mouse_released(self, event):
-        region_brush.primary_mouse_released(self, event)
+        action = region_brush.primary_mouse_released(self, event)
         self.parent.extra_ui.county_update_with_selected()
+        return action
 
 class Nation_Brush( basic_tool ):
     def __init__(self, parent):
@@ -893,7 +896,7 @@ class Nation_Brush( basic_tool ):
 
             if self.parent.main_map.rid_catalog[self._county_key][this_county_rid].nation is not None:
                 self.select(self.parent.main_map.rid_catalog[self._county_key][this_county_rid].nation)
-                self.parent.nation_update_gui()
+                self.parent.extra_ui.nation_update_gui()
 
         elif self._state == 1:
             # create the new nation with this county as a base
@@ -972,8 +975,8 @@ class OverlandAdjust(SwapExistingHex):
 
         self.climatizer = kwargs["climatizer"]
 
-    def __call__(self, map, actionskip=False):
-        inverse = SwapExistingHex.__call__(self, map, False)
+    def __call__(self, map):
+        inverse = SwapExistingHex.__call__(self, map)
         which = map.catalog[self.hexID]
         if which._altitude_base > 0.0:
             which._is_land = True
@@ -987,17 +990,16 @@ class OverlandSwap(SwapExistingHex):
     This is used to swap an existing hex with one from the palette. When we draw a new hex, we check the altitude,
     and set it to zero if we're doing a land/sea swap. 
     """
-    def __call__(self, map, actionskip=False):
-        inverse = SwapExistingHex.__call__(self, map, actionskip)
-        if not actionskip:
-            which = map.catalog[self.hexID]
-            which._is_land = bool(which._is_land)
-            if which._is_land:
-                if which._altitude_base < 0:
-                    which._altitude_base = 0.0
-            else:
-                if which._altitude_base > 0:
-                    which._altitude_base = 0.0
+    def __call__(self, map):
+        inverse = SwapExistingHex.__call__(self, map)
+        which = map.catalog[self.hexID]
+        which._is_land = bool(which._is_land)
+        if which._is_land:
+            if which._altitude_base < 0:
+                which._altitude_base = 0.0
+        else:
+            if which._altitude_base > 0:
+                which._altitude_base = 0.0
         return OverlandSwap(params=inverse.params, hexID=self.hexID)
 
 

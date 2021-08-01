@@ -829,6 +829,18 @@ class Hexmap:
         # delete the entity from the catalog 
         del self.eid_catalog[ eID ]
 
+    def get_next_rid(self, r_layer:str)->int:
+        if r_layer not in self.id_map:
+            self.id_map[r_layer] = {}
+        if r_layer not in self.rid_catalog:
+            self.rid_catalog[r_layer] = {}
+
+        new_rid = 1
+        while new_rid in self.rid_catalog[r_layer]:
+            new_rid += 1
+
+        return new_rid
+
     def register_new_region( self, target_region, r_layer ):
         """
         Registers a new region with this Hexmap. Adds it to the dictionaries, give it a unique rID, and set up all the maps for its contained Hexes 
@@ -847,9 +859,7 @@ class Hexmap:
                 raise KeyError("Region contains hex {} belonging to other region: {}".format(hex_id, self.id_map[r_layer][hex_id]))
 
         # first settle on a new rid - want the smallest, unused rid 
-        new_rid = 1
-        while new_rid in self.rid_catalog[r_layer]:
-            new_rid += 1
+        new_rid = self.get_next_rid(r_layer)
         
         target_region.set_color( new_rid )
         # register the region in the hexmap's region catalog 

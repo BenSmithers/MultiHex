@@ -13,7 +13,8 @@ from MultiHex.guis.main_gui import main_gui
 from MultiHex.core import Hexmap, save_map, load_map
 from MultiHex.tools import basic_tool, Map_Use_Tool
 from MultiHex.objects import Icons
-from MultiHex.map_types.overland import OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Nation, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
+from MultiHex.map_types.overland import OEntity_Brush, OHex_Brush, Road_Brush, County_Brush, Nation_Brush, Biome_Brush, River_Brush, ol_clicker_control, Detail_Brush
+from MultiHex.tools import region_brush
 from MultiHex.generator.util import get_tileset_params, create_name, Climatizer
 from MultiHex.utils import get_base_dir, actionDrawTypes
 
@@ -266,10 +267,14 @@ class main_window(QMainWindow):
 
         It's basically a switch statement 
         """
-
-        if draw[0]==actionDrawTypes.hex:
+        if draw[0]==actionDrawTypes.null:
+            pass
+        elif draw[0]==actionDrawTypes.hex:
             self.hex_control.redraw_hex(draw[2])
         elif draw[0]==actionDrawTypes.region:
+            if isinstance(self.scene.active, region_brush):
+                self.scene.active.select(draw[2] if (draw[2] in self.main_map.rid_catalog[draw[1]]) else None)
+
             if draw[1]=="biome":
                 self.biome_control.redraw_region(draw[2])
             elif draw[1]=="county":
