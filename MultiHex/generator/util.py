@@ -1,6 +1,6 @@
 #!/usr/bin/python3.6
 
-from math import exp
+from math import exp, sqrt
 from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd, Hex
 from MultiHex.map_types.overland import River
 
@@ -314,6 +314,8 @@ def fetch_synonyms(what):
     Description: Takes in a string and returns a list containing the string and several synonyms.
     """
     switcher = {
+        "shallows":["Bay", "Shallows"],
+        "ocean":["Sea", "Ocean"],
         "prarie": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
         "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
         "mountain": ["Mountains", "Peaks", "Crags"],
