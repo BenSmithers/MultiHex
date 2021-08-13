@@ -256,7 +256,7 @@ class Time:
         
 
     def __sub__(self, other):
-        new = Time(self.hour, self.minute, self.month, self.day, self.year)
+        new = Time(self.minute, self.hour, self.day, self.month, self.year)
         new._minute -= other._minute
         while new.minute<0:
             new._minute+=minutes_in_hour
@@ -334,13 +334,16 @@ class Time:
         """
         return( self.hour == other.hour and self.minute == other.minute and self.month == other.month and self.day==other.day and self.year==other.year)
 
+    def __float__(self):
+        return float(int(self))
+
     def __int__(self):
         """
         We need this special casting of the Time object so we can properly serialize these objects in the Pandas DataFrame
         """
         value = self.minute
         value += minutes_in_hour*self.hour + minutes_in_day*self.day + minutes_in_month*self.month + minutes_in_year*self.year
-        return(value)
+        return(int(value))
 
 minute = Time(minute=1)
 hour = Time(hour=1)
@@ -379,7 +382,9 @@ class Clock:
         self._cache_co_lon = 0.0
         self._cache_sin_lon = 0.0
 
-        
+    @property
+    def time(self):
+        return self._time
 
     def get_day_of_week(self):
         """

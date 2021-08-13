@@ -464,7 +464,6 @@ class ActionManager:
     def __init__(self, parent_map=None):
         self._queue = []
 
-        self.clock = Clock()
         self._configured = False
         if parent_map is not None:
             self.configure_with_map(parent_map)
@@ -480,9 +479,16 @@ class ActionManager:
         self._making_meta = False
         self._meta_inverses = []
 
+        self._clock = Clock()
+
+    @property
+    def clock(self):
+        return self._clock
+
     def configure_with_map(self, parent_map:Hexmap):
         self._configured = True
         self._parent = parent_map
+        self._clock = parent_map.clock
 
     def add_to_meta(self, action:MapAction):
         """
@@ -619,6 +625,9 @@ class ActionManager:
 
         self.clock.skip_to(data[0])
         self.queue.pop(0)
+
+    def skip_by_time(self, time):
+        self.skip_to_time(self.clock.time + time)
 
     def skip_to_time(self, time):
         if len(self.queue)!=0:
