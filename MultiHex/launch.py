@@ -97,6 +97,8 @@ class main_window(QMainWindow):
         if not os.path.exists(self.savedir):
             os.mkdir(self.savedir)
 
+        self._using_gui = ""
+
     def export_image(self):
         """
         Function is called when the 'export image' action is chosen. Exports a PNG of the map at the location of the user's choice
@@ -157,6 +159,7 @@ class main_window(QMainWindow):
         self.biome_control.small_font=False
         self._redraw_counties()
         self._redraw_biomes()
+        self._using_gui="terrain"
 
     def switch_to_civilization(self):
         self.scene.drop()
@@ -175,6 +178,7 @@ class main_window(QMainWindow):
         self._redraw_counties()
         self._redraw_biomes()
         self.scene.select(self.entity_control)
+        self._using_gui="civ"
 
     def switch_to_map_use(self):
         self.scene.drop()
@@ -193,6 +197,7 @@ class main_window(QMainWindow):
         self._redraw_counties()
         self._redraw_biomes()
         self.scene.select(self.map_use_control) # temporary until more buttons are here
+        self._using_gui="use"
 
     def show(self):
         QMainWindow.show(self)
@@ -277,8 +282,13 @@ class main_window(QMainWindow):
 
             if draw[1]=="biome":
                 self.biome_control.redraw_region(draw[2])
+                if self._using_gui=="terrain":
+                    self.extra_ui.biome_update_gui()
             elif draw[1]=="county":
                 self.county_control.redraw_region(draw[2])
+                if self._using_gui=="civ":
+                    self.extra_ui.county_update_with_selected()
+                
             else:
                 Logger.Fatal("Unfamiliar draw code {}".format(draw), ValueError)
         elif draw[0]==actionDrawTypes.entity:

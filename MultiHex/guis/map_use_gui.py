@@ -5,7 +5,8 @@ This file defines the properties of the Map Use mode for MultiHex
 from PyQt5 import QtCore, QtGui, QtWidgets
 import os
 
-from MultiHex.clock import Time, MultiHexCalendar
+from MultiHex.clock import Time, MultiHexCalendar, days_in_week
+from MultiHex.logger import Logger
 
 art_dir = os.path.join( os.path.dirname(__file__),'..','Artwork','buttons')
 
@@ -108,9 +109,11 @@ class map_use_ui:
         self.evt_evt_table.setVerticalHeaderLabels(["Date","Description"])
         self.evt_evt_table.setSortingEnabled(True)
         self.evt_evt_table.setEnabled(False)
+
         self._add_row_entry(Time(1,2,13,month=5,year=120),"Birthday?")
         self._add_row_entry(Time(1,2,27,month=2,year=120),"Happy day")
         self._add_row_entry(Time(13,4,15,month=4,year=119),"Happiest day")
+        
         self.evt_evt_table.horizontalHeader().setStretchLastSection(True)
         self.evt_evt_table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.evt_scroll_layout.addWidget(self.evt_evt_table)
@@ -142,8 +145,37 @@ class map_use_ui:
         self.evt_new_evt_button.setText("Add New Event")
         self.evt_formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.evt_new_evt_button)
         which_ui.contextPane.addItem(self.EventsList,"Event List")
+
+        self.evt_next_sun_button.clicked.connect(self.next_suntime_button_clicked)
+        self.evt_next_evt_button.clicked.connect(self.next_event_button_clicked)
+        self.evt_skip_button.clicked.connect(self.skip_button_clicked)
         
         #self.cal_Calendar.signals.signal.connect(self.dis_is_a_test)
+
+    def skip_button_clicked(self):
+        number = self.evt_skip_number_spin.value()
+        index = self.evt_skip_combo.currentIndex()
+        if index==0:
+            time = Time(minute=number, date=False)
+        elif index==1:
+            time = Time(hour=number, date=False)
+        elif index==2:
+            time = Time(day=number, date=False)
+        elif index==3:
+            time = Time(day=number*days_in_week, date=False)
+        elif index==4:
+            time = Time(month=number, date=False)
+        elif index==5:
+            time = Time(year=number, date=False)
+        else:
+            Logger.Fatal("Not sure what to do with index {}".format(index))
+        self.parent.scene.ActionManager.skip_by_time(time)
+
+    def next_event_button_clicked(self):
+        self.parent.scene
+
+    def next_suntime_button_clicked(self):
+        pass
 
     def _add_row_entry(self, date, description):
         """
