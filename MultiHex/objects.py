@@ -337,44 +337,103 @@ class SettlementWidget(GenericTab):
         self.nameedit.setText("City Name")
         self.formlayout.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.nameedit)
 
+        self.gridLayout = QtWidgets.QGridLayout()
+        self.totalPoplbl = QtWidgets.QLabel(self)
+        self.totalPoplbl.setObjectName("totalPoplbl")
+        self.totalPoplbl.setText("Total Population")
+        self.gridLayout.addWidget(self.totalPoplbl, 0,0)
+        self.totalWealthlbl = QtWidgets.QLabel(self)
+        self.totalWealthlbl.setObjectName("totalWealthlbl")
+        self.totalWealthlbl.setText("Total Wealth")
+        self.gridLayout.addWidget(self.totalWealthlbl, 0,1)
+        self.formlayout.setLayout(1, QtWidgets.QFormLayout.SpanningRole, self.gridLayout)
+
         self.populationlbl = QtWidgets.QLabel(self)
         self.populationlbl.setObjectName("populationlbl")
         self.populationlbl.setText("Population: ")
-        self.formlayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.populationlbl)
+        self.formlayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.populationlbl)
         self.populationedit = QtWidgets.QSpinBox(self)
-        self.populationedit.setMaximum(10000)
+        self.populationedit.setMaximum(1000000)
         self.populationedit.setMinimum(0)
         self.populationedit.setObjectName("populationedit")
-        self.formlayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.populationedit)
+        self.formlayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.populationedit)
 
         self.wealthlbl = QtWidgets.QLabel(self)
         self.wealthlbl.setObjectName("wealthlbl")
         self.wealthlbl.setText("Wealth: ")
-        self.formlayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.wealthlbl)
+        self.formlayout.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.wealthlbl)
         self.wealthedit = QtWidgets.QSpinBox(self)
-        self.wealthedit.setMaximum(10000)
+        self.wealthedit.setMaximum(1000000)
         self.wealthedit.setMinimum(0)
         self.wealthedit.setObjectName("wealthedit")
-        self.formlayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.wealthedit)
+        self.formlayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.wealthedit)
 
-        self.wardCombo = QtWidgets.QComboBox(self)
+        self.ward_grid_layout = QtWidgets.QGridLayout()
+        self.ward_label = QtWidgets.QLabel()
+        self.ward_label.setObjectName("ward_label")
+        self.ward_label.setText("Wards: ")
+        self.ward_grid_layout.addWidget(self.ward_label, 0, 0)
+
+        self.wardCombo = QtWidgets.QComboBox()
         self.wardCombo.setObjectName("wardCombo")
-        self.formlayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.wardCombo)
-
+        self.ward_grid_layout.addWidget(self.wardCombo, 0, 1)
+        self.ward_button = QtWidgets.QPushButton()
+        self.ward_button.setObjectName("ward_button")
+        self.ward_button.setText("Add New Ward")
+        self.ward_button.clicked.connect(self.new_ward)
+        self.ward_grid_layout.addWidget(self.ward_button,0,2)
         self.wardCombo.addItem("City Center")
-        self.wardCombo.addItem("Add New Ward")
-
         self.wardCombo.currentIndexChanged.connect(self.prep_ward_widget)
+
+        self.ward_widget = None
+        self._entity = None
+        self._previous_index = -1
 
         self.get_configuration(config_entity)
 
+    def new_ward(self):
+        new_ward = Settlement("New Ward", is_ward=True)
+        self._entity.add_ward(new_ward)
+        self.wardCombo.insertItem(self.wardCombo.count()-1, new_ward.name)
+        self.wardCombo.setCurrentIndex(self.wardCombo.count()-2)
+
+    def _clear_widget(self):
+        if self.ward_widget is not None:
+            self.formlayout.removeWidget(self.ward_widget)
+            self.ward_widget.deleteLater()
+            self.ward_widget = None
+
     def prep_ward_widget(self):
         index = self.wardCombo.currentIndex()
+
+        if self._previous_index!=-1:
+            if self.ward_widget is not None:
+                self.ward_widget.set_configuration( self._entity.wards[self._previous_index])
+                self.wardCombo.setItemText(self._previous_index, self.ward_widget.nameedit.text())
+
+                # update the population and wealth
+                self.populationedit.setValue(self._entity.partial_population)
+                self.wealthedit.setValue(self._entity.partial_wealth)
+
+        self._previous_index = index
+        self._clear_widget()
+
+        if index!=self.wardCombo.count()-1:
+            # prep ward widget?
+            self.ward_widget = SettlementWidget(self, self._entity.wards[index])
+            self.formlayout.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.ward_widget)
+
+        self.totalWealthlbl.setText("Total Wealth:    {}".format(self._entity.wealth))
+        self.totalPoplbl.setText("Total Population    {}".format(self._entity.wealth))
 
     def set_configuration(self, entity):
         GenericTab.set_configuration(self, entity)
         if not isinstance(entity, Settlement):
             raise TypeError("Expected {}, got {}".format(Settlement, type(entity)))
+
+        entity.name = self.nameedit.text()
+        entity.set_population(self.populationedit.value(), 0)
+        entity.set_wealth(self.wealthedit.value(), 0)
 
         return(entity)
 
@@ -382,12 +441,18 @@ class SettlementWidget(GenericTab):
         GenericTab.get_configuration(self, entity)
         if not isinstance(entity, Settlement):
             raise TypeError("Expected {}, got {}".format(Settlement, type(entity)))
+        self._entity = entity
+        self.nameedit.setText(entity.name)
+        self.wealthedit.setValue(entity.partial_wealth) 
+        self.populationedit.setValue(entity.partial_population)
 
-        self.wealthedit.setValue(entity.wealth)
-        self.populationedit.setValue(entity.population)
-        for ward in entity.wards:
-            self.wardCombo.insertItem(self.wardConmbo.count() - 1, ward.name)
-
+        if not entity._is_ward:
+            self.formlayout.setLayout(4, QtWidgets.QFormLayout.SpanningRole, self.ward_grid_layout)
+            for ward in entity.wards:
+                self.wardCombo.insertItem(self.wardCombo.count()-1, ward.name)
+        
+        self.totalWealthlbl.setText("Total Wealth:    {}".format(self._entity.wealth))
+        self.totalPoplbl.setText("Total Population    {}".format(self._entity.wealth))
 
 class Settlement(Entity, Government):
     """
