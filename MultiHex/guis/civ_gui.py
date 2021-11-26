@@ -958,6 +958,7 @@ class civ_ui:
         """
         self.parent.ui.contextPane.setCurrentIndex( 0 )
         self.parent.scene.select(self.parent.entity_control)
+        self.parent.entity_control.set_state(-1)
 
     def county_color_click(self):
         if self.parent.county_control.selected is None:

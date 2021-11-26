@@ -964,6 +964,14 @@ class entity_brush(basic_tool):
 
         self._settlement = Settlement
     
+    def set_state(self, state:int)->None:
+        if state in [-1,0,1]:
+            self._placing=state
+
+    def secondary_mouse_released(self, event):
+        if self._placing in [0,1]:
+            self._placing = -1
+
     def configure_icon_size(self):
         self._icon_size = int(self.parent.main_map._drawscale*2)
 
