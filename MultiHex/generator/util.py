@@ -1,6 +1,6 @@
 #!/usr/bin/python3.6
 
-from math import exp
+from math import exp, sqrt
 from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd, Hex
 from MultiHex.map_types.overland import River
 
@@ -118,7 +118,7 @@ class Climatizer:
 
         super, sub = self.get_sup_sub( temp )
 
-        target.fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
+        target._fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
         target.biome = sub
 
 
@@ -314,6 +314,8 @@ def fetch_synonyms(what):
     Description: Takes in a string and returns a list containing the string and several synonyms.
     """
     switcher = {
+        "shallows":["Bay", "Shallows"],
+        "ocean":["Sea", "Ocean"],
         "prarie": ["Grasslands", "Fields", "Prairie", "Plains", "Steppes"],
         "desert": ["Desert", "Badlands", "Wastes", "Barrens"],
         "mountain": ["Mountains", "Peaks", "Crags"],
@@ -392,10 +394,10 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
 
     print("    smoothing... "+full_str)
 
-    for ID in main_map.catalogue.keys():
+    for ID in main_map.catalog.keys():
         neighbors = main_map.get_hex_neighbors( ID )
 
-        this_one = main_map.catalogue[ID]
+        this_one = main_map.catalog[ID]
                 
         if 'alt' in what:
             # skip mountains 
@@ -403,39 +405,39 @@ def smooth(what = ['alt'] , which = os.path.join(os.path.dirname(__file__),'..',
                 existing = 1
                 total    = this_one._altitude_base
                 for neighbor in neighbors:
-                    if neighbor in main_map.catalogue:
+                    if neighbor in main_map.catalog:
                         existing += 1
-                        total    += main_map.catalogue[neighbor]._altitude_base 
+                        total    += main_map.catalog[neighbor]._altitude_base 
                 
                 # make this altitude the average of it and its neighbors (which exist)
-                main_map.catalogue[ID]._altitude_base = total / float(existing)
+                main_map.catalog[ID]._altitude_base = total / float(existing)
                 
                 # this may have made ocean become land and land become ocean... 
-                if main_map.catalogue[ID]._altitude_base < 0.:
-                    main_map.catalogue[ID]._is_land = False
-                    main_map.catalogue[ID].fill = new_color( False, total / float(existing))
+                if main_map.catalog[ID]._altitude_base < 0.:
+                    main_map.catalog[ID]._is_land = False
+                    main_map.catalog[ID]._fill = new_color( False, total / float(existing))
                 else:
-                    main_map.catalogue[ID]._is_land = True
-                    main_map.catalogue[ID].fill = new_color( True, total/float(existing))
+                    main_map.catalog[ID]._is_land = True
+                    main_map.catalog[ID]._fill = new_color( True, total/float(existing))
 
         if 'rain' in what:
             if this_one._is_land and not (this_one.genkey[0]=='1'): 
                 existing    = 1
                 total       = this_one._rainfall_base
                 for neighbor in neighbors:
-                    if neighbor in main_map.catalogue:
-                        if main_map.catalogue[neighbor]._is_land:
+                    if neighbor in main_map.catalog:
+                        if main_map.catalog[neighbor]._is_land:
                             existing += 1
-                            total    += main_map.catalogue[neighbor]._rainfall_base
+                            total    += main_map.catalog[neighbor]._rainfall_base
                             
                 
                 # make this altitude the average of it and its neighbors (which exist)
-                main_map.catalogue[ID]._rainfall_base = total / float(existing)
+                main_map.catalog[ID]._rainfall_base = total / float(existing)
                 if (total/float(existing)) > 1.0:
                     print("Warn! Setting rainfall > 1: {}".format(total/float(existing)))
 
-                green = 100 +  int(min( [120, max([ 120*main_map.catalogue[ID]._rainfall_base, 0.0  ])]))
-                main_map.catalogue[ID].fill = ( 155, green, 0)
+                green = 100 +  int(min( [120, max([ 120*main_map.catalog[ID]._rainfall_base, 0.0  ])]))
+                main_map.catalog[ID]._fill = ( 155, green, 0)
             else:
                 # we're not smoothing the rainfall for the ocean
                 pass 

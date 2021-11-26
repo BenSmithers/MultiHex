@@ -42,13 +42,13 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
 
             # set those hexes to river borders 
             try:
-                main_map.catalogue[cw_id].river_border[0] = True
-                main_map.catalogue[cw_id]._rainfall_base = min([ 1.0, main_map.catalogue[cw_id]._rainfall_base*1.1] )
+                main_map.catalog[cw_id].river_border[0] = True
+                main_map.catalog[cw_id]._rainfall_base = min([ 1.0, main_map.catalog[cw_id]._rainfall_base*1.1] )
             except KeyError:
                 pass
             try:
-                main_map.catalogue[ccw_id].river_border[1] = True
-                main_map.catalogue[ccw_id]._rainfall_base = min( [1.0, main_map.catalogue[ccw_id]._rainfall_base*1.1 ])
+                main_map.catalog[ccw_id].river_border[1] = True
+                main_map.catalog[ccw_id]._rainfall_base = min( [1.0, main_map.catalog[ccw_id]._rainfall_base*1.1 ])
             except KeyError:
                 pass
 
@@ -79,7 +79,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             place = Point( rnd.random()*dimensions[0], rnd.random()*dimensions[1])
             loc_id = main_map.get_id_from_point( place )
             try:
-                this_hex = main_map.catalogue[ loc_id ]
+                this_hex = main_map.catalog[ loc_id ]
             except KeyError:
                 continue
 
@@ -129,7 +129,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 coastal = False
                 for each in im_neighbors:
                     try:
-                        coastal = not main_map.catalogue[ each ]._is_land
+                        coastal = not main_map.catalog[ each ]._is_land
                         if coastal:
                             break
                     except KeyError:
@@ -160,7 +160,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     for ID in these_hexes:
                         try:
                             # adding 3 so we skip the 'center' ones
-                            dir_weights[it] = dir_weights[it] + main_map.catalogue[ID]._altitude_base
+                            dir_weights[it] = dir_weights[it] + main_map.catalog[ID]._altitude_base
                         except KeyError:
                             pass
                     # divide by 3 to get the average 
@@ -188,11 +188,11 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         for it in range(len(all_verts) - which):
                             ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it] )
                             for ID in ids:
-                                main_map.catalogue[ID].fill = (134, 183, 207)
-                                main_map.catalogue[ID]._altitude_base = 0.0
-                                main_map.catalogue[ID]._is_land = False
-                                main_map.catalogue[ID].biome = "lake"
-                                main_map.catalogue[ID].river_border = [False, False, False]
+                                main_map.catalog[ID]._fill = (134, 183, 207)
+                                main_map.catalog[ID]._altitude_base = 0.0
+                                main_map.catalog[ID]._is_land = False
+                                main_map.catalog[ID].biome = "lake"
+                                main_map.catalog[ID].river_border = [False, False, False]
         
                         new_river.trim_at( which-1, True )
                         break
@@ -200,14 +200,14 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                         for it in range(len(all_verts)-which):
                             ids = main_map.get_ids_beside_edge( all_verts[which+it-1], all_verts[which+it])
                             for ID in ids:
-                                main_map.catalogue[ID]._altitude_base = min( [1.0, 1.2*main_map.catalogue[ID]._altitude_base])
-                                main_map.catalogue[ID].river_border = [False, False, False]
+                                main_map.catalog[ID]._altitude_base = min( [1.0, 1.2*main_map.catalog[ID]._altitude_base])
+                                main_map.catalog[ID].river_border = [False, False, False]
                                 
                                 neighbors = main_map.get_hex_neighbors( ID )
                                 for neighbor in neighbors:
                                     try:
-                                        main_map.catalogue[neighbor]._altitude_base = min([ 1.0, 1.1*main_map.catalogue[neighbor]._altitude_base])
-                                        main_map.catalogue[neighbor].river_border = [False, False, False]
+                                        main_map.catalog[neighbor]._altitude_base = min([ 1.0, 1.1*main_map.catalog[neighbor]._altitude_base])
+                                        main_map.catalog[neighbor].river_border = [False, False, False]
                                     except KeyError:
                                         pass
                         return( None )

@@ -726,12 +726,12 @@ class civ_ui:
             return
 
         # ensure that the selected eID is actually an entity
-        if not isinstance( self.parent.main_map.eid_catalogue[which], Town ):
-            raise TypeError("A {} type object is selected instead of a town. How did this happen?".format(type(self.parent.main_map.eid_catalogue[which])))
+        if not isinstance( self.parent.main_map.eid_catalog[which], Town ):
+            raise TypeError("A {} type object is selected instead of a town. How did this happen?".format(type(self.parent.main_map.eid_catalog[which])))
 
         # apply the changes
-        self.parent.main_map.eid_catalogue[which].name = self.set_name_edit.text()
-        self.parent.main_map.eid_catalogue[which].description = self.set_desc_edit.toPlainText()
+        self.parent.main_map.eid_catalog[which].name = self.set_name_edit.text()
+        self.parent.main_map.eid_catalog[which].description = self.set_desc_edit.toPlainText()
 
     def set_dropdown_activate(self, index):
         """
@@ -744,8 +744,8 @@ class civ_ui:
         which = self.parent.entity_control.selected
         if not isinstance( which, int):
             return #none is selec ted
-        if not isinstance( self.parent.main_map.eid_catalogue[which], Town ):
-            raise TypeError("A {} type object is selected instead of a town. How did this happen?".format(type(self.parent.main_map.eid_catalogue[which])))
+        if not isinstance( self.parent.main_map.eid_catalog[which], Town ):
+            raise TypeError("A {} type object is selected instead of a town. How did this happen?".format(type(self.parent.main_map.eid_catalog[which])))
 
         if index==(self.set_ward_dd.count() - 1):
             # add new ward
@@ -767,16 +767,16 @@ class civ_ui:
 
         if eID is not None:
             assert( isinstance( eID , int ))
-            if not isinstance( self.parent.main_map.eid_catalogue[eID], Town):
-                raise TypeError("Something terribly wrong has happened. Trying to update Entity {} as if it were {}, but it is {}".format(eID, Town, type( self.main_map.eid_catalogue[eID]) ))
+            if not isinstance( self.parent.main_map.eid_catalog[eID], Town):
+                raise TypeError("Something terribly wrong has happened. Trying to update Entity {} as if it were {}, but it is {}".format(eID, Town, type( self.main_map.eid_catalog[eID]) ))
 
-            self.set_name_edit.setText( self.parent.main_map.eid_catalogue[ eID ].name)
-            self.set_desc_edit.setText( self.parent.main_map.eid_catalogue[ eID ].description )
+            self.set_name_edit.setText( self.parent.main_map.eid_catalog[ eID ].name)
+            self.set_desc_edit.setText( self.parent.main_map.eid_catalog[ eID ].description )
 
             self.set_ward_dd.setCurrentIndex(0)
             self.set_update_ward_info(eID)
 
-            for ward in self.parent.main_map.eid_catalogue[eID].wards:
+            for ward in self.parent.main_map.eid_catalog[eID].wards:
                 self.set_ward_dd.insertItem(self.set_ward_dd.count()-1, ward.name)
         else:
             # eID is None-type. So let's clear 
@@ -791,8 +791,8 @@ class civ_ui:
         if self.parent.entity_control.selected is None:
             print("nothing selected")
             return
-        if not isinstance( self.parent.main_map.eid_catalogue[self.parent.entity_control.selected], Town):
-            print("got entity type {}, expected {}".format(type(self.parent.main_map.eid_catalogue[self.parent.entity_control.selected]), Town) )
+        if not isinstance( self.parent.main_map.eid_catalog[self.parent.entity_control.selected], Town):
+            print("got entity type {}, expected {}".format(type(self.parent.main_map.eid_catalog[self.parent.entity_control.selected]), Town) )
             return
         self.ward_accept = False
 
@@ -805,18 +805,18 @@ class civ_ui:
             new_ward = Town("New Ward", is_ward=True)
             dialog = ward_dialog( self.parent, new_ward, setting )
         else:
-            dialog = ward_dialog( self.parent, self.parent.main_map.eid_catalogue[ self.parent.entity_control.selected ], setting )
+            dialog = ward_dialog( self.parent, self.parent.main_map.eid_catalog[ self.parent.entity_control.selected ], setting )
         dialog.setAttribute( QtCore.Qt.WA_DeleteOnClose )
         dialog.exec_()
 
         if setting==-1 and (new_ward is not None):
-            self.parent.main_map.eid_catalogue[self.parent.entity_control.selected].add_ward( new_ward )
+            self.parent.main_map.eid_catalog[self.parent.entity_control.selected].add_ward( new_ward )
 
         #update! 
         self.set_update_selection( self.parent.entity_control.selected )
 
         # redraw the hex ( the icon may have changed )
-        self.parent.entity_control.redraw_entities_at_hex( self.parent.main_map.eid_catalogue[self.parent.entity_control.selected].location ) 
+        self.parent.entity_control.redraw_entities_at_hex( self.parent.main_map.eid_catalog[self.parent.entity_control.selected].location ) 
 
     def set_update_ward_info(self, eID, ward = None):
         """
@@ -824,7 +824,7 @@ class civ_ui:
         """
         assert( isinstance( eID, int))
         
-        this_city = self.parent.main_map.eid_catalogue[eID]
+        this_city = self.parent.main_map.eid_catalog[eID]
 
         # if no ward is specified, update the ward info with the town's overall values 
         if ward is None:
@@ -859,10 +859,10 @@ class civ_ui:
         """
         Should be called when a new location is selected. Writes the name and description
         """
-        self.loc_name_edit.setText( self.parent.main_map.eid_catalogue[ eID ].name)
-        self.loc_desc_edit.setText( self.parent.main_map.eid_catalogue[ eID ].description)
+        self.loc_name_edit.setText( self.parent.main_map.eid_catalog[ eID ].name)
+        self.loc_desc_edit.setText( self.parent.main_map.eid_catalog[ eID ].description)
         
-        temp_index = self.loc_icon.findText( self.parent.main_map.eid_catalogue[eID].icon )
+        temp_index = self.loc_icon.findText( self.parent.main_map.eid_catalog[eID].icon )
         if temp_index >= 0:
             self.loc_icon.setCurrentIndex( temp_index )
 
@@ -881,7 +881,7 @@ class civ_ui:
             # write out a list of all the entities at the selected Hex
             try:
                 for eID in self.parent.main_map.eid_map[ HexID ]:
-                    self.loc_list_entry.appendRow( QEntityItem(self.parent.main_map.eid_catalogue[eID].name , eID))
+                    self.loc_list_entry.appendRow( QEntityItem(self.parent.main_map.eid_catalog[eID].name , eID))
             except KeyError:
                 # there are no entities here
                 pass
@@ -892,7 +892,7 @@ class civ_ui:
         Called when the delete button is pressed in the locations tab
         """
         if self.parent.entity_control.selected is not None:
-            loc_id = self.parent.main_map.eid_catalogue[ self.parent.entity_control.selected ].location
+            loc_id = self.parent.main_map.eid_catalog[ self.parent.entity_control.selected ].location
             self.parent.main_map.remove_entity( self.parent.entity_control.selected )
             
             # this deletes the old drawing 
@@ -909,9 +909,9 @@ class civ_ui:
     
     def loc_save_entity(self):
         if self.parent.entity_control.selected is not None:
-            self.parent.main_map.eid_catalogue[ self.parent.entity_control.selected ].name = self.loc_name_edit.text()
-            self.parent.main_map.eid_catalogue[ self.parent.entity_control.selected ].description = self.loc_desc_edit.toPlainText()
-            self.parent.main_map.eid_catalogue[ self.parent.entity_control.selected ].icon = self.loc_icon.currentText()
+            self.parent.main_map.eid_catalog[ self.parent.entity_control.selected ].name = self.loc_name_edit.text()
+            self.parent.main_map.eid_catalog[ self.parent.entity_control.selected ].description = self.loc_desc_edit.toPlainText()
+            self.parent.main_map.eid_catalog[ self.parent.entity_control.selected ].icon = self.loc_icon.currentText()
             self.parent.entity_control.update_wrt_new_hex()
             self.parent.entity_control.redraw_entities_at_hex( self.parent.entity_control.selected_hex )
             self.status_label.setText("saved")
@@ -921,7 +921,7 @@ class civ_ui:
         
         # select the new entity and update the name/description
         self.parent.entity_control.select_entity( item.eID )
-        if isinstance( self.parent.main_map.eid_catalogue[ item.eID ], Town):
+        if isinstance( self.parent.main_map.eid_catalog[ item.eID ], Town):
             self.parent.ui.contextPane.setCurrentIndex( 1 )
             self.set_update_selection( item.eID )
         else:
@@ -958,17 +958,18 @@ class civ_ui:
         """
         self.parent.ui.contextPane.setCurrentIndex( 0 )
         self.parent.scene.select(self.parent.entity_control)
+        self.parent.entity_control.set_state(-1)
 
     def county_color_click(self):
         if self.parent.county_control.selected is None:
             pass
         else:
-            old_one = self.parent.main_map.rid_catalogue[self.parent.county_control.r_layer][self.parent.county_control.selected].color
+            old_one = self.parent.main_map.rid_catalog[self.parent.county_control.r_layer][self.parent.county_control.selected].color
             qt_old_one = QtGui.QColor(old_one[0], old_one[1], old_one[2])
             new_color = QColorDialog.getColor(initial = qt_old_one, parent=self.parent)
 
             if new_color.isValid():
-                self.parent.main_map.rid_catalogue[self.parent.county_control.r_layer][self.parent.county_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
+                self.parent.main_map.rid_catalog[self.parent.county_control.r_layer][self.parent.county_control.selected].color = (new_color.red(), new_color.green(), new_color.blue())
                 self.parent.county_control.redraw_region(self.parent.county_control.selected)
 
     def county_selector_toolbar(self):
@@ -995,7 +996,7 @@ class civ_ui:
             self.horizontalSlider_3.setEnabled(False)
 
         else:
-            this_county = self.parent.main_map.rid_catalogue[ 'county' ][this_rid]
+            this_county = self.parent.main_map.rid_catalog[ 'county' ][this_rid]
         
             self.count_name_edit.setText( this_county.name )
             self.count_pop_disp.setText( str(this_county.population ))
@@ -1017,9 +1018,9 @@ class civ_ui:
             else:
                 self.count_king_button.setText("Edit Kingdom")
 
-            for eID in self.parent.main_map.rid_catalogue['county'][this_rid].eIDs:
-                if isinstance( self.parent.main_map.eid_catalogue[eID], Town):
-                    self.county_list_entry.appendRow( QEntityItem(self.parent.main_map.eid_catalogue[eID].name , eID))
+            for eID in self.parent.main_map.rid_catalog['county'][this_rid].eIDs:
+                if isinstance( self.parent.main_map.eid_catalog[eID], Town):
+                    self.county_list_entry.appendRow( QEntityItem(self.parent.main_map.eid_catalog[eID].name , eID))
                         
             self.parent.county_control.redraw_region( this_rid )
 
@@ -1029,7 +1030,7 @@ class civ_ui:
         if this_rid is None:
             return
         else:
-            this_county = self.parent.main_map.rid_catalogue[ 'county' ][this_rid]
+            this_county = self.parent.main_map.rid_catalog[ 'county' ][this_rid]
             
             this_county.name = self.count_name_edit.text()
             this_county.set_order(float(self.horizontalSlider.value())/100. )
@@ -1052,7 +1053,7 @@ class civ_ui:
         if this_rid is None:
             pass
         else:
-            this_county = self.parent.main_map.rid_catalogue['county'][this_rid]
+            this_county = self.parent.main_map.rid_catalog['county'][this_rid]
             if this_county.nation is None:
                 new_nation = Nation(self.parent.main_map, this_rid)
                 self.parent.nation_control.select( new_nation )
@@ -1101,7 +1102,7 @@ class civ_ui:
             else:
                 self.king_gdg_disp.setText( '{:06.2f}'.format(float(this_nation.total_wealth)/this_nation.subjects) )
             for rID in self.parent.nation_control.selected.counties:
-                self.nation_list_entry.appendRow( QEntityItem(self.parent.main_map.rid_catalogue['county'][rID].name, rID ))
+                self.nation_list_entry.appendRow( QEntityItem(self.parent.main_map.rid_catalog['county'][rID].name, rID ))
 
             self.king_war_sld.setEnabled(True)
             self.king_order_sld.setEnabled(True)

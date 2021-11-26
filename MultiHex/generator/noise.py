@@ -1,4 +1,4 @@
-
+from MultiHex.logger import Logger
 from MultiHex.core import load_map, save_map
 
 from math import sqrt
@@ -14,29 +14,29 @@ def _is_valid_texture(obj,which):
     Checks the object provided to verify that it is a properly formated texture list
     """
     if not (isinstance(obj, list) or isinstance(obj, ndarray)):
-        print("Not List, {}".format(type(obj)))
+        Logger.Warn("Not List, {}".format(type(obj)))
         return(False)
     if not (isinstance(obj[0], list) or isinstance(obj[0],ndarray)):
-        print("Not List, {}".format(type(obj[0])))
+        Logger.Warn("Not List, {}".format(type(obj[0])))
         return(False)
     if not (len(obj)==len(obj[0])):
-        print("Not rectangular")
+        Logger.Warn("Not rectangular")
         return(False)
     
     if which=='rectangular':
         if not (isinstance(obj[0][0], float) or isinstance(obj[0][0], int)):
-            print("Not number")
+            Logger.Warn("Not number")
             return(False)
     elif which=='gradient':
         if not (isinstance(obj[0][0], list) or isinstance(obj[0][0], ndarray)):
-            print("Does not contain list-entries")
+            Logger.Warn("Does not contain list-entries")
             return(False)
         else:
             if not (isinstance(obj[0][0][0], float) and isinstance(obj[0][0][1], float)):
-                print("One or both entries not a list")    
+                Logger.Warn("One or both entries not a list")    
                 return(False)
     else:
-        print("dat no good")
+        Logger.Warn("Failed to load texture")
         return(False)
     return(True)
 
@@ -115,7 +115,7 @@ def _generate_perlin_texture(size = 512):
     while (size % (2**levels) ==0):
         levels += 1
     levels-=1
-    print("Doing {} levels of down-sampling".format(levels))
+    Logger.Log("Doing {} levels of down-sampling".format(levels))
 
     downsamples = {}
     for level in range(levels):
@@ -179,7 +179,7 @@ def sample_noise(x_pos, y_pos, xsize=None, ysize=None, texture=None, algorithm='
         try:
             texture = load_texture()
         except IOError:
-            print("File not found while sampling. Generating...")
+            Logger.Log("File not found while sampling. Generating...")
             if algorithm=='rectangular':
                 _generate_perlin_texture()
             elif algorithm=='gradient':
@@ -249,29 +249,28 @@ def perlinize( which = os.path.join(os.path.dirname(__file__),'..','saves','gene
         raise TypeError("Expected {} for 'magnitude', got {}".format(float, type(magnitude)))
     
     # We need to make sure the attribute exist in our Hexes! This way we don't waste time creating a texture we don't need 
-    for HexID in main_map.catalogue:
-        if hasattr( main_map.catalogue[HexID], attr):
+    for HexID in main_map.catalog:
+        if hasattr( main_map.catalog[HexID], attr):
             break
         else:
             raise KeyError("HexMap does not have attribute {}".format(attr))
 
     # We need to create a noise texture file
     if algorithm=='rectangular': 
-        print("Generating Rectangular Noise")
+        Logger.Log("Generating Rectangular Noise")
         _generate_perlin_texture()
     elif algorithm=='gradient':
-        print("Generating Gradients")
+        Logger.Log("Generating Gradients")
         generate_gradients()
     else:
         raise NotImplementedError("Unsupported algorithm {}".format(algorithm))
     # then grab it into an object to minimize IO later on
     texture = load_texture()
-    for HexID in main_map.catalogue:
-        this_hex = main_map.catalogue[HexID]
+    for HexID in main_map.catalog:
+        this_hex = main_map.catalog[HexID]
         cent = this_hex.center
         # use the Hexes location to skew the specified attribute of the hex 
         new_value = getattr(this_hex, attr) + magnitude*sample_noise(cent.x, cent.y, 1.1*main_map.dimensions[0], 1.1*main_map.dimensions[1], texture)
         setattr( this_hex, attr, new_value)
-        this_hex.rescale_color()
     save_map( main_map, which )
 

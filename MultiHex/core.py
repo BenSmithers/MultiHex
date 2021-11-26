@@ -1,16 +1,20 @@
-from PyQt5 import QtCore
+from PyQt5 import QtCore, QtWidgets
 from MultiHex.objects import Entity, Mobile
 
 try:
-    from numpy import sqrt, atan, pi, floor, cos, sin
+    from numpy import sqrt, atan, pi, floor, cos, sin, inf
 except ImportError:
-    from math import sqrt, atan, pi, floor, cos, sin
+    from math import sqrt, atan, pi, floor, cos, sin, inf
 
+import os, json, sys
+from collections import deque
 import pickle
+
+from MultiHex.logger import Logger
 
 """
 Ben Smithers
-b.smithers.actual@gmail.com 
+b.smithers.actual (at) gmail.com 
 
 Core objects for MultiHex
 
@@ -25,7 +29,7 @@ Objects:
 """
 
 multihex_version = "0.3.0"
-map_version = "0.4"
+map_version = "0.5"
 
 
 def is_number(object):
@@ -253,7 +257,6 @@ class Hex:
     Datastructure to represent a single hex on a hex map
 
     @ build_name            - creates a name for hex biome - not implemented
-    @ rescale_color         - recalculates the color based off of the current color and altitude
     """
     def __init__(self, center=default_p, radius=1.0 ):
         if not isinstance(center, Point):
@@ -264,12 +267,32 @@ class Hex:
         self._center = center
         self._radius = radius
         
-        self.outline= (240,240,240)
-        self.fill   = (100,100,100) 
+        self._outline= (240,240,240)
+        self._fill   = (100,100,100) 
 
         # used in procedural generation
         self.genkey            = '00000000'
 
+    @property
+    def outline(self):
+        return self._outline
+    
+    @property
+    def fill(self):
+        return self._fill
+
+    def get_cost(self, other):
+        """
+        Default get_cost function. 
+        Should be reimplemented in derived classes. 
+        """
+        raise NotImplementedError('subclasses must override')
+
+    def get_heuristic(self, other):
+        """
+        Tries to predict the total cost of stepping to a distant Hex
+        """
+        raise NotImplementedError('subclasses must override')
 
     @property
     def center(self):
@@ -302,7 +325,8 @@ class Hex:
         return(same)
 
     def __repr__(self):
-        return("{}@{}".format(self.__clas__, self.id))
+        return("{}@{}".format("Hex", self.center))
+
 
     
 
@@ -324,17 +348,17 @@ def _update_to_0_2(which):
     update_point( which.draw_relative_to)
     update_point( which.origin_shift )
     # update all the verices on the hexes... and their centers
-    for hexid in which.catalogue:
+    for hexid in which.catalog:
         for i in range(6):
-            #update_point( which.catalogue[hexid]._vertices[i] )
-            update_point( which.catalogue[hexid]._center )
+            #update_point( which.catalog[hexid]._vertices[i] )
+            update_point( which.catalog[hexid]._center )
     # update the perimeter of all regions
-    for r_layer in which.rid_catalogue:
-        for rid in which.rid_catalogue[r_layer]:
-            for vert in range(len(which.rid_catalogue[r_layer][rid].perimeter)):
-                update_point( which.rid_catalogue[r_layer][rid].perimeter[vert] )
+    for r_layer in which.rid_catalog:
+        for rid in which.rid_catalog[r_layer]:
+            for vert in range(len(which.rid_catalog[r_layer][rid].perimeter)):
+                update_point( which.rid_catalog[r_layer][rid].perimeter[vert] )
             # update the enclaves
-            for enclave in which.rid_catalogue[r_layer][rid].enclaves:
+            for enclave in which.rid_catalog[r_layer][rid].enclaves:
                 for vert in enclave:
                     update_point(vert)
 
@@ -363,16 +387,22 @@ def _update_to_0_4(which):
     
     # update hexes
     which._version = "0.4"
-    for hexID in which.catalogue:
-        del which.catalogue[hexID]._vertices
+    for hexID in which.catalog:
+        del which.catalog[hexID]._vertices
+    _update_to_0_5(which)
 
+def _update_to_0_5(which):
+    which._version = "0.5"
+    setattr(which, "catalog", which.catalogue)
+    setattr(which, "rid_catalog", which.rid_catalogue)
+    setattr(which, "eid_catalog", which.eid_catalogue)
 
 def _update_save(which):
     """
     This function figures out the version mismatch of the given Hexmap and applies necessary updates
     """
     assert( isinstance( which, Hexmap ))
-    print("Updating Map")
+    Logger.Log("Updating Map")
     if not hasattr( which, "_version"):
         _update_to_0_1( which )
         
@@ -381,11 +411,15 @@ def _update_save(which):
             _update_to_0_2( which )
         if which._version == "0.2":
             _update_to_0_3(which)
+        elif which._version=="0.3":
+            _update_to_0_4(which)
+        elif which._version=="0.4":
+            _update_to_0_5(which)
 
     elif which.version > map_version:
         raise NotImplementedError("Trying to load HexMap version {} with MultiHex version {}".format(which.version, map_version))
     
-    print("Updated map to version {}. You should save!".format(map_version))
+    Logger.Log("Updated map to version {}. You should save!".format(map_version))
     
 
 def save_map(h_map, filename):
@@ -414,38 +448,38 @@ def load_map(filename):
 
 class Hexmap:
     """
-    Object to maintain the whole hex catalogue, draw the hexes, registers the hexes
+    Object to maintain the whole hex catalog, draw the hexes, registers the hexes
 
     Methods:
-    @ remove_hex            - unregister hex from catalogue
-    @ register_hex          - register a hex in the catalogue
+    @ remove_hex            - unregister hex from catalog
+    @ register_hex          - register a hex in the catalog
     @ get_hex_neighbors         - get list of IDs for hexes neighboring this one
     @ get_neighbor_outline      - retursn list of points to outline cursor 
     @ points_to_draw        - takes list of map-Points, prepares flattened list of draw coordinates 
     @ get_id_from_point     - constructs neares ID to point
     @ get_point_from_id     - constructs point from ID
-    @ register_new_region   - takes a region, registers it in the rid_catalogue with a unique region id (rid)
+    @ register_new_region   - takes a region, registers it in the rid_catalog with a unique region id (rid)
     @ add_to_region         - adds a single hex to a region
     @ remove_from_region    - removes hex from region
     @ merge_regions         - takes two rids, merges the regions
 
     Attributes:
-    @ catalogue             - Dictionary of hexes. The hexIDs are keys to the hexes themselves 
-    @ rid_catalogue         - 2-level dictionary: rid_catalogue[ layer ][ rID ]. Points to region object 
+    @ catalog             - Dictionary of hexes. The hexIDs are keys to the hexes themselves 
+    @ rid_catalog         - 2-level dictionary: rid_catalog[ layer ][ rID ]. Points to region object 
                                 + layer is the region layer (biome/kingdom/etc)
                                 + rID is the identifier of the region
-    @ id_map                - similar data structure as rid_catalogue. Region layer and hexID returns rID hex belongs to. Raises key error if no association! 
+    @ id_map                - similar data structure as rid_catalog. Region layer and hexID returns rID hex belongs to. Raises key error if no association! 
     @ rivers                - dictionary containing lists of paths. Dict key for path type 
     @ drawscale             - scaling factor of entire map. Establishes hex size 
     """
     def __init__(self):
-        self.catalogue = {}
+        self.catalog = {}
         
-        self.rid_catalogue = {} #region_id -> region object
+        self.rid_catalog = {} #region_id -> region object
         self.id_map = {} # hex_id -> reg_id 
         
-        # catalogue of entities
-        self.eid_catalogue = {} # eID -> Entity obj
+        # catalog of entities
+        self.eid_catalog = {} # eID -> Entity obj
         self.eid_map = {} # hex_id -> [ list of eIDs ]
 
         self.path_catalog = {}
@@ -497,19 +531,129 @@ class Hexmap:
     def drawscale(self):
         copy = self._drawscale
         return( copy )
+
+    def _get_cost_between(self, start_id, end_id):
+        """
+        Function for calculating the movement cost between neighboring hexes 
+        Used by the get_route_between_hexes functionm
+
+        -> does not account for locations on map. This is just a raw distance, not including getting closer to the final destination 
+        """
+        if start_id not in self.catalog:
+            raise KeyError("start_id {} not in catalog!".format(start_id))
+        if end_id not in self.catalog:
+            return(inf)
+
+        start_neighs = self.get_hex_neighbors(start_id)
+        if end_id not in start_neighs:
+            return(inf) #you can't teleport. This is an infiinite cost move...
+
+        # We need to be able to have type-specific cost implementations. The Hexmap does not know what kind of map it is
+        # So the Hexes themselves will be responsible for calculating the cost.
+        # Subtypes of Hexes will implement unique cost functions 
+
+        start_hex = self.catalog[start_id]
+        return(start_hex.get_cost( self.catalog[end_id]))
+
+    def _get_heuristic(self, start_id, end_id):
+        if not isinstance(start_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(start_id)))
+        if not isinstance(end_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(end_id)))
+        if start_id not in self.catalog:
+            raise ValueError("Start ID {} not found in catalog!".format(start_id))
+        if end_id not in self.catalog:
+            raise ValueError("End ID {} not found in catalog!".format(end_id))
+
+        return( self.catalog[start_id].get_heuristic(self.catalog[end_id]) )
+
+
+    def get_route_a_star(self, start_id, end_id):
+        """
+        Finds quickest route between two given HexIDs. Both IDs must be on the Hexmap.
+        Always steps closer to the target
+
+        Returns ordered list of HexIDs representing shortest found path between start and end (includes start and end)
+        """
+        if not isinstance(start_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(start_id)))
+        if not isinstance(end_id, int):
+            raise TypeError("IDs are of type {}, got {}".format(int, type(end_id)))
+        if start_id not in self.catalog:
+            raise ValueError("Start ID {} not found in catalog!".format(start_id))
+        if end_id not in self.catalog:
+            raise ValueError("End ID {} not found in catalog!".format(end_id))
+
+
+        openSet = deque([start_id])
+        cameFrom = {}
+
+        gScore = {}
+        gScore[start_id] = 0.
+
+        fScore = {}
+        fScore[start_id] = self._get_heuristic(start_id,end_id)
+
+        def reconstruct_path(cameFrom, current):
+            total_path = [current]
+            while current in cameFrom.keys():
+                current = cameFrom[current]
+                total_path.append(current)
+            
+            return(total_path[::-1])
+
+        while len(openSet)!=0:
+            # find minimum fScore thing in openSet
+            min_id = None
+            min_cost = None
+            current = openSet[0]
+
+            if current==end_id:
+                return reconstruct_path(cameFrom, current)
+
+            openSet.popleft()
+            for neighbor in self.get_hex_neighbors(current):
+                try:
+                    tentative_gScore = gScore[current] + self._get_cost_between(current, neighbor)
+                except KeyError:
+                    tentative_gScore = inf
+
+                if neighbor in gScore:
+                    neigh = gScore[neighbor]
+                else:
+                    neigh = inf
+
+                if tentative_gScore < neigh:
+                    cameFrom[neighbor] = current
+                    gScore[neighbor] = tentative_gScore
+                    fScore[neighbor] = gScore[neighbor] + self._get_heuristic(neighbor,end_id)
+                    if neighbor not in openSet:
+
+                        if len(openSet)==0:
+                            openSet.appendleft(neighbor)
+                        else:
+                            iter = 0
+                            while fScore[neighbor]>fScore[openSet[iter]]:
+                                iter += 1
+                                if iter==len(openSet):
+                                    break
+
+                            openSet.insert(iter,neighbor)
+        return([])
+
     
     def get_region_neighbors( self, rID, layer):
         """
         Returns the Region IDs of those regions neighboring the provided Region with ID `rID`
         """
-        if layer not in self.rid_catalogue:
+        if layer not in self.rid_catalog:
             raise ValueError("Layer {} not in catalog.".format(layer))
         if not isinstance(rID, int):
             raise TypeError("Invalid rID of type {}".format(type(rID)))
-        if rID not in self.rid_catalogue[layer]:
+        if rID not in self.rid_catalog[layer]:
             raise ValueError("Region {} not in catalog.".format(rID))
 
-        this_region = self.rid_catalogue[ layer ][rID]
+        this_region = self.rid_catalog[ layer ][rID]
         if not this_region.known_neighbors:
             # if this region's neighbors are unknown, let's find them! 
             
@@ -562,7 +706,7 @@ class Hexmap:
 
     def unregister_path( self, pID, layer):
         if not type(pID)==int:
-            raise Type("Expected {} for rivid, got {}".format(int, type(pID)))
+            raise TypeError("Expected {} for rivid, got {}".format(int, type(pID)))
         
         if layer not in self.path_catalog:
             raise ValueError("{} is not a layer in the path catalog".format( layer))
@@ -575,26 +719,26 @@ class Hexmap:
 
     def register_new_entity( self, target_entity):
         """
-        Registers a new entity with the Entity catalogue and map
+        Registers a new entity with the Entity catalog and map
 
         @param target_entity    - the Entity
         """
         if not isinstance( target_entity, Entity):
             raise TypeError("Cannot register non-Entity of type {}".format( type(target_entity)) )
        
-        if (target_entity.location is not None) and (target_entity.location not in self.catalogue):
+        if (target_entity.location is not None) and (target_entity.location not in self.catalog):
             # -1 represents 'outside' the map! 
             target_entity.set_location = -1 
 
         new_eid = 0 
-        while new_eid in self.eid_catalogue:
+        while new_eid in self.eid_catalog:
             new_eid += 1
 
         
-        self.eid_catalogue[ new_eid ] = target_entity 
+        self.eid_catalog[ new_eid ] = target_entity 
         
         # you can register an entity without it being in the map
-        if target_entity.location in self.catalogue:
+        if target_entity.location in self.catalog:
             if target_entity.location not in self.eid_map:
                 self.eid_map[target_entity.location] = [ new_eid ]
             else:
@@ -611,16 +755,16 @@ class Hexmap:
         """
         if not isinstance( eID, int):
             raise TypeError("eID provided is of type {}, should be of type {}".format(type(eID), int))
-        if eID not in self.eid_catalogue:
+        if eID not in self.eid_catalog:
             raise ValueError("No registered entity of eID {}".format(eID))
 
-        if not isinstance( self.eid_catalogue[eID], Mobile):
-            raise TypeError("Cannot mobe object of type {}. Only {} objects can move".format( type(self.eid_catalogue[eID]), Mobile))
+        if not isinstance( self.eid_catalog[eID], Mobile):
+            raise TypeError("Cannot mobe object of type {}. Only {} objects can move".format( type(self.eid_catalog[eID]), Mobile))
 
-        curr_id = self.eid_catalogue[eID].location
+        curr_id = self.eid_catalog[eID].location
 
         # removing Entity from the map. That's fine
-        if curr_id not in self.catalogue:
+        if curr_id not in self.catalog:
             # this is fine, curr_id could be None
             pass 
         else:
@@ -632,15 +776,15 @@ class Hexmap:
                     raise ValueError("Mobile with eID {} thought it was here: {}. Hex only contains eIDs {}".format(eID, curr_id, self.eid_map[curr_id]))
                 else:
                     # remove the mapping to this entity from its old location
-                    self.eid_map[curr_id].pop( self.eidmap[curr_id].index( eID ) )
+                    self.eid_map[curr_id].pop( self.eid_map[curr_id].index( eID ) )
             # After this, if there are no more entities at this Hex, just remove the mapping! 
             if len(self.eid_map[curr_id])==0:
                 del self.eid_map[curr_id]
         
         # this just changes the location that the Mobile has for itself 
-        self.eid_catalogue[eID].set_location(new_location)
+        self.eid_catalog[eID].set_location(new_location)
 
-        if new_location not in self.catalogue:
+        if new_location not in self.catalog:
             new_location = -1 
 
         if new_location in self.eid_map:
@@ -651,29 +795,29 @@ class Hexmap:
 
     def remove_entity( self, eID ):
         """
-        Removes the entity with the given eID. Updates both the eid_catalogue and the eid_map
+        Removes the entity with the given eID. Updates both the eid_catalog and the eid_map
 
         @param eID  - the eID of the Entity to remove. Deletes the entity! 
         """
 
         if not isinstance( eID, int):
             raise TypeError("eID provided is of type {}, should be of type {}".format(type(eID), int))
-        if eID not in self.eid_catalogue:
+        if eID not in self.eid_catalog:
             raise ValueError("No registered entity of eID {}".format(eID))
 
         # first remove the entity from the eid_map
-        ent = self.eid_catalogue[ eID ]
+        ent = self.eid_catalog[ eID ]
         loc_id = ent.location 
 
         # Entity may not have a location.     
         if loc_id not in self.eid_map:
             # that means the Entity thought it was somewhere that the Map thought had nothing
 
-            print("WARN! Inconsistency in eIDs")
+            Logger.Warn("Inconsistency in eIDs")
         else:
             if eID not in self.eid_map[loc_id]:
                 # means that the Entity thought it was somewhere that the Map that had some things, just not this thing 
-                print("WARN! Inconsistency in eIDS (2)")
+                Logger.Warn("Inconsistency in eIDS (2)")
             else:
                 # otherwise remove the eID from this list 
                 self.eid_map[loc_id].pop( self.eid_map[loc_id].index( eID ) )
@@ -682,8 +826,20 @@ class Hexmap:
             if len( self.eid_map[loc_id] )==0:
                 del self.eid_map[loc_id]
         
-        # delete the entity from the catalogue 
-        del self.eid_catalogue[ eID ]
+        # delete the entity from the catalog 
+        del self.eid_catalog[ eID ]
+
+    def get_next_rid(self, r_layer:str)->int:
+        if r_layer not in self.id_map:
+            self.id_map[r_layer] = {}
+        if r_layer not in self.rid_catalog:
+            self.rid_catalog[r_layer] = {}
+
+        new_rid = 1
+        while new_rid in self.rid_catalog[r_layer]:
+            new_rid += 1
+
+        return new_rid
 
     def register_new_region( self, target_region, r_layer ):
         """
@@ -694,8 +850,8 @@ class Hexmap:
         # make sure this region layer exists. If it doesn't, let's make it. 
         if r_layer not in self.id_map:
             self.id_map[r_layer] = {}
-        if r_layer not in self.rid_catalogue:
-            self.rid_catalogue[r_layer] = {}
+        if r_layer not in self.rid_catalog:
+            self.rid_catalog[r_layer] = {}
 
         # verify that the target region doesn't have any hexes already belonging to a registered region
         for hex_id in target_region.ids:
@@ -703,13 +859,11 @@ class Hexmap:
                 raise KeyError("Region contains hex {} belonging to other region: {}".format(hex_id, self.id_map[r_layer][hex_id]))
 
         # first settle on a new rid - want the smallest, unused rid 
-        new_rid = 1
-        while new_rid in self.rid_catalogue[r_layer]:
-            new_rid += 1
+        new_rid = self.get_next_rid(r_layer)
         
         target_region.set_color( new_rid )
-        # register the region in the hexmap's region catalogue 
-        self.rid_catalogue[r_layer][ new_rid ] = target_region
+        # register the region in the hexmap's region catalog 
+        self.rid_catalog[r_layer][ new_rid ] = target_region
         # register the connections between the new region's hexes and the new rid
         # this allows for quick correlations from point->hex->region
         for hex_id in target_region.ids:
@@ -726,14 +880,14 @@ class Hexmap:
         @param hex_id   - ID of hex to add to region
         @param r_layer  - string (key) for the desired region layer 
         """
-        if r_layer not in self.rid_catalogue:
+        if r_layer not in self.rid_catalog:
             raise KeyError("Region layer {} does not exist.".format(r_layer))
 
-        # throws KeyError if rID not in catalogue
+        # throws KeyError if rID not in catalog
         # we aren't handling that error. Downstream problem...
-        if rID not in self.rid_catalogue[r_layer]:
+        if rID not in self.rid_catalog[r_layer]:
             raise KeyError("Region no. {} not recognized.".format( rID) )
-        if hex_id not in self.catalogue:
+        if hex_id not in self.catalog:
             raise KeyError("Hex id no. {} not recognized.".format( hex_id ))
 
         other_rid = -1
@@ -750,7 +904,7 @@ class Hexmap:
 
         # the hex does not belong to a region, has no map in id_map
         # add the hex to the region and update the id map
-        self.rid_catalogue[r_layer][ rID ].add_hex_to_self( hex_id )
+        self.rid_catalog[r_layer][ rID ].add_hex_to_self( hex_id )
         self.id_map[r_layer][ hex_id ] = rID
 
         return(other_rid)
@@ -762,21 +916,21 @@ class Hexmap:
         @param hex_id   - ID of hex from which to remove region affiliation 
         @param r_layer  - string (key) for the desired region layer
         """
-        if r_layer not in self.rid_catalogue:
+        if r_layer not in self.rid_catalog:
             raise KeyError("Region layer {} does not exist.".format(r_layer))
 
         # removes the hex_id from whichever region it's in
         if hex_id not in self.id_map[r_layer]:
             raise KeyError("Hex no. {} not registered".format(hex_id))
         
-        if len(self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].ids )==1:
+        if len(self.rid_catalog[r_layer][ self.id_map[r_layer][hex_id] ].ids )==1:
             # if this is the last hex in the region, just delete this guy. It's the responsibility of the calling function to redraw the region (if desired)
-            del self.rid_catalogue[r_layer][self.id_map[r_layer][hex_id]]
+            del self.rid_catalog[r_layer][self.id_map[r_layer][hex_id]]
 
         else:
 
             # update the region extents 
-            self.rid_catalogue[r_layer][ self.id_map[r_layer][hex_id] ].pop_hexid_from_self( hex_id )
+            self.rid_catalog[r_layer][ self.id_map[r_layer][hex_id] ].pop_hexid_from_self( hex_id )
 
             # delete the hexes' association to the now non-existent region
             del self.id_map[r_layer][hex_id]
@@ -790,32 +944,32 @@ class Hexmap:
         @param rID_loser - rID of region which will be absorbed into rID_main
         @param r_layer   - string (key) for the desired region layer. Eg - biome, border, ...
         """
-        if r_layer not in self.rid_catalogue:
+        if r_layer not in self.rid_catalog:
             raise KeyError("Region layer {} does not exist.".format(r_layer))
 
-        if (rID_main not in self.rid_catalogue[r_layer]):
+        if (rID_main not in self.rid_catalog[r_layer]):
             raise KeyError ("Region {} not recognized".format(rID_main))
-        if (rID_loser not in self.rid_catalogue[r_layer]):
+        if (rID_loser not in self.rid_catalog[r_layer]):
             raise KeyError("Region {} not recognized".format(rID_loser))
          
         # merge second region into first one
-        self.rid_catalogue[r_layer][ rID_main ].merge_with_region( self.rid_catalogue[r_layer][rID_loser] )
+        self.rid_catalog[r_layer][ rID_main ].merge_with_region( self.rid_catalog[r_layer][rID_loser] )
         
         # update the entries in the id_map to point to the new region
-        for hex_id in self.rid_catalogue[r_layer][rID_loser].ids:
+        for hex_id in self.rid_catalog[r_layer][rID_loser].ids:
             self.id_map[r_layer][ hex_id ] = rID_main
 
-        # delete the old region
-        del self.rid_catalogue[r_layer][ rID_loser ]
+        # delete the old regionNone
+        del self.rid_catalog[r_layer][ rID_loser ]
 
 
     def remove_hex( self, target_id):
         """
-        Try popping a hex from the catalogue. Deletes the key, deletes the hex. 
+        Try popping a hex from the catalog. Deletes the key, deletes the hex. 
 
         @param target_id - the ID of the removed hex
         """ 
-        del self.catalogue[target_id] #delete the hex 
+        del self.catalog[target_id]
         if target_id == self._active_id:
             self._active_id = None
         elif self._party_hex == self._active_id:
@@ -828,40 +982,39 @@ class Hexmap:
         if not isinstance(new_id, int):
             raise TypeError("ID must be {} type, not {}".format(int, type(new_id)))
 
-        if new_id in self.catalogue:
+        if new_id in self.catalog:
             raise NameError()
-            temp_altitude = self.catalogue[new_id]._altitude_base
-            temp_temp     = self.catalogue[new_id]._temperature_base
-            self.catalogue[new_id] = target_hex
-            self.catalogue[new_id]._altitude_base = temp_altitude
-            self.catalogue[new_id]._temperature_base = temp_temp
-            self.catalogue[new_id].rescale_color()
+            temp_altitude = self.catalog[new_id]._altitude_base
+            temp_temp     = self.catalog[new_id]._temperature_base
+            self.catalog[new_id] = target_hex
+            self.catalog[new_id]._altitude_base = temp_altitude
+            self.catalog[new_id]._temperature_base = temp_temp
         else:
-            self.catalogue[new_id] = target_hex
+            self.catalog[new_id] = target_hex
 
     def remove_region(self, rid, r_layer):
         if not isinstance(rid, int):
             raise TypeError("Expected type {} for arg `int`, got{}".format(int, type(rid)) )
-        if rid not in self.rid_catalogue[r_layer]:
-            raise KeyError("Region ID {} not in catalogue".format(rid))
+        if rid not in self.rid_catalog[r_layer]:
+            raise KeyError("Region ID {} not in catalog".format(rid))
 
-        for ID in self.rid_catalogue[r_layer][rid].ids:
+        for ID in self.rid_catalog[r_layer][rid].ids:
             try:
                 del self.id_map[r_layer][ID]
             except KeyError:
                 pass
          
-        del self.rid_catalogue[r_layer][rid] 
+        del self.rid_catalog[r_layer][rid] 
 
 
     def set_active_hex(self, id):
         # totally deprecated... I think 
 
         if self._active_id is not None:
-            self.catalogue[self._active_id].outline = '#ddd'
+            self.catalog[self._active_id].outline = '#ddd'
         
         self._active_id = id
-        self.catalogue[self._active_id].outline = '#f00'
+        self.catalog[self._active_id].outline = '#f00'
     
     def get_hex_neighbors(self, ID, radius=1):
         """
@@ -948,7 +1101,6 @@ class Hexmap:
                 iteration += 1
 
             perimeter_points = [ i+center for i in perimeter_points ]
-            #print("{}\n".format(perimeter_points))
             return( perimeter_points ) 
 
     def points_to_draw( self, list_of_points ):
@@ -1020,7 +1172,7 @@ class Hexmap:
         # We don't know which 
 
         if v_type is None:
-            print("this shouldn't be called")
+            Logger.Warn("This shouldn't be called")
             # deduce the vertex type
             l_up    = self.get_id_from_point( place+Point( -0.25*self.drawscale,   rthree*0.25*self.drawscale ))
             l_down  = self.get_id_from_point( place+Point( -0.25*self.drawscale,-1*rthree*0.25*self.drawscale ))
@@ -1034,7 +1186,7 @@ class Hexmap:
                 v_type=1
                 #return([ l_up, l_down, r_up]) # type 1
             else:
-                raise ValueError("I don't think this place, {}, is a vertex".format(place))
+                Logger.Fatal("I don't think this place, {}, is a vertex".format(place), ValueError)
         
         assert(type(v_type)==int)
         if v_type==1:
@@ -1047,7 +1199,7 @@ class Hexmap:
                         self.get_id_from_point( place + Point( 0.5, -0.5*rthree)*self.drawscale ) ])
 
         else:
-            raise ValueError("Invalid Vertex type value: {}".format(v_type))
+            Logger.Fatal("Invalid Vertex type value: {}".format(v_type), ValueError)
 
     def get_ids_beside_edge(self, start, end):
         """
@@ -1228,6 +1380,39 @@ class RegionMergeError( Exception ):
 class RegionPopError( Exception ):
     pass
 
+class RegionTab(QtWidgets.QWidget):
+    def __init__(self, parent=None, config_region=None):
+        QtWidgets.QWidget.__init__(self, parent=parent)
+        if not isinstance(config_region, Region):
+            Logger.Fatal("Expected {}, got {}".format(Entity, type(config_region)), TypeError)
+
+        # color
+        # name
+        # symbol? 
+        # Buttons to  add/remove hexes
+        # delete button
+
+        self.layout = QtWidgets.QFormLayout(self)
+        self.namelbl = QtWidgets.QLineEdit(self)
+        self.namelbl.setObjectName("namelbl")
+        self.layout.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.namelbl)
+
+        self.colorbutton = QtWidgets.QPushButton(self)
+        self.colorbutton.setObjectName("colorbutton")
+        self.colorbutton.setText("Set Color")
+
+
+
+        #self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.speed_lbl) #FieldRole SpanningRole
+
+    def set_configuration(self, region):
+        if not isinstance(region, Region):
+            raise TypeError("Cannot configure object of type {}".format(type(region)))
+
+    def get_configuration(self, region):
+        if not isinstance(region, Region):
+            raise TypeError("Cannot configure object of type {}".format(type(region)))
+
 class Region:
     """
     A Region is a colleciton of neighboring of Hexes on a Hexmap. Regions are continuous.
@@ -1242,7 +1427,7 @@ class Region:
         """
         Constructor for Region class
 
-        @param hex_id   - int64_t, key for the starting Hex of the region in param `parent`s Hex catalogue
+        @param hex_id   - int64_t, key for the starting Hex of the region in param `parent`s Hex catalog
         @param parent   - Hexmap containing this Region
         """
         if not isinstance( parent, Hexmap):
@@ -1258,7 +1443,7 @@ class Region:
         
         self.parent = parent
         # may throw KeyError! That's okay, should be handled downstream 
-        self.perimeter = self.parent.catalogue[hex_id].vertices
+        self.perimeter = self.parent.catalog[hex_id].vertices
          
         self.known_neighbors = False
         self.neighbors = []
@@ -1279,7 +1464,7 @@ class Region:
         # average all of the IDs positions to get an average point 
         center = Point(0.0, 0.0)
         for hex_id in self.ids:
-            this_hex = self.parent.catalogue[hex_id]
+            this_hex = self.parent.catalog[hex_id]
             center += this_hex.center
             if min_x == None:
                 min_y = this_hex.center.y
@@ -1320,7 +1505,7 @@ class Region:
         if hex_id in self.ids:
             return #nothing to do...
         
-        temp_region = Region( hex_id , self.parent )
+        temp_region = self.__class__( hex_id , self.parent )
         self.merge_with_region( temp_region )
         self.known_neighbors = False 
 
@@ -1381,11 +1566,11 @@ class Region:
                             max_x = point.x
                             which = loop
             if which is None:
-                print("start indices: {}".format( start_indices ))
-                print("Loops: {}".format(loops))
-                print("self.perimeter: {}".format(self.perimeter))
-                print("other one: {}".format(other_region.perimeter))
-                raise TypeError("Some bad stuff has happened.")
+                Logger.Trace("start indices: {}".format( start_indices ))
+                Logger.Trace("Loops: {}".format(loops))
+                Logger.Trace("self.perimeter: {}".format(self.perimeter))
+                Logger.Trace("other one: {}".format(other_region.perimeter))
+                Logger.Fatal("Some bad stuff has happened.")
             self.perimeter = which
             for loop in loops:
                 if loop!=which:
@@ -1466,8 +1651,8 @@ class Region:
                 which=each
                 break
         if which is None:
-            print("Looking for {}, but only have {}".format( hex_id, self.ids))
-            raise ValueError("id not in region")
+            Logger.Trace("Looking for {}, but only have {}".format( hex_id, self.ids))
+            Logger.Fatal("id not in region", ValueError)
        
 
         
@@ -1477,7 +1662,7 @@ class Region:
         
         #    3. hex borders perimeter multiple times. Popping hex will create multiple regions. We forbid this possibility... 
 
-        this_hex = self.parent.catalogue[ hex_id ]
+        this_hex = self.parent.catalog[ hex_id ]
         hex_perim = this_hex.vertices[::-1]
 
         # check perimeter
@@ -1648,7 +1833,7 @@ def _glom( original, new, start_index):
     
 
     if new_perimeter == []:
-        raise Exception("Something terribly unexpected happened: {}, {}, {}".format(original, new, start_index))
+        Logger.Fatal("Something terribly unexpected happened: {}, {}, {}".format(original, new, start_index))
 
     return( new_perimeter )
 
@@ -1687,7 +1872,7 @@ class Path:
             pass
         elif isinstance( offset, float):
             offset = int(offset)
-            print("ATTN: received `offset` of type {}, rounding. This may be an issue!".format(float))
+            Logger.Warn("ATTN: received `offset` of type {}, rounding. This may be an issue!".format(float))
         else:
             raise TypeError("Received type {} for arg `offset`, expected {}".format( type(offset), int))
 

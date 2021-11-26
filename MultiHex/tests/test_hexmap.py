@@ -69,6 +69,6 @@ class TestPoints(unittest.TestCase):
             main.register_hex(bad_hex, this_id)
 
         main.register_hex( this_hex, this_id )
-        self.assertTrue( this_hex == main.catalogue[this_id] )
+        self.assertTrue( this_hex == main.catalog[this_id] )
 
 

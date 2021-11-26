@@ -37,8 +37,8 @@ class main_gui(object):
 
         # this is the contextPane - it's where all the panels go on the right
         self.contextPane = QtWidgets.QToolBox(self.centralwidget)
-        self.contextPane.setMinimumSize(QtCore.QSize(250,0))
-        self.contextPane.setMaximumSize(QtCore.QSize(250, 16777215))
+        self.contextPane.setMinimumSize(QtCore.QSize(300,0))
+        self.contextPane.setMaximumSize(QtCore.QSize(350, 16777215))
         self.contextPane.setObjectName("contextPane")
         self.horizontalLayout.addWidget(self.contextPane)
 
@@ -79,6 +79,9 @@ class main_gui(object):
         self.actionCivEditor = QtWidgets.QAction(MainWindow)
         self.actionCivEditor.setCheckable(True)
         self.actionCivEditor.setObjectName("actionCivEditor")
+        self.actionMapUse = QtWidgets.QAction(MainWindow)
+        self.actionMapUse.setCheckable(True)
+        self.actionMapUse.setObjectName("actionMapUse")
         
         self.menuFile.addAction(self.actionNew)
         self.menuFile.addAction(self.actionOpen)
@@ -91,6 +94,7 @@ class main_gui(object):
 
         self.menuEditor.addAction(self.actionTerrainEditor)
         self.menuEditor.addAction(self.actionCivEditor)
+        self.menuEditor.addAction(self.actionMapUse)
 
         self.menubar.addAction(self.menuFile.menuAction())
         self.menuFile.setTitle(QtCore.QCoreApplication.translate("MainWinbdow","File"))
@@ -104,7 +108,8 @@ class main_gui(object):
         self.menubar.addAction(self.menuEditor.menuAction())
         self.menuEditor.setTitle(QtCore.QCoreApplication.translate("MainWinbdow","Editor"))
         self.actionTerrainEditor.setText(QtCore.QCoreApplication.translate("MainWinbdow","Terrain Editor"))
-        self.actionCivEditor.setText(QtCore.QCoreApplication.translate("MainWinbdow","Civilization Editor"))
+        self.actionCivEditor.setText(QtCore.QCoreApplication.translate("MainWindow","Civilization Editor"))
+        self.actionMapUse.setText(QtCore.QCoreApplication.translate("MainWindow", "Map Use Mode"))
 
 
 

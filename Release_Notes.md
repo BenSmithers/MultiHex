@@ -1,3 +1,60 @@
+## August 2021 (v0.5.0): The Best Update
+
+### Additions
+
+**Major: **
+
+* Undo/Redo. Users can use Ctrl+z and Ctrl+r to undo and redo changes to the map
+
+* Print. Ctrl+P to print the Hexmap. 
+This opens up a print dialog! Neat
+
+* Map use mode. I'll add these details later... 
+
+* Added a calendar widget using a clock that was made a while ago
+
+**Minor:**
+
+* Added new Logging utility: MultiLog. 
+
+* Ctrl+S to save your map 
+
+* hex selector now shows outline of selected hex
+
+* implemented A-star pathing for map use tool. 
+I also made my own "B-Star" pathing algorithm, which kinda sucks.  
+
+### Changes
+
+**Major:**
+
+* Dialogs are now shown when creating and editing entities on the map. These are all dynamically made, and so future entities will be easier to work with and edit 
+
+* double-click on an entity when using the entity editor, and an edit diaglog will open up 
+
+* right click on a hex with the entity editor and a context menu will open. Click which entity you want to edit! 
+
+* fixed longstanding typo in source code: "catalog", not "catalogue"
+
+**Minor:**
+
+* Hexes colors aren't actually changed based on the altitude.
+Instead we perturb the stored color when it's accessed.
+
+* renamed the launch file to what it really should be 
+
+* setting a hex brush size to 2 shouldn't make you select a group of seven hexes with the hex selector 
+
+* fixed river color so that they match shallows 
+
+* Name generator can now make names for oceans and shallows 
+
+* changing the altitude of a hex will automatically switch it between water/land 
+
+* fixed bug where text wouldn't show up right on ubuntu, and instead it looked like wingdings 
+
+* assorted other fixes 
+
 ## June 05 2020 (v0.4.0)
 
 ### Additions

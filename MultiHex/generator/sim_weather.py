@@ -2,6 +2,7 @@ from MultiHex.core import Point, Hexmap, save_map, load_map
 from MultiHex.map_types.overland import *
 from MultiHex.generator.util import *
 from MultiHex.generator.noise import perlinize
+from MultiHex.logger import Logger
 
 from numpy import arccos, histogram, linspace
 from math import exp, floor, sqrt, e, pi, sin
@@ -44,7 +45,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     #                Establish Rainfall
     # ======================================================
 
-    print("Simulating Weather")
+    Logger.Log("Simulating Weather")
 
     rthree = sqrt(3)
     if size=='cont':
@@ -106,7 +107,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             
             pressure = 0.0
             try:
-                here = main_map.catalogue[here_id]
+                here = main_map.catalog[here_id]
                 skip_some = False
             except KeyError:
                 skip_some = True
@@ -114,7 +115,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             if not skip_some:
                 # get the pressure factor 
                 try:
-                    neigh = main_map.catalogue[neigh_id]
+                    neigh = main_map.catalog[neigh_id]
                     pressure = neigh._altitude_base - here._altitude_base 
                 except KeyError:
                     pressure = 0.0
@@ -128,7 +129,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 
                 # drop rain from the reservoir into the thing beneath it
                 new_cloud[index][0] -= rain
-                main_map.catalogue[here_id]._rainfall_base += rain
+                main_map.catalog[here_id]._rainfall_base += rain
 
             # diffuse
             if index!=(len(clouds)-1):
@@ -145,7 +146,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 
                 pressure = 0.0
                 try:
-                    here = main_map.catalogue[here_id]
+                    here = main_map.catalog[here_id]
                     skip_some = False
                 except KeyError:
                     skip_some = True
@@ -153,7 +154,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 if not skip_some:
                     # get the pressure factor 
                     try:
-                        neigh = main_map.catalogue[neigh_id]
+                        neigh = main_map.catalog[neigh_id]
                         pressure = neigh._altitude_base - here._altitude_base 
                     except KeyError:
                         pressure = 0.0
@@ -167,7 +168,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                     
                     # drop rain from the reservoir into the thing beneath it
                     new_cloud_east[index][0] -= rain
-                    main_map.catalogue[here_id]._rainfall_base += rain
+                    main_map.catalog[here_id]._rainfall_base += rain
 
                 # diffuse
                 if index!=(len(clouds_east)-1):
@@ -195,7 +196,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 continue
             else:
                 if perc > (test+1)*10:
-                    print("{}% done".format((1.+test)*10.))
+                    Logger.Log("{}% done".format((1.+test)*10.))
                     percentages[test] = True
 
         # step the cloud forward
@@ -210,14 +211,14 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     rains = deque([])
 
     # set rainy thing
-    for ID in main_map.catalogue.keys():
+    for ID in main_map.catalog.keys():
         
         # we're not collecting statistics on the ocean. It's all very rainy
-        this_hex = main_map.catalogue[ID]
+        this_hex = main_map.catalog[ID]
         if not this_hex._is_land:
             continue
        
-        rains.append( main_map.catalogue[ID]._rainfall_base )
+        rains.append( main_map.catalog[ID]._rainfall_base )
 
     
     # do some statistics with fiiine bins
@@ -237,8 +238,8 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             percentiles[i]=occupation[i]+percentiles[i-1]
     
     # the hex _rainfall_base is is 1/100 the rainfall percentile 
-    for ID in main_map.catalogue.keys():
-        this_hex = main_map.catalogue[ID]
+    for ID in main_map.catalog.keys():
+        this_hex = main_map.catalog[ID]
 
         # don't set the rainfall in the ocean
         if not this_hex._is_land:
@@ -251,38 +252,38 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
                 break
 
         if which==len(edges):
-            main_map.catalogue[ID]._rainfall_base = 1.0
+            main_map.catalog[ID]._rainfall_base = 1.0
         elif which==0:
             # somehow this is beneath the binned region. Should be impossible
-            main_map.catalogue[ID]._rainfall_base = 0.0
+            main_map.catalog[ID]._rainfall_base = 0.0
         else: 
             which -= 1
             try:        
-                main_map.catalogue[ID]._rainfall_base = percentiles[which]
+                main_map.catalog[ID]._rainfall_base = percentiles[which]
             except IndexError:
-                print( "ID: {}".format(ID))
-                print( "which: {} of {}".format(which, len(percentiles)))
+                Logger.Log( "ID: {}".format(ID))
+                Logger.Log( "which: {} of {}".format(which, len(percentiles)))
                 sys.exit()        
 
-    print("Applying Sunlight Gradient")
-    for ID in main_map.catalogue:
-        point_y = main_map.catalogue[ID]._center.y
+    Logger.Log("Applying Sunlight Gradient")
+    for ID in main_map.catalog:
+        point_y = main_map.catalog[ID]._center.y
         # sine arg goes from 0->pi
         # so the temperature goes from 0->1
         
         # 0 at arg=0 or pi, 1 at pi/2
         temperature = sin( (pi*point_y/dimensions[1]) )
-        main_map.catalogue[ID]._temperature_base = temperature 
+        main_map.catalog[ID]._temperature_base = temperature 
 
     
     save_map( main_map, sim )
 
     n_rounds = 2
-    print("Performing {} round of Rainfall Smoothing".format(n_rounds))
+    Logger.Log("Performing {} round of Rainfall Smoothing".format(n_rounds))
     for i in range(n_rounds):
         smooth(['rain'], sim)
 
-    perlinize(attr='_temperature_base')
+    perlinize(sim, attr='_temperature_base')
 
 
     

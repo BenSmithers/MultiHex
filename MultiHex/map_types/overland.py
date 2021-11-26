@@ -1,11 +1,18 @@
 from MultiHex.core import Hex, Point, Region, Path, Hexmap
-from MultiHex.core import RegionMergeError, RegionPopError
+
+from MultiHex.logger import Logger
 
 from MultiHex.objects import Settlement, Government
 from MultiHex.tools import hex_brush, entity_brush, path_brush, region_brush, basic_tool, clicker_control
+from MultiHex.utils import MetaAction, SwapExistingHex
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGraphicsPathItem
+
+try:
+    from numpy import inf, exp,sqrt
+except ImportError:
+    from math import inf, exp,sqrt
 
 """
 Implements the overland map type, its brushes, and its hexes.
@@ -23,6 +30,7 @@ Entries:
 """
 
 default_p = Point(0.0,0.0)
+rthree = sqrt(3)
 
 def point_on_river( point, river ):
     """
@@ -130,7 +138,7 @@ class River(Path):
     """
     def __init__(self, start):
         Path.__init__(self, start)
-        self.color = (134, 183, 207)
+        self.color = (134*0.8, 183*0.8, 207*0.8) #shallows color, but rescaled to 0.0 altitude 
 
         self.width = 1
 
@@ -232,16 +240,16 @@ class County(Region, Government):
         if these_ids==0:
             return(0)
         else:
-            towns = list(filter( (lambda x:  isinstance(self.parent.main_map.eid_catalogue[x], Town)), these_ids))
+            towns = list(filter( (lambda x:  isinstance(self.parent.main_map.eid_catalog[x], Town)), these_ids))
             
             avg_ord = self.order/( 1+len(towns))
             avg_war = self.war/( 1+len(towns))
-            avg_spi = self_spi/( 1+len(towns))
+            avg_spi = self.spi/( 1+len(towns))
             
             for town in towns:
-                avg_ord += (town.population/self.population)*ward.order/(1+len(towns))
-                avg_war += (town.population/self.population)*ward.war/(1+len(towns))
-                avg_spi += (town.population/self.population)*ward.spirit/(1+len(towns))
+                avg_ord += (town.population/self.population)*town.order/(1+len(towns))
+                avg_war += (town.population/self.population)*town.war/(1+len(towns))
+                avg_spi += (town.population/self.population)*town.spirit/(1+len(towns))
 
             wip = ( avg_ord - self.order)**2 + (avg_war - self.war)**2 + (avg_spi - self.spirit)**2
             for town in towns:
@@ -255,8 +263,8 @@ class County(Region, Government):
     def wealth( self ):
         this_wealth = 0
         for eID in self.eIDs:
-            if isinstance( self.parent.eid_catalogue[eID], Settlement ):
-                this_wealth += self.parent.eid_catalogue[eID].wealth
+            if isinstance( self.parent.eid_catalog[eID], Settlement ):
+                this_wealth += self.parent.eid_catalog[eID].wealth
 
         # returns in gp per person 
         return(this_wealth)
@@ -276,8 +284,8 @@ class County(Region, Government):
     def population( self ):
         pop = 0 
         for eID in self.eIDs:
-            if isinstance( self.parent.eid_catalogue[ eID ], Settlement ):
-                pop += self.parent.eid_catalogue[eID].population 
+            if isinstance( self.parent.eid_catalog[ eID ], Settlement ):
+                pop += self.parent.eid_catalog[eID].population 
         return( pop )
 
 class Nation( Government ):
@@ -295,14 +303,14 @@ class Nation( Government ):
         
         self._county_key = 'county'
 
-        if not rID in parent.rid_catalogue[self._county_key]:
+        if not rID in parent.rid_catalog[self._county_key]:
             raise ValueError("County must be a registered in Hexmap.")
 
         self.parent = parent
         self.counties = [rID]
-        self.color = self.parent.rid_catalogue[self._county_key][rID].color
-        self.parent.rid_catalogue[self._county_key][rID].nation = self
-        self.name = "Kingdom of " + self.parent.rid_catalogue[self._county_key][rID].name
+        self.color = self.parent.rid_catalog[self._county_key][rID].color
+        self.parent.rid_catalog[self._county_key][rID].nation = self
+        self.name = "Kingdom of " + self.parent.rid_catalog[self._county_key][rID].name
 
     @property
     def tension(self):
@@ -316,13 +324,13 @@ class Nation( Government ):
             avg_spi = self.spirit/(1+len(self.counties))
 
             for count in self.counties:
-                avg_ord += self.parent.rid_catalogue[self._county_key][count].order/(1+len(self.counties))
-                avg_war += self.parent.rid_catalogue[self._county_key][count].war/(1+len(self.counties))
-                avg_spi += self.parent.rid_catalogue[self._county_key][count].spirit/(1+len(self.counties))
+                avg_ord += self.parent.rid_catalog[self._county_key][count].order/(1+len(self.counties))
+                avg_war += self.parent.rid_catalog[self._county_key][count].war/(1+len(self.counties))
+                avg_spi += self.parent.rid_catalog[self._county_key][count].spirit/(1+len(self.counties))
 
             wip = 0
             for count in self.counties:
-                wip += (self.parent.rid_catalogue[self._county_key][count].population/self.subjects)*((avg_ord - self.parent.rid_catalogue[self._county_key][count].order)**2 + (avg_war - self.parent.rid_catalogue[self._county_key][count].war)**2 + (avg_spi - self.parent.rid_catalogue[self._county_key][count].spirit)**2)
+                wip += (self.parent.rid_catalog[self._county_key][count].population/self.subjects)*((avg_ord - self.parent.rid_catalog[self._county_key][count].order)**2 + (avg_war - self.parent.rid_catalog[self._county_key][count].war)**2 + (avg_spi - self.parent.rid_catalog[self._county_key][count].spirit)**2)
 
             wip = sqrt(wip)
             return( wip )
@@ -331,28 +339,28 @@ class Nation( Government ):
     def subjects( self ):
         pop = 0
         for county in self.counties:
-            pop += self.parent.rid_catalogue[self._county_key][county].population
+            pop += self.parent.rid_catalog[self._county_key][county].population
         return( pop )
     
     @property
     def total_wealth( self ):
         wea = 0
         for county in self.counties:
-            wea += self.parent.rid_catalogue[self._county_key][county].wealth
+            wea += self.parent.rid_catalog[self._county_key][county].wealth
         return(wea)
 
     
     def add_county( self, rID ):
         if not isinstance( rID, int):
             raise TypeError("Expected arg of type {}, received {}".format(int, type(rID)))
-        if not rID in self.parent.rid_catalogue[self._county_key]:
+        if not rID in self.parent.rid_catalog[self._county_key]:
             raise ValueError("No registered county of rID {}".format(rID))
         
         if rID in self.counties:
             return
 
         # if it's already part of another Nation, remove it from that nation
-        if self.parent.rid_catalogue[self._county_key][rID].nation is not None:
+        if self.parent.rid_catalog[self._county_key][rID].nation is not None:
             self.remove_county( rID )
 
         allowed = False
@@ -363,8 +371,8 @@ class Nation( Government ):
         if not allowed:
             raise ValueError("Unable to add County {} to Nation. They share no border".format(rID))
         
-        self.parent.rid_catalogue[self._county_key][rID].color = self.color 
-        self.parent.rid_catalogue[self._county_key][rID].nation = self
+        self.parent.rid_catalog[self._county_key][rID].color = self.color 
+        self.parent.rid_catalog[self._county_key][rID].nation = self
         self.counties.append( rID )
 
     def remove_county( self, rID ):
@@ -376,8 +384,8 @@ class Nation( Government ):
         if rID not in self.counties:
             return
 
-        self.parent.rid_catalogue[self._county_key][rID].set_color( rID )
-        self.parent.rid_catalogue[self._county_key][rID].nation = None
+        self.parent.rid_catalog[self._county_key][rID].set_color( rID )
+        self.parent.rid_catalog[self._county_key][rID].nation = None
         self.counties.pop( self.counties.index(rID) )
 
 class Biome(Region):
@@ -460,16 +468,16 @@ class Detail_Brush( basic_tool ):
             self._hover_circle = self.parent.scene.addEllipse(real_place.x-eff_rad , real_place.y-eff_rad, 2*eff_rad, 2*eff_rad , pen=self.pen, brush=self.brush)
 
     def primary_mouse_held(self, event):
-        self.primary_mouse_released(event)
+        return self.primary_mouse_released(event)
 
     def secondary_mouse_held(self, event):
-        self.secondary_mouse_released(event)
+        return self.secondary_mouse_released(event)
 
     def primary_mouse_released(self, event):
-        self.brushy_brushy(event, 1)
+        return self.brushy_brushy(event, 1)
 
     def secondary_mouse_released(self, event):
-        self.brushy_brushy(event, -1)
+        return self.brushy_brushy(event, -1)
 
     def brushy_brushy( self, event, sign=1):
         """
@@ -481,26 +489,26 @@ class Detail_Brush( basic_tool ):
         place = Point( event.scenePos().x(), event.scenePos().y() )
         center_id = self.parent.main_map.get_id_from_point(place)
 
-        if center_id in self.parent.main_map.catalogue:
-            setattr(self.parent.main_map.catalogue[center_id], self.configuring, getattr(self.parent.main_map.catalogue[center_id], self.configuring) + sign*self.magnitude)
-            self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[center_id])
-            self.parent.main_map.catalogue[center_id].rescale_color()
-            self.parent.hex_control.redraw_hex(center_id)
+        if center_id in self.parent.main_map.catalog:
+            action = OverlandAdjust(hexID=center_id,
+                                    params={self.configuring:getattr(self.parent.main_map.catalog[center_id], self.configuring) + sign*self.magnitude},
+                                    climatizer=self.parent.climatizer)
 
         reduced = self.magnitude
         iter = 1
+        actions = MetaAction(action)
         while iter <= self.radius:
             reduced *= 2./3
             neighbors = self.parent.main_map.get_hex_neighbors(center_id, iter)
             for each in neighbors:
-                if each in self.parent.main_map.catalogue:
-                    new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalogue[each], self.configuring) + sign*reduced))
-                    setattr(self.parent.main_map.catalogue[each], self.configuring, new_value)
-                    self.parent.climatizer.apply_climate_to_hex(self.parent.main_map.catalogue[each])
-                    self.parent.main_map.catalogue[each].rescale_color()
-                    self.parent.hex_control.redraw_hex(each)
+                if each in self.parent.main_map.catalog:
+                    new_value = max( -1.0, min(1.5, getattr(self.parent.main_map.catalog[each], self.configuring) + sign*reduced))
+                    action = OverlandAdjust(hexID=each,
+                                    params={self.configuring:new_value},
+                                    climatizer=self.parent.climatizer)
+                    actions.add_to(action)
             iter+=1
-
+        return actions
     def drop(self):
         if self._hover_circle is not None:
             self.parent.scene.removeItem(self._hover_circle)
@@ -805,12 +813,14 @@ class Biome_Brush( region_brush):
         self._type = Biome
 
     def primary_mouse_released(self, event):
-        region_brush.primary_mouse_released(self, event)
+        action = region_brush.primary_mouse_released(self, event)
         self.parent.extra_ui.biome_update_gui()
-     
+        return action
+
     def secondary_mouse_released(self, event):
-        region_brush.secondary_mouse_released(self, event)
+        action = region_brush.secondary_mouse_released(self, event)
         self.parent.extra_ui.biome_update_gui()
+        return action
 
 class County_Brush( region_brush ):
     def __init__(self, parent):
@@ -825,11 +835,12 @@ class County_Brush( region_brush ):
         self.in_nation = None
 
     def secondary_mouse_released(self, event):
-        region_brush.secondary_mouse_released( self, event )
+        return region_brush.secondary_mouse_released( self, event )
 
     def primary_mouse_released(self, event):
-        region_brush.primary_mouse_released(self, event)
+        action = region_brush.primary_mouse_released(self, event)
         self.parent.extra_ui.county_update_with_selected()
+        return action
 
 class Nation_Brush( basic_tool ):
     def __init__(self, parent):
@@ -883,9 +894,9 @@ class Nation_Brush( basic_tool ):
             except KeyError:
                 return
 
-            if self.parent.main_map.rid_catalogue[self._county_key][this_county_rid].nation is not None:
-                self.select(self.parent.main_map.rid_catalogue[self._county_key][this_county_rid].nation)
-                self.parent.nation_update_gui()
+            if self.parent.main_map.rid_catalog[self._county_key][this_county_rid].nation is not None:
+                self.select(self.parent.main_map.rid_catalog[self._county_key][this_county_rid].nation)
+                self.parent.extra_ui.nation_update_gui()
 
         elif self._state == 1:
             # create the new nation with this county as a base
@@ -954,6 +965,44 @@ class OEntity_Brush( entity_brush ):
         entity_brush.__init__(self, parent)
         self._settlement = Town
 
+class OverlandAdjust(SwapExistingHex):
+    """
+    Now here, we're changing the parameters of a hex. Rather than setting the altitude to zero, here we change whether or not it is sea
+    """
+    def __init__(self, **kwargs):
+        SwapExistingHex.__init__(self, **kwargs)
+        self.needed.append("climatizer")
+
+        self.climatizer = kwargs["climatizer"]
+
+    def __call__(self, map):
+        inverse = SwapExistingHex.__call__(self, map)
+        which = map.catalog[self.hexID]
+        if which._altitude_base > 0.0:
+            which._is_land = True
+        else:
+            which._is_land = False
+        self.climatizer.apply_climate_to_hex(which)
+        return OverlandAdjust(params=inverse.params, hexID=self.hexID, climatizer=self.climatizer)
+
+class OverlandSwap(SwapExistingHex):
+    """
+    This is used to swap an existing hex with one from the palette. When we draw a new hex, we check the altitude,
+    and set it to zero if we're doing a land/sea swap. 
+    """
+    def __call__(self, map):
+        inverse = SwapExistingHex.__call__(self, map)
+        which = map.catalog[self.hexID]
+        which._is_land = bool(which._is_land)
+        if which._is_land:
+            if which._altitude_base < 0:
+                which._altitude_base = 0.0
+        else:
+            if which._altitude_base > 0:
+                which._altitude_base = 0.0
+        return OverlandSwap(params=inverse.params, hexID=self.hexID)
+
+
 class OHex_Brush( hex_brush ):
     def __init__(self, parent):
         hex_brush.__init__(self, parent)
@@ -963,21 +1012,14 @@ class OHex_Brush( hex_brush ):
 
         self._river_drawn = []
 
-    def adjust_hex(self, which, params=None):
-        """
-        Sets the specified Hex to the specified parameters
-        """
-        hex_brush.adjust_hex(self, which, params)
-
-        which._is_land = bool(which._is_land)
-        if which._is_land:
-            if which._altitude_base < 0:
-                which._altitude_base = 0.
-        else:
-            if which._altitude_base > 0:
-                which._altitude_base = 0
+        self._adjustAction = OverlandSwap
 
     def get_color_for_param_overwrite(self,parameter_name, parameter_value):
+        """
+        For the heatmaps, we use a parameter to set the color of a hex
+
+        So here we give this brush a parameter name and value, and it returns what the color would be. Different parameters have different color scales 
+        """
         if parameter_name=="_altitude_base":
             return(QtGui.QColor( 50, max(0,min(230 - 100*parameter_value,255)), max(0,min(255,(130 + 100*parameter_value)))))
         elif parameter_name=="_rainfall_base":
@@ -987,11 +1029,6 @@ class OHex_Brush( hex_brush ):
         else:
             # default to red->green
             return(QtGui.QColor(max(0,min(255, 230 - 100*parameter_value)), max(0,min(255,130 + 100*parameter_value)), 50))
-
-
- 
-
-
     
 class OHex(Hex):
     """
@@ -1012,6 +1049,41 @@ class OHex(Hex):
 
         # CW downstream , CCW downstream, runs through
         self.river_border = [ False ,False , False]
+
+        self._scale_factor = self.radius*rthree
+
+    def get_cost(self, other):
+        """
+        Gets the cost of movement between two hexes. Used for routing
+        """
+        if not isinstance(other, OHex):
+            raise TypeError("Can only calculate cost with other {}, got {}".format(OHex, type(other)))
+
+        # xor operator
+        # both should be land OR both should be water
+        if self._is_land ^ other._is_land:
+            water_scale = 1000.
+        else:
+            water_scale = 1.
+
+
+        # prefer flat ground!
+        lateral_dist = (self.center - other.center)**2
+
+        alt_dif = abs(2*(other.altitude - self.altitude)) if self._is_land else 0.
+
+        return(water_scale*(0.1*lateral_dist + self.radius*rthree*alt_dif))
+
+    def get_heuristic(self, other):
+        """
+        Estimates the total cost of going from this hex to the other one
+        """
+        if not isinstance(other, OHex):
+            raise TypeError("Can only calculate cost with other {}, got {}".format(OHex, type(other)))
+
+        lateral_dist = (self.center - other.center)**2
+        alt_dif = abs(2*(other.altitude - self.altitude))
+        return(0.1*lateral_dist + self.radius*rthree*alt_dif)
 
     @property
     def biodiversity(self):
@@ -1049,9 +1121,15 @@ class OHex(Hex):
             raise TypeError("Expected type {}, got {}".format(float, type(what)))
         self._temperature_base = what
         
-    def rescale_color(self):
-        self.fill  = (min( 255, max( 0, self.fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
-                        min( 255, max( 0, self.fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
-                        min( 255, max( 0, self.fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+    @property
+    def fill(self):
+        return(min( 255, max( 0, self._fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
+    @property
+    def outline(self):
+        return(min( 255, max( 0, self._outline[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._outline[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+                        min( 255, max( 0, self._outline[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
 
 

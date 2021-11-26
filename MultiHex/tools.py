@@ -1,25 +1,109 @@
-from PyQt5.QtWidgets import QGraphicsScene, QGraphicsDropShadowEffect
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5 import QtGui, QtCore
+from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QMainWindow, QMenu, QGraphicsView, QMainWindow
+from PyQt5.QtWidgets import QAction
+from PyQt5 import QtGui, QtCore, QtWidgets
+from numpy.lib.function_base import select
 
 
 from MultiHex.core import Point, Region, RegionMergeError, RegionPopError, Path, Hex
 from MultiHex.objects import Icons, Entity, Mobile, Settlement
-# from MultiHex.map_types.overland import Road, River
+from MultiHex.logger import Logger
 
+from MultiHex.utils import MapAction, ActionManager, NullAction
+from MultiHex.utils import MetaAction, Add_Remove_Hex, SwapExistingHex
+from MultiHex.utils import Region_Add_Remove, New_Region_Action, Delete_Region_Action, Merge_Regions_Action
+
+import copy
 
 import os # used for some of the icons
 
 from math import sqrt, pi
 rthree =  sqrt(3)
 
+class EntityDialogGUI(object):
+    def setupUi(self, Dialog):
+        Dialog.setObjectName("Dialog")
+        Dialog.resize(600,400)
+        self.verticalLayout = QtWidgets.QVBoxLayout(Dialog)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.tabWidget = QtWidgets.QTabWidget(Dialog)
+        self.tabWidget.setObjectName("tabWidget")
+
+        self.verticalLayout.addWidget(self.tabWidget)
+        self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Save)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.retranslateUi(Dialog)
+        self.tabWidget.setCurrentIndex(0)
+        self.buttonBox.accepted.connect(Dialog.accept)
+        self.buttonBox.rejected.connect(Dialog.reject)
+        QtCore.QMetaObject.connectSlotsByName(Dialog)
+
+    def retranslateUi(self, Dialog):
+        _translate = QtCore.QCoreApplication.translate
+        Dialog.setWindowTitle(_translate("Dialog", "Entity Editor"))
+
+class EntityDialog(QtWidgets.QDialog):
+    def __init__(self,parent, config_object):
+        super(EntityDialog, self).__init__(parent)
+        self.ui = EntityDialogGUI()
+        self.ui.setupUi(self)
+        self.parent = parent
+
+        self.ui.buttonBox.accepted.connect(self.accept)
+
+        if not isinstance(config_object, Entity):
+            raise TypeError("Cannot configure {} object!".format(type(config_object)))
+        
+        # yeah the syntax here is really ugly, but this function is a static method so it can also be called on 
+        #  an un-instantiated class 
+        
+        # this returns a list of widgets, each of which gets its own tab! 
+
+        self._configuring = config_object
+        self._tabs = []
+
+        widget_list = config_object.widget(config_object)
+        for entry in widget_list:
+            newtab = QtWidgets.QWidget(self)
+            
+            layout = QtWidgets.QVBoxLayout(newtab)
+            this_widg = entry(newtab, config_object)
+            newtab.setObjectName( this_widg.objectName() )
+            layout.addWidget(this_widg)
+            newtab.setLayout(layout)
+
+            self._tabs.append(this_widg)
+            self.ui.tabWidget.addTab(newtab, this_widg.objectName())
+        
+    def accept(self):
+        for i_tab in range(len(self._tabs)):
+            self._configuring = self._tabs[i_tab].set_configuration(self._configuring)
+
+        super().accept()
+
+class MultiHexAction(QAction):
+    def __init__(self, name, id=None):
+        QAction.__init__(self,name)
+
+        self._id = id
+    
+    @property
+    def id(self):
+        return(self._id)
+
 class basic_tool:
     """
-    Prototype a basic tool 
+    Prototype a basic tool. We use this for consistent typing and templated functions. 
+    
+    So, you know, like why anyone else would use class inheritance 
     """
     def __init__(self, parent=None):
         if not (isinstance(parent, QMainWindow) or (parent is None)):
-            raise TypeError("Parent should be of type {}, not {}".format(clicker_control, type(parent)))
+            raise TypeError("Parent should be of type {}, not {}".format(QMainWindow, type(parent)))
         self.parent = parent
 
     def primary_mouse_depressed(self,event):
@@ -28,14 +112,14 @@ class basic_tool:
 
         @param event 
         """
-        pass
+        return NullAction()
     def primary_mouse_released(self, event):
         """
         This is called when the right mouse button is released from a localized click. 
 
         @param event - location of release
         """
-        pass
+        return NullAction()
     def primary_mouse_held(self,event ):
         """
         Called continuously while the right mouse button is moved and depressed 
@@ -43,26 +127,28 @@ class basic_tool:
         @param event - current mouse location
         @param setp  - vector pointing from last called location to @place
         """
-        pass
+        return NullAction()
     def secondary_mouse_held(self, event):
         """
         Called continuously while the right mouse button is moved and depressed 
         """
-        pass
+        return NullAction()
+    def double_click_event(self, event):
+        return NullAction()
     def secondary_mouse_released(self, event ):
         """
         Left click released event, used to select something
 
         @param event - Qt event object. has where the mouse is
         """
-        pass
+        return NullAction()
     def mouse_moved(self, event):
         """
         Called continuously while the mouse is in the widget
 
         @param place - where the mouse is 
         """
-        pass
+        return NullAction()
     def drop(self):
         """
         Called when this tool is being replaced. Cleans up anything it has drawn and should get rid of (like, selection circles). This is needed when closing one of the guis 
@@ -73,6 +159,16 @@ class basic_tool:
         Toggles the 'mode' of the tool. Optionally passed a 'corce' argument 
         """
         pass
+
+    def get_context_options(self,event):
+        """
+        Function called by the clicker control requesting a list of context menu options, from the active tool, at the cursor. 
+        The tool returns a list containing a string for each viable option
+        """
+        return([])
+    def do_action(self, action):
+        if not isinstance(action, MultiHexAction):
+            Logger.Fatal("Expected {} in some kind of brush, got {}".format(MultiHexAction, type(action)), TypeError)
 
     def clear(self):
         """
@@ -111,11 +207,14 @@ class Basic_Brush(basic_tool):
 
         If no Arg is provided, deselect the hex
         """
+
         if which is not None:
             if not isinstance(which, int):
                 raise TypeError("Expected {}, got {}".format(int, type(which)))
 
         self._selected = which
+
+        # draw a blue outline around the selected hex
 
     @property
     def state(self):
@@ -139,6 +238,8 @@ class Basic_Brush(basic_tool):
     def mouse_moved(self, event):
         """
         While moving it continuously removes and redraws the outline - reimplimentation of the 'move' function in the hex brush
+
+        This changes the pen color, erases any previously drawn outline, and then draws the new outline 
         """
         
         # the default 0-state represents no drawing of the outline, and no brushing 
@@ -155,22 +256,24 @@ class Basic_Brush(basic_tool):
         self.QPen.setStyle(1)
 
         if self._selected_id == center_id:
-            pass
+            pass #don't update
         else:
             self._selected_id = center_id
             outline = self.parent.main_map.get_neighbor_outline( center_id , self._brush_size)
-            #self.QPen.setColor(QtGui.QColor(self._selected_color[0], self._selected_color[1], self._selected_color[2]))
-            self.QBrush.setStyle(0)
+            self.QPen.setColor(QtGui.QColor( self._color[0], self._color[1], self._color[2])) # set the pen color 
+            self.QBrush.setStyle(0) #transparent
 
             if self._outline_obj is not None:
                 self.parent.scene.removeItem( self._outline_obj )
             
             self._outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
             self._outline_obj.setZValue(10)
+        return NullAction()
 
     def get_color(self):
-        new = (self._color[0], self._color[1], self._color[2])
-        return(new)
+        return self._color
+        #new = self.QPen.color()
+        #return((new.red(),new.green(),new.blue()))
             
     def set_color( self, color):
         """
@@ -178,6 +281,7 @@ class Basic_Brush(basic_tool):
 
         @param color    - the specified color. Needs to be an length-3 indexable with integer entries >0 and < 255
         """
+        
         if not (isinstance( color, list) or isinstance(color, tuple)):
             raise TypeError("Expected list-like for Arg 'color', got {}".format(type(color)))
         
@@ -191,7 +295,7 @@ class Basic_Brush(basic_tool):
             if entry<0 or entry>255:
                 raise ValueError("Entry {} in {} should be valued between 0 and 255".format(entry, color))
 
-        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 60))
+        self.QBrush.setColor(QtGui.QColor( color[0], color[1], color[2], 120))
         self.QPen.setColor( QtGui.QColor(color[0], color[1], color[2])) 
         self._color = color
 
@@ -209,35 +313,93 @@ class clicker_control(QGraphicsScene):
     """
     Manages the mouse interface for to the canvas.
     """
-    def __init__(self, parent=None, master=None):
+    def __init__(self, parent:QGraphicsView, master:QMainWindow):
         QGraphicsScene.__init__(self, parent)
 
         self._active = None #basic_tool object
         self._primary_held = False
         self._secondary_held = False
-        
-        self.parent = parent
-        self.master = master
 
-        self._alt_held = False
+        self.parent = parent #QGraphicsView - this is the graphics view that QT needs
+        self.master = master #main window - this is the main window that _I_ need
 
+        # we assign these to these macros so we can swap left/right button. Could be useful for future left/right handed mouse support 
         self._primary = QtCore.Qt.LeftButton
         self._secondary = QtCore.Qt.RightButton
 
-    def keyPressEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = True
-    def keyReleaseEvent(self, event):
-        event.accept()
-        if event.key() == QtCore.Qt.Key_Alt:
-            self._alt_held = False
+        self._actionmanager = ActionManager(self.master.main_map)
+        self._meta_event_holder = False
 
+    @property
+    def ActionManager(self):
+        return self._actionmanager
+
+    def do_action(self, action:MapAction):
+        """
+        Tell the action manager to do an action now so long as it isn't a NullAction 
+        """
+        if (not isinstance(action, NullAction)) and (action is not None):
+            # if it's a draw-type action, pass the draw-tuple up to the master 
+            self.master.unsaved_changes = True
+
+            self._actionmanager.do_now(action, False)
+            if action.drawtype:
+                drawing = action.draw()
+                self.master.interpret_draw_tuple(drawing) 
+            if isinstance(action, MetaAction):
+                for act in action.actions:
+                    if act.drawtype:
+                        self.master.interpret_draw_tuple(act.draw())
+
+    def undo(self):
+        """
+        For the undo and redo, the action manager calls up the actions, then collects and returns the draw tuples
+
+        We iterate over those draw tuples and send them up to the parent, who handles the drawing. 
+        The cool thing is this is totally agnostic to any future draw functions. We don't have to know what kind of actions or drawing is going on! 
+        """
+        drawing = self._actionmanager.undo()
+        for draw in drawing:
+            self.master.interpret_draw_tuple(draw) 
+    def redo(self):
+        drawing = self._actionmanager.redo()
+        for draw in drawing:
+            self.master.interpret_draw_tuple(draw)
+
+    def keyReleaseEvent(self, event):
+        """
+        We use this to handle the situations where the user presses a key! 
+        """
+        event.accept()
         if event.key() == QtCore.Qt.Key_Plus or event.key()==QtCore.Qt.Key_PageUp or event.key()==QtCore.Qt.Key_BracketRight:
             self.parent.scale( 1.05, 1.05 )
 
         if event.key() == QtCore.Qt.Key_Minus or event.key()==QtCore.Qt.Key_PageDown or event.key()==QtCore.Qt.Key_BracketLeft:
             self.parent.scale( 0.95, 0.95 )
+
+        if event.key == QtCore.Qt.Key_Escape:
+            self.drop()
+
+        # check if the user did Ctrl+Z for undo or Ctrl+R for redo
+        if QApplication.keyboardModifiers() == QtCore.Qt.ControlModifier:
+            if event.key()==QtCore.Qt.Key_Z:
+                self.undo()
+            if event.key()==QtCore.Qt.Key_R:
+                self.redo()
+            if event.key()==QtCore.Qt.Key_S:
+                Logger.Log("Saving!")
+                self.master.save_map()
+                self.unsaved_changes = False
+
+            if event.key()==QtCore.Qt.Key_N:
+                # new map? 
+                pass 
+            if event.key()==QtCore.Qt.Key_P:
+                # print 
+                self.master.print()
+
+        if QApplication.keyboardModifiers()==QtCore.Qt.AltModifier:
+            pass
 
 
     def mousePressEvent(self, event):
@@ -247,7 +409,6 @@ class clicker_control(QGraphicsScene):
         if event.button()==self._primary:
             event.accept() # accept the event
             self._primary_held = True # say that the mouse is being held 
-            self._active.primary_mouse_depressed( event )
         elif event.button()==self._secondary:
             event.accept()
             self._secondary_held = True
@@ -255,18 +416,34 @@ class clicker_control(QGraphicsScene):
     def mouseReleaseEvent( self, event):
         """
         Called when a mouse button is released 
+
+        we do the action, and if we're working on a meta action we finish it up and do the drawing
+        if we aren't then we just send it on to this clicker control's do function 
         """
         if event.button()==self._primary:
             # usually a brush event 
             event.accept()
             self._primary_held = False
-            self._active.primary_mouse_released(event)
-
+            action = self._active.primary_mouse_released(event)                
+            
         elif event.button()==self._secondary:
             # usually a selection event
             event.accept()
-            self._secondary_held = False
-            self._active.secondary_mouse_released( event )
+            self._secondary_held = False   
+            action = self._active.secondary_mouse_released( event )
+        
+        if event.button()==self._primary or event.button()==self._secondary:
+            if action is not None:
+                if self._meta_event_holder:
+                    self.ActionManager.add_to_meta(action)
+                    self.ActionManager.finish_meta()
+                    
+                    self._meta_event_holder = False
+                else:
+                    self.do_action(action)
+            
+                if action.drawtype:
+                    self.master.interpret_draw_tuple(action.draw())
 
    #mouseMoveEvent 
     def mouseMoveEvent(self,event):
@@ -274,16 +451,61 @@ class clicker_control(QGraphicsScene):
         called continuously as the mouse is moved within the graphics space. The "held" boolean is used to distinguish between regular moves and click-drags 
         """
         event.accept()
-        if self._primary_held:
-            self._active.primary_mouse_held( event )
-        if self._secondary_held:
-            self._active.secondary_mouse_held( event )
- 
+        if self._primary_held and self._secondary_held:
+            self._primary_held = False
+            self._secondary_held = False
+            return
+        elif self._primary_held:
+            # we want to do these actions before adding them. That way we show the results of them while using the tool
+            action = self._active.primary_mouse_held( event )
+        elif self._secondary_held:
+            action = self._active.secondary_mouse_held(event)
+
+        if self._primary_held or self._secondary_held:
+            if action is not None:
+                self.ActionManager.add_to_meta(action)
+                self._meta_event_holder=True
+                
+                if action.drawtype:
+                    self.master.interpret_draw_tuple(action.draw())
+
         self._active.mouse_moved( event )
+
+
+    def mouseDoubleClickEvent(self, event):
+        self._active.double_click_event( event )
 
     @property
     def active(self):
         return(self._active)
+
+    def contextMenuEvent(self, event):
+        """
+        Here we ask the active tool for a list of appropriate actions, then let the user chose one of those, and then we do that action.
+
+        This way we can push the contextMenu implementation down onto the swappable tools
+        """
+
+        # list of (name, id) tuples
+        opts = self.active.get_context_options(event)
+        if not isinstance(opts, list):
+            return
+        if len(opts)==0:
+            return
+        contextMenu = QMenu(self.parent)
+        actions = {}
+        for option in opts:
+            if not isinstance(option, tuple):
+                raise TypeError("Expected {}, got {}".format(tuple, type(option)))
+            if not len(option)==2:
+                raise ValueError("Expected length-2 tuple, got length-{}".format(len(option)))
+
+            actions[option] = MultiHexAction(option[0], option[1])
+            contextMenu.addAction(actions[option])
+
+        action = contextMenu.exec_(self.master.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
+        if action is not None:
+            self.active.do_action(action)
 
     def select(self,which_tool):
         if not isinstance(which_tool, basic_tool):
@@ -726,7 +948,7 @@ class entity_brush(basic_tool):
 
         # these are used for the ghosted prospective placement icon of a new entity
         self._ghosted_placement = None
-        self._icon_size = 32 #int(self.parent.main_map._drawscale*2)
+        self._icon_size = None
 
         # whether or not assets have been loaded
         self._loaded = False
@@ -738,8 +960,21 @@ class entity_brush(basic_tool):
         self.draw_entities = True
         self.draw_settlements = True
 
+        self.dialog = None
+
         self._settlement = Settlement
     
+    def set_state(self, state:int)->None:
+        if state in [-1,0,1]:
+            self._placing=state
+
+    def secondary_mouse_released(self, event):
+        if self._placing in [0,1]:
+            self._placing = -1
+
+    def configure_icon_size(self):
+        self._icon_size = int(self.parent.main_map._drawscale*2)
+
     def select_hex(self, which):
         if not isinstance( which, int):
             raise TypeError("")
@@ -759,7 +994,7 @@ class entity_brush(basic_tool):
         Function exposing the selected eID. Allows it to be set by non-member functions
         """
         assert( isinstance( eID, int ))
-        if not eID in self.parent.main_map.eid_catalogue:
+        if not eID in self.parent.main_map.eid_catalog:
             raise ValueError("eID {} not registered, but is being selected?".format(eID))
         self._selected_eid = eID
 
@@ -846,7 +1081,7 @@ class entity_brush(basic_tool):
             if self._selected_hex in self.parent.main_map.eid_map:
                 eIDs_here = self.parent.main_map.eid_map[ self._selected_hex ]
                 for eID in eIDs_here:
-                    if isinstance( self.parent.main_map.eid_catalogue[eID] , self._settlement ):
+                    if isinstance( self.parent.main_map.eid_catalog[eID] , self._settlement ):
                         settlement_eid = eID
             self._selected_eid = settlement_eid
             self.parent.extra_ui.set_update_selection( settlement_eid )
@@ -888,14 +1123,20 @@ class entity_brush(basic_tool):
                 new_ent = Entity( "temp" , loc_id )
                 new_ent.icon = "location"
                 self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
-                self.parent.main_map.eid_catalogue[self._selected_eid].name = "Entity {}".format(self._selected_eid)
+                self.parent.main_map.eid_catalog[self._selected_eid].name = "Entity {}".format(self._selected_eid)
             else: #placing is 1
                 new_ent = self._settlement("temp", loc_id )
                 new_ent.icon = "village"
                 self._selected_eid = self.parent.main_map.register_new_entity( new_ent )
-                self.parent.main_map.eid_catalogue[self._selected_eid].name = "Town {}".format(self._selected_eid)
+                self.parent.main_map.eid_catalog[self._selected_eid].name = "Town {}".format(self._selected_eid)
             
             self.update_wrt_new_eid()
+            self.redraw_entities_at_hex( loc_id )
+
+            self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[self._selected_eid])
+            self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+            self.dialog.exec_()
+
             self.redraw_entities_at_hex( loc_id )
 
             if self._placing == 0:
@@ -907,6 +1148,36 @@ class entity_brush(basic_tool):
             pass
 
 
+    def get_context_options(self, event):
+        if self._placing==-1:
+            place = Point( event.scenePos().x(), event.scenePos().y())
+            loc_id = self.parent.main_map.get_id_from_point( place )
+            if loc_id in self.parent.main_map.eid_map:
+                return([ (self.parent.main_map.eid_catalog[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
+    
+    def double_click_event(self, event):
+        if self._placing==-1:
+            place = Point( event.scenePos().x(), event.scenePos().y())
+            loc_id = self.parent.main_map.get_id_from_point( place )
+
+            if loc_id in self.parent.main_map.eid_map:
+                eid = self.parent.main_map.eid_map[loc_id][0]
+                self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[eid])
+                self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+                self.dialog.exec_()
+
+                self.redraw_entities_at_hex( loc_id )
+
+    def do_action(self, action):
+        self.select_entity( action.id )
+
+        # now we need to open up that dialog 
+        print("eid {}".format(action.id))
+        self.dialog = EntityDialog(self.parent, self.parent.main_map.eid_catalog[action.id])
+        self.dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.dialog.exec_()
+
+        self.redraw_entities_at_hex( action.id )
 
     def load_assets(self):
         """
@@ -919,8 +1190,10 @@ class entity_brush(basic_tool):
         """
         Redraws the entities at the hexID provided. This function decides which entity to draw. 
         """
+        if not self._loaded:
+            self.load_assets()
 
-        if hID == -1:
+        if hID == -1: #not on map
             return
         if hID not in self.parent.main_map.eid_map:
             raise ValueError("HexID {} has no entry in eID map: {}".format(hID, self.parent.main_map.eid_map[hID]))
@@ -938,7 +1211,7 @@ class entity_brush(basic_tool):
         
         which_eID = None
         for eID in eIDs:
-            is_set = isinstance( self.parent.main_map.eid_catalogue[eID], self._settlement)
+            is_set = isinstance( self.parent.main_map.eid_catalog[eID], self._settlement)
             
             if is_set and (not self.draw_settlements):
                 continue
@@ -947,9 +1220,9 @@ class entity_brush(basic_tool):
                 which_eID = eID 
                 continue
             
-            other_is_set = isinstance( self.parent.main_map.eid_catalogue[which_eID], self._settlement )
+            other_is_set = isinstance( self.parent.main_map.eid_catalog[which_eID], self._settlement )
 
-            is_mob = isinstance( self.parent.main_map.eid_catalogue[eID], Mobile )
+            is_mob = isinstance( self.parent.main_map.eid_catalog[eID], Mobile )
             if is_mob:
                 print("Don't know how to draw a mob")
                 continue
@@ -965,7 +1238,7 @@ class entity_brush(basic_tool):
             # if they /both/ are settlements
             elif other_is_set and is_set:
                 # choose the one with the higher population
-                if self.main_map.eid_catalogue[eID].population > self.main_map.eid_catalogue[which_eID].population:
+                if self.main_map.eid_catalog[eID].population > self.main_map.eid_catalog[which_eID].population:
                     which_eID = eID
 
         if which_eID is None:
@@ -981,18 +1254,18 @@ class entity_brush(basic_tool):
         if not self._loaded:
             self.load_assets()
 
-        if (eID not in self.parent.main_map.eid_catalogue) and (eID not in self._drawn_entities):
-            raise ValueError("eID {} not registered in catalogue".format(eID))
+        if (eID not in self.parent.main_map.eid_catalog) and (eID not in self._drawn_entities):
+            raise ValueError("eID {} not registered in catalog".format(eID))
 
         # delete old drawing if it exists
         if eID in self._drawn_entities:
             self.parent.scene.removeItem( self._drawn_entities[ eID ] )
             del self._drawn_entities[ eID ]
 
-        if eID in self.parent.main_map.eid_catalogue:
-            self._drawn_entities[eID] = self.parent.scene.addPixmap( self._all_icons.pixdict[self.parent.main_map.eid_catalogue[ eID ].icon] )
+        if eID in self.parent.main_map.eid_catalog:
+            self._drawn_entities[eID] = self.parent.scene.addPixmap( self._all_icons.pixdict[self.parent.main_map.eid_catalog[ eID ].icon] )
             self._drawn_entities[eID].setZValue(5)
-            location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalogue[eID].location)
+            location = self.parent.main_map.get_point_from_id( self.parent.main_map.eid_catalog[eID].location)
             self._drawn_entities[eID].setX( location.x - self._all_icons.shift)
             self._drawn_entities[eID].setY( location.y - self._all_icons.shift)
 
@@ -1010,6 +1283,147 @@ class entity_brush(basic_tool):
         self.drop() 
         self._drawn_entities = {}
 
+class Map_Use_Tool(basic_tool):
+    """
+    The tool used in the map use mode. It's used to place and edit mobiles in addition to accessing information on all map entities. 
+    """
+    def __init__(self, parent):
+        basic_tool.__init__(self,parent)
+
+        self._state = 0
+        self._valid_states = [0,1]
+        # 0 - Idle. Open to selecting a new Mobile or Entity  
+        # 1 - Entity selected
+
+        self._from_id = None
+        self._route = None
+
+        self._drawn_route_obj = None
+
+        self.QBrush = QtGui.QBrush()
+        self.QBrush.setStyle(0)
+        self.QPen   = QtGui.QPen()
+        self.QPen.setStyle(2)
+        self.QPen.setWidth(5)
+        self.QPen.setColor(QtGui.QColor(20, 200, 200))
+
+    @property
+    def state(self):
+        return(self._state)
+
+    def set_state(self, state):
+        if state not in self._valid_states:
+            raise ValueError("{} not in list of valid states: {}".format(state, self._valid_states))
+        self._state = state
+
+    def select(self, eid=None):
+        if eid is None:
+            self.set_state(0)
+            self._selected = None
+        else:
+            if eid in self.parent.main_map.eid_catalog:
+                self._selected = eid
+                self.set_state(1)
+            else:
+                self._selected = None
+                self.set_state(0)
+
+    def primary_mouse_released(self, event):
+        place = Point( event.scenePos().x(), event.scenePos().y())
+        loc_id = self.parent.main_map.get_id_from_point( place )
+
+        if self.state==0:
+            if loc_id in self.parent.main_map.eid_map:
+                eids_here = self.parent.main_map.eid_map[loc_id]
+            else:
+                return
+
+            if len(eids_here)==1:
+                self.select(eids_here[0])
+            else:
+                self.special_context_event(event)
+
+        if False: # I don't want this activated atm, but I want to reuse this code later
+            if self.state==0:
+                self._from_id = loc_id
+                self.set_state(1)
+            elif self.state==1:
+                # get the route! 
+                self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
+                self.set_state(0)
+                self.draw_route( self._route )
+
+    def mouse_moved(self, event):
+        place = Point( event.scenePos().x(), event.scenePos().y())
+        loc_id = self.parent.main_map.get_id_from_point( place )
+
+        if False:
+            if loc_id==self._from_id:
+                return
+            if self.state==1:
+                # get the route! 
+                self._route = self.parent.main_map.get_route_a_star(self._from_id, loc_id)
+                self.draw_route( self._route )
+
+    def secondary_mouse_released(self, event):
+        pass
+
+    def special_context_event(self, event):
+        opts = self.get_context_options(event)
+        if not isinstance(opts, list):
+            return
+        if len(opts)==0:
+            return
+        contextMenu = QMenu(self.parent)
+        actions = {}
+        for option in opts:
+            if not isinstance(option, tuple):
+                raise TypeError("Expected {}, got {}".format(tuple, type(option)))
+            if not len(option)==2:
+                raise ValueError("Expected length-2 tuple, got length-{}".format(len(option)))
+
+            actions[option] = MultiHexAction(option[0], option[1])
+            contextMenu.addAction(actions[option])
+
+        action = contextMenu.exec_(self.parent.mapToGlobal(QtCore.QPoint(int(event.scenePos().x()), int(event.scenePos().y()))))
+        if action is not None:
+            self.do_action(action)
+
+    def do_action(self, action):
+        if not isinstance(action, MultiHexAction):
+            raise TypeError("Somehow got a {}, not a {}".format(type(action), MultiHexAction))
+
+        if action.id is not None:
+            self.select(action.id)
+
+    def get_context_options(self, event):
+        if self.state==0:
+            place = Point( event.scenePos().x(), event.scenePos().y())
+            loc_id = self.parent.main_map.get_id_from_point( place )
+            if loc_id in self.parent.main_map.eid_map:
+                return([ (self.parent.main_map.eid_catalog[entry].name, entry) for entry in self.parent.main_map.eid_map[loc_id]])
+        elif self.state==1:
+            # move here
+            return("Move Here")
+
+    def draw_route(self, route):
+        if self._drawn_route_obj is not None:
+            self.parent.scene.removeItem( self._drawn_route_obj )
+
+        positions = [self.parent.main_map.get_point_from_id(id) for id in route]
+
+        # we use this here so the correct type of Scene object is used for derived paths 
+        path = QtGui.QPainterPath()
+
+        path.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( positions )))
+        self._drawn_route_obj = self.parent.scene.addPath( path, pen=self.QPen, brush=self.QBrush )
+        self._drawn_route_obj.setZValue( 30 )
+
+    def drop(self):
+        pass
+
+
+
 class hex_brush(Basic_Brush):
     """
     Another tool with clicker-control interfacing used to paint hexes on a hexmap. 
@@ -1020,6 +1434,8 @@ class hex_brush(Basic_Brush):
         Basic_Brush.__init__(self,parent)
         # what type of Hex does this brush draw
         self._brush_type = Hex
+        self._addAction = Add_Remove_Hex
+        self._adjustAction = SwapExistingHex
         # parameters (like rainfall, temperature, etc) and their defaults 
         self._brush_params = {}
         # which of these to skip when overwriting an existing hex 
@@ -1041,6 +1457,9 @@ class hex_brush(Basic_Brush):
 
         self.use_param_as_color=''
 
+        # outline object for which hex is selected
+        self._selection_outline_obj = None 
+
     def set_params( self, obj ):
         assert( isinstance(obj, dict) )
 
@@ -1061,68 +1480,83 @@ class hex_brush(Basic_Brush):
             raise TypeError("Expected number-like for 'radius', got {}".format(type(radius)))
 
         new = self._brush_type(where, radius)
-        self.adjust_hex( new )
+        params = self.get_params()
+        for key in params:
+            setattr(new, key, params[key])
         return(new)
 
-    def adjust_hex( self, which, params=None ):
+    def get_params( self, params=None ):
         """
         Adjust the given hex to the configured parameters (or a set of given parameters)
+
+        Nominally, this uses the tileset we're configured with to choose the color for the hex 
         """
-        if not isinstance(which, Hex):
-            raise TypeError("Expected {}, got {}.".format(Hex, type(which)))
 
         if params is None:
             use = self._brush_params
             skip = self._skip_params
-            which.fill = self.get_color()
         else:
             if not isinstance(params, dict):
                 raise TypeError("'params', if used, should be {}, not {}".format(dict, type(params)))
             use = params
             skip = []
 
-        for param in use:
-            if param in skip:
-                continue
-            else:
-                setattr( which, param, use[param])
+        # get all the brush parameters that aren't explicitly being skipped
+        params = {key: use[key] for key in filter(lambda val: val not in skip, use)}
+        params["_fill"]=self.get_color() 
+        return params
 
     def primary_mouse_released(self, event):
         if self._state==0:
             self.select_evt(event)
         elif self._state == 1:
-            self.write(event)
+            return self.write(event)
 
     def primary_mouse_held(self, event):
         if self._state==0:
             pass
         elif self._state == 1:
-            self.primary_mouse_released(event)
+            return self.primary_mouse_released(event)
 
     def secondary_mouse_held(self, event):
         if self._state==0:
             pass
         elif self._state==1:
-            self.secondary_mouse_released(event)
+            return self.secondary_mouse_released(event)
     
     def secondary_mouse_released(self,event):
         if self._state==0:
             self.deselect_evt(event)
         elif self._state == 1:
-            self.erase(event)
-    
+            return self.erase(event)
+
+    def select(self, loc_id=None ):
+        Basic_Brush.select(self, loc_id)
+
+        # remove any selection outline
+        if self._selection_outline_obj is not None:
+            self.parent.scene.removeItem(self._selection_outline_obj)
+            self._selection_outline_obj = None
+
+        if (loc_id is not None) and (loc_id in self.parent.main_map.catalog):
+            self.QPen.setColor(QtGui.QColor(0, 220,220))
+            self.QPen.setStyle(1)
+            self.QBrush.setStyle(0)
+            outline = self.parent.main_map.get_neighbor_outline( loc_id , 1)
+
+            self._selection_outline_obj = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( outline )), pen = self.QPen, brush=self.QBrush )
+            self._selection_outline_obj.setZValue(10)
 
     def select_evt(self, event):
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        try:
-            self.parent.extra_ui.det_show_selected(loc_id)
-        except AttributeError:
-            pass
+    
+        self.parent.extra_ui.det_show_selected(loc_id if loc_id in self.parent.main_map.catalog else None)
         self.select( loc_id ) #select
 
+
     def deselect_evt(self, event):
-        self.parent.det_show_selected()
+        self.parent.extra_ui.det_show_selected()
         self.select() # deselect
     
     def erase(self, event):
@@ -1134,22 +1568,21 @@ class hex_brush(Basic_Brush):
         """
         place = Point(event.scenePos().x(),event.scenePos().y() )
         loc_id = self.parent.main_map.get_id_from_point( place )
-        try:
-            self.parent.scene.removeItem( self.drawn_hexes[ loc_id ] ) 
-            del self.drawn_hexes[loc_id]
-            self.parent.main_map.remove_hex(loc_id)
-        except KeyError:
-            pass 
+
+        if loc_id in self.parent.main_map.catalog:
+            action = self._addAction(hexID=loc_id, hex=None)
+        else:
+            action = NullAction()
 
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors(loc_id)
+            actions = MetaAction(action)
             for neighbor in neighbors:
-                try:
-                    self.parent.scene.removeItem( self.drawn_hexes[neighbor])
-                    del self.drawn_hexes[neighbor]
-                    self.parent.main_map.remove_hex( neighbor )
-                except KeyError:
-                    pass
+                actions.add_to(self._addAction(hexID=neighbor, hex=None))
+                
+            return actions
+        else: 
+            return action
 
     def write(self, event):
         """
@@ -1158,7 +1591,6 @@ class hex_brush(Basic_Brush):
         Same story for larger brush size. Try building and registering hexes for all the IDs neighboring the central ID 
 
         """
-        
         if not self._activated:
             # Brush hasn't been configured with any parameters yet! 
             return
@@ -1171,34 +1603,30 @@ class hex_brush(Basic_Brush):
         new_hex_center = self.parent.main_map.get_point_from_id( loc_id )
         
         # register that hex in the hexmap 
-        try:
-            if (loc_id in self.parent.main_map.catalogue) and self.overwrite:
-                # if we're overwriting, delete any hex that exists here
-                self.adjust_hex( self.parent.main_map.catalogue[loc_id])
-                self.parent.main_map.catalogue[loc_id].rescale_color()
-            else:
-                # create a hex at that point, with a radius given by the current drawscale 
-                new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
-                self.parent.main_map.register_hex( new_hex, loc_id )
-            self.redraw_hex( loc_id )
-        except NameError:
+        if (loc_id in self.parent.main_map.catalog) and self.overwrite:
+            # if we're overwriting, delete any hex that exists herecd
+            action = self._adjustAction(hexID=loc_id,params=self.get_params())
+            
+        else:
+            # create a hex at that point, with a radius given by the current drawscale 
+            new_hex= self._make_hex( new_hex_center, self.parent.main_map._drawscale )
+            action = self._addAction(hexID=loc_id, hex=new_hex)
+
             # if we aren't overwriting, the register_hex function will raise a NameError. That's okay 
-            pass
 
         if self._brush_size ==2:
             neighbors = self.parent.main_map.get_hex_neighbors( loc_id )
+            actions = MetaAction(action)
             for neighbor in neighbors:
                 new_hex_center = self.parent.main_map.get_point_from_id( neighbor )
-                try:
-                    if (neighbor in self.parent.main_map.catalogue) and self.overwrite:
-                        self.adjust_hex( self.parent.main_map.catalogue[neighbor])
-                        self.parent.main_map.catalogue[neighbor].rescale_color()
-                    else:
-                        new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
-                        self.parent.main_map.register_hex( new_hex, neighbor )            
-                    self.redraw_hex( neighbor )
-                except NameError:
-                    pass
+                if (neighbor in self.parent.main_map.catalog) and self.overwrite:
+                    actions.add_to(self._adjustAction(hexID=neighbor,params=self.get_params()))
+                else:
+                    new_hex = self._brush_type( new_hex_center, self.parent.main_map._drawscale)
+                    actions.add_to(self._addAction(hexID=neighbor, hex=new_hex))
+            return actions
+        else:
+            return action
 
     def get_color_for_param_overwrite(self, parameter_name, parameter_value):
         """
@@ -1209,16 +1637,17 @@ class hex_brush(Basic_Brush):
         raise NotImplementedError("Use a derived class!")
         return( QtGui.QColor(0,0,0) )
 
-    def redraw_hex(self, hex_id):
+    def erase_hex(self, hex_id):
         # if this hex has been drawn, redraw it! 
         if hex_id in self.drawn_hexes:
             self.parent.scene.removeItem( self.drawn_hexes[hex_id] )
             del self.drawn_hexes[hex_id]
 
-        if hex_id not in self.parent.main_map.catalogue:
+    def draw_hex(self, hex_id):
+        if hex_id not in self.parent.main_map.catalog:
             return
+        this_hex = self.parent.main_map.catalog[ hex_id ]
 
-        this_hex = self.parent.main_map.catalogue[ hex_id ]
         if self.use_param_as_color=='':
             self.QPen.setColor(QtGui.QColor( this_hex.outline[0], this_hex.outline[1], this_hex.outline[2] ))
             self.QBrush.setColor( QtGui.QColor( this_hex.fill[0], this_hex.fill[1], this_hex.fill[2] ))
@@ -1233,6 +1662,11 @@ class hex_brush(Basic_Brush):
         
         self.drawn_hexes[hex_id] = self.parent.scene.addPolygon( QtGui.QPolygonF( self.parent.main_map.points_to_draw( this_hex.vertices )), pen=self.QPen, brush=self.QBrush) 
         self.drawn_hexes[hex_id].setZValue(-1)
+
+    def redraw_hex(self, hex_id):
+        self.erase_hex(hex_id)
+        self.draw_hex(hex_id)
+
 
     def toggle_brush_size(self):
         """
@@ -1302,7 +1736,7 @@ class region_brush(Basic_Brush):
         Basic_Brush.select(self, event)
 
         if self.selected is not None:
-            self.set_color(self.parent.main_map.rid_catalogue[self.r_layer][self.selected].color)
+            self.set_color(self.parent.main_map.rid_catalog[self.r_layer][self.selected].color)
         else:
             self.set_color((255,255,255))
 
@@ -1322,7 +1756,7 @@ class region_brush(Basic_Brush):
         """
         Do the same thing as if the mouse was released
         """
-        self.secondary_mouse_released(event)
+        return self.secondary_mouse_released(event)
 
     def secondary_mouse_released(self, event):
         """
@@ -1337,17 +1771,17 @@ class region_brush(Basic_Brush):
             if self.selected is None:
                 self.set_state(0)
             else:
-                self.reg_remove( event )
+                return self.reg_remove( event )
 
     def primary_mouse_held(self, event):
-        self.primary_mouse_released( event )
+        return self.primary_mouse_released( event )
 
     def primary_mouse_released(self, event):
         """
         Draws or Erases, depending on the mode 
         """
-        if self.r_layer not in self.parent.main_map.rid_catalogue:
-            self.parent.main_map.rid_catalogue[self.r_layer] = {}
+        if self.r_layer not in self.parent.main_map.rid_catalog:
+            self.parent.main_map.rid_catalog[self.r_layer] = {}
         if self.r_layer not in self.parent.main_map.id_map:
             self.parent.main_map.id_map[self.r_layer] = {}
 
@@ -1363,9 +1797,9 @@ class region_brush(Basic_Brush):
 
         else:
             if self._writing:
-                self.reg_add(event)
+                return self.reg_add(event)
             else:
-                self.reg_remove(event)
+                return self.reg_remove(event)
 
     def toggle_mode(self, force=None):
         """
@@ -1392,9 +1826,8 @@ class region_brush(Basic_Brush):
         # get the nearest relevant ID
         loc_id = self.parent.main_map.get_id_from_point( place )
         
-        if loc_id not in self.parent.main_map.catalogue:
+        if loc_id not in self.parent.main_map.catalog:
             return
-
 
         if self.selected is None:
             # if the hex here is not mapped to a registered region, 
@@ -1403,58 +1836,58 @@ class region_brush(Basic_Brush):
                 new_reg = self._type( loc_id, self.parent.main_map )
                                 
                 # get the newely created rid, set it to active 
-                self.select( self.parent.main_map.register_new_region( new_reg, self.r_layer ) )
-                new_reg.name = self.default_name +" "+ str( self.selected )
+                # the selection is done as part of this action's draw stage 
+                rid=self.parent.main_map.get_next_rid(self.r_layer)
+                new_reg.name=self.default_name+" {}".format(rid)
+                action = New_Region_Action(region=new_reg, rlayer=self.r_layer, rID=rid)
 
                 # self.parent.main_map.id_map( loc_id )
                 
                 if self._brush_size == 2:
+                    actions = MetaAction(action)
                     # build a new region around this one
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        self.parent.main_map.add_to_region( self.selected, ID, self.r_layer )
-
-                self.redraw_region( self.selected )
+                        #self.parent.main_map.add_to_region( self.selected, ID, self.r_layer )
+                        actions.add_to(Region_Add_Remove(rID=rid, rlayer=self.r_layer, hexID=ID))
+                    return actions
+                else:
+                    return action
             else:
                 # no active region, but the hex here belongs to a region. 
                 # set this hexes' region to the active one 
-                self.select( self.parent.main_map.id_map[self.r_layer][ loc_id ] )
+                rid = self.parent.main_map.id_map[self.r_layer][ loc_id ] 
+                return Region_Add_Remove( hexID=loc_id, rID=rid, rlayer=self.r_layer)
         else:
             if self._brush_size==1:
-                try:
-                    # try adding it
-                    # if it can't, it raises a RegionMergeError exception
-                    other_rid = self.parent.main_map.add_to_region(self.selected , loc_id, self.r_layer )
-                    
-                    if (other_rid!=-1) and (other_rid is not None): 
-                        # add_to_region returns an rid if it removes a hex from another region.
-                        # it returns -1, it didn't remove anything from anywhere 
-                        self.redraw_region( other_rid )
-                    self.redraw_region( self.selected )
-                except RegionMergeError:
-                    pass
-                except RegionPopError:
-                    pass
+                # check if the hex here is already in the region
+                if loc_id in self.parent.main_map.id_map[self.r_layer]:
+                    if self.selected==self.parent.main_map.id_map[self.r_layer][loc_id]:
+                        return NullAction()
+                
+                return Region_Add_Remove(hexID=loc_id, rID=self.selected, rlayer=self.r_layer)
+                #other_rid = self.parent.main_map.add_to_region(self.selected , loc_id, self.r_layer )
+                 
             elif self._brush_size==2:
-                # This seems to cause some instability...
-                # ...
                 if loc_id not in self.parent.main_map.id_map[self.r_layer]:
+                    # rather than adding each hex individually, which could cause execution order issues
+                    # we make a new region and merge it into the main one! 
+
                     # create and register a region
                     temp_region = self._type( loc_id , self.parent.main_map )
-                    new_rid = self.parent.main_map.register_new_region( temp_region, self.r_layer )
+                    new_rid = self.parent.main_map.get_next_rid(self.r_layer)
+                    temp_region.name=self.default_name+" {}".format(new_rid)
+
+                    actions = MetaAction(New_Region_Action(rlayer=self.r_layer, region=temp_region, rID=new_rid))
 
                     for ID in self.parent.main_map.get_hex_neighbors( loc_id ):
-                        try:
-                            self.parent.main_map.add_to_region( new_rid, ID , self.r_layer )
-                        except (RegionMergeError, RegionPopError):
-                            pass
+                        if ID in self.parent.main_map.id_map[self.r_layer]:
+                            if self.selected==self.parent.main_map.id_map[self.r_layer][ID]:
+                                continue
+                        actions.add_to(Region_Add_Remove(rID=new_rid, rlayer=self.r_layer, hexID=ID))
 
                     # now merge the regions
-                    try: 
-                        self.parent.main_map.merge_regions( self.selected , new_rid , self.r_layer)
-                        self.redraw_region( self.selected )
-                    except RegionMergeError:
-                        # delete that region, remove it
-                        self.parent.main_map.remove_region( new_rid , self.r_layer )
+                    actions.add_to(Merge_Regions_Action(rID1=self.selected, rID2=new_rid, rlayer=self.r_layer))
+                    
 
     def reg_remove(self, event):
         """
@@ -1462,22 +1895,14 @@ class region_brush(Basic_Brush):
         """
         place   = Point( event.scenePos().x(), event.scenePos().y() )
         loc_id  = self.parent.main_map.get_id_from_point( place )
-        if loc_id not in self.parent.main_map.catalogue:
+        if loc_id not in self.parent.main_map.catalog:
             return
 
         if loc_id not in self.parent.main_map.id_map[self.r_layer]:
             # nothing to pop
-            return
+            return NullAction()
         else:
-            # get this hexes's region id 
-            this_rid = self.parent.main_map.id_map[self.r_layer][ loc_id ]
-            # remvoe this hex from that region
-            try:
-                self.parent.main_map.remove_from_region( loc_id, self.r_layer )
-                # redraw that region
-                self.redraw_region( this_rid )
-            except RegionPopError:
-                pass
+            return Region_Add_Remove(rID=None, hexID=loc_id, rlayer=self.r_layer)
 
     def redraw_region(self, reg_id ):
         """
@@ -1502,7 +1927,7 @@ class region_brush(Basic_Brush):
             return()
         
         try:
-            reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ reg_id ]
+            reg_obj = self.parent.main_map.rid_catalog[self.r_layer][ reg_id ]
         except KeyError:
             return
 
@@ -1537,10 +1962,10 @@ class region_brush(Basic_Brush):
         if not self.draw_names:
             return
 
-        if rid not in self.parent.main_map.rid_catalogue[self.r_layer]:
+        if rid not in self.parent.main_map.rid_catalog[self.r_layer]:
             return
 
-        reg_obj = self.parent.main_map.rid_catalogue[self.r_layer][ rid ]
+        reg_obj = self.parent.main_map.rid_catalog[self.r_layer][ rid ]
 
         if reg_obj.name=="":
             return
@@ -1561,7 +1986,7 @@ class region_brush(Basic_Brush):
         drop = QGraphicsDropShadowEffect()
         drop.setOffset(1)
         center, extent = reg_obj.get_center_size()
-        font = QtGui.QFont("Fantasy")
+        font = QtGui.QFont("Decorative")
         new_color= QtGui.QColor( 250, 250, 250)
         if self.small_font:
             font_size = 10
