@@ -180,6 +180,7 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
     perlinize(sim)
 
     if "sea_level" in kwargs:
+        main_map = load_map( sim )
         scale = kwargs["sea_level"][0]
         shift = kwargs["sea_level"][1]
 

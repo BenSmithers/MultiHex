@@ -1,19 +1,40 @@
 {
-  "_specials":{
-    "ice world":{
-      "temp_range":[0,0.1]
+  "_specials": {
+    "ice world": {
+      "temp_range": [
+        0,
+        0.1
+      ]
     },
-    "desert world":{
-      "temp_range":[0.8,1.0],
-      "rain_range":[0.0,0.2],
-      "sea_level":[0.6,0.0]
+    "desert world": {
+      "temp_range": [
+        0.8,
+        1.0
+      ],
+      "rain_range": [
+        0.0,
+        0.2
+      ],
+      "sea_level": [
+        0.6,
+        0.15
+      ]
     },
-    "water world":{
-      "rain_range":[0.7,1.0],
-      "sea_level":[0.0,-0.5]
+    "water world": {
+      "rain_range": [
+        0.7,
+        1.0
+      ],
+      "sea_level": [
+        1.0,
+        -0.25
+      ]
     },
-    "dry world":{
-      "sea_level":[0.6,0.0]
+    "dry world": {
+      "sea_level": [
+        0.6,
+        0.0
+      ]
     }
   },
   "continental": {
@@ -88,12 +109,84 @@
       }
     }
   },
+  "desert continental": {
+    "land": {
+      "values": {
+        "land_spread": 0.05,
+        "land_width": 0.1,
+        "mnt_thicc": 3.5,
+        "water_spread": 0.01,
+        "water_width": 0.01
+      },
+      "desc": {
+        "land_spread": "How quickly should the lands altitude decrease as we move away from the ridgelines",
+        "land_width": "Variance in how quickly the land lowers out",
+        "mnt_thicc": "Approximate thickness of mountains around ridgelines",
+        "water_spread": "How quickly altitudes lower on the seabed",
+        "water_width": "Variance in how quickly the altitude lowers out in seabeds"
+      }
+    },
+    "mountains": {
+      "values": {
+        "avg_range": 10.0,
+        "dimx": 4000,
+        "dimy": 2000,
+        "n_peaks": 5,
+        "sigma": 45,
+        "zones": 6
+      },
+      "desc": {
+        "avg_range": "Average length of generated ridgelines",
+        "dimx": "X-dimension of map",
+        "dimy": "Y-dimension of map",
+        "n_peaks": "Number of ridgelines per continent",
+        "sigma": "Size of area ridgelines are injected around a continent",
+        "zones": "Number of continents"
+      }
+    },
+    "weather": {
+      "values": {
+        "diffusion": 0.03,
+        "pres_weight": 0.75,
+        "rain_rate": 0.007,
+        "reservoir_init": 150,
+        "resr_weight": 1.25
+      },
+      "desc": {
+        "diffusion": "How quickly clouds diffuse",
+        "pres_weight": "I can't remember this one",
+        "rain_rate": "How quickly it rains over land",
+        "reservoir_init": "How much rain is in the clouds",
+        "resr_weight": "Who even knows"
+      }
+    },
+    "regions": {
+      "values": {
+        "n_regions": 15,
+        "reg_size": 10
+      },
+      "desc": {
+        "n_regions": "Number of Biomes generated",
+        "reg_size": "Approximate Size of Biomes"
+      }
+    },
+    "rivers": {
+      "values": {
+        "n_rivers": 5,
+        "max_len": 20
+      },
+      "desc": {
+        "n_rivers": "Number of rivers to generate",
+        "max_len": "Max Length of a river"
+      }
+    }
+  },
   "custom": {
     "land": {
       "values": {
-        "land_spread": 0.15,
-        "land_width": 0.2,
-        "mnt_thicc": 2.5,
+        "land_spread": 0.05,
+        "land_width": 0.05,
+        "mnt_thicc": 3.5,
         "water_spread": 0.02,
         "water_width": 0.01
       },
@@ -112,7 +205,7 @@
         "dimy": 2000,
         "n_peaks": 7,
         "sigma": 35,
-        "zones": 3
+        "zones": 5
       },
       "desc": {
         "avg_range": "Average length of generated ridgelines",
