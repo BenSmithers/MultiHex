@@ -12,12 +12,17 @@ import random as rnd
 import os
 import json
 
-def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
+def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), **kwargs):
     """
     Follows the ridge spawning.
 
     Spreads land and ocean around those ridges until the world is filled up 
     """
+    known_kwargs = [ 
+        "temp_range",
+        "rain_range",
+        "sea_level"
+    ]
 
     # load the config file
     file_object = open( os.path.join( os.path.dirname(__file__), 'config.json'), 'r' )
@@ -173,6 +178,22 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
         smooth( ['alt'], sim )
 
     perlinize(sim)
+
+    if "sea_level" in kwargs:
+        scale = kwargs["sea_level"][0]
+        shift = kwargs["sea_level"][1]
+
+        def rescale(alt):
+            return (alt-1.0)*scale + shift +1.0
+
+        for ID in main_map.catalog.keys():
+            main_map.catalog[ID].set_altitude( rescale(main_map.catalog[ID].altitude) )
+            if main_map.catalog[ID].altitude>0:
+                main_map.catalog[ID]._is_land = True
+            else:
+                main_map.catalog[ID]._is_land = False
+
+        save_map( main_map, sim )
 
 if __name__=='__main__':
     generate('cont')

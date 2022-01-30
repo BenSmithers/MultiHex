@@ -39,12 +39,18 @@ class basic_map_dialog(object):
         self.gen_preset_combo = QtWidgets.QComboBox(Dialog)
         self.gen_preset_combo.setObjectName("gen_preset_combo")
         self.gen_preset_combo.addItem("")
+
+        self.specials_combo = QtWidgets.QComboBox(Dialog)
+        self.specials_combo.setObjectName("specials_combo")
+
         self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.gen_preset_combo)
+        self.formLayout.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.specials_combo)
+
         self.advanced_gen_button = QtWidgets.QPushButton(Dialog)
         self.advanced_gen_button.setObjectName("advanced_gen_button")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.FieldRole, self.advanced_gen_button)
+        self.formLayout.setWidget(5, QtWidgets.QFormLayout.FieldRole, self.advanced_gen_button)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        self.formLayout.setItem(3, QtWidgets.QFormLayout.FieldRole, spacerItem)
+        self.formLayout.setItem(4, QtWidgets.QFormLayout.FieldRole, spacerItem)
         self.verticalLayout.addLayout(self.formLayout)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")

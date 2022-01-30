@@ -28,7 +28,7 @@ class LoadingBarGui(object):
         self.vbox.addWidget(self.progress)
 
 class WorldGenLoadingBar(QDialog):
-    def __init__(self,parent, gen_type, filename):
+    def __init__(self,parent, gen_type, filename, **kwargs):
         QDialog.__init__(self,parent)
         # QtCore.Qt.WindowStaysOnTopHint
         self.ui=LoadingBarGui()
@@ -40,10 +40,11 @@ class WorldGenLoadingBar(QDialog):
         self.filename = filename
 
         self.threadpool = QtCore.QThreadPool()
+        self.kwargs = kwargs
         self.run()
 
     def run(self):
-        worldGen = WorldGenerationThread(self.gen_type, self.filename)
+        worldGen = WorldGenerationThread(self.gen_type, self.filename, **self.kwargs)
         worldGen.signals.signal.connect(self.finished)
         self.threadpool.start(worldGen)
 
@@ -54,18 +55,19 @@ class Signaler(QtCore.QObject):
     signal = QtCore.pyqtSignal()
 
 class WorldGenerationThread(QtCore.QRunnable):
-    def __init__(self, gen_type, filename):
+    def __init__(self, gen_type, filename, **kwargs):
         super(WorldGenerationThread,self).__init__()
         self.gen_type = gen_type
         self.filename = filename
         self.setAutoDelete(True)
 
         self.signals = Signaler()
+        self._kwargs = kwargs
 
     @QtCore.pyqtSlot()
     def run(self):
         from MultiHex.generator.full_chain import full_sim
-        self.test = full_sim(self.gen_type,self.filename)
+        self.test = full_sim(self.gen_type,self.filename, **self._kwargs)
         self.signals.signal.emit()
 
 
@@ -146,7 +148,14 @@ class basicMapDialog(QDialog):
         """
         # we check if we're using a custom (advanced) generation set
         arg = 'custom' if custom else self.ui.gen_preset_combo.currentText().lower()
-        self.parent.gen_params = [arg.lower(), self.ui.fileNameEntry.text()]
+        if self.ui.specials_combo.currentText()=="":
+            self.parent.gen_params = [arg.lower(), self.ui.fileNameEntry.text()]
+        else:
+            f = open(self.config_loc,'r')
+            data = json.load(f)
+            f.close()
+
+            self.parent.gen_params = [arg.lower(), self.ui.fileNameEntry.text(), data["_specials"][self.ui.specials_combo.currentText()]]
         self.close()
 
     def button_quit(self):
@@ -185,11 +194,18 @@ class basicMapDialog(QDialog):
         
         self.ui.gen_preset_combo.clear()
         for key in data:
+            if key[0]=="_":
+                continue
             if str(key).lower()=="custom":
                 continue
             nice = str(key).lower()
             nice = nice[0].upper() + nice[1:]
             self.ui.gen_preset_combo.addItem(nice)
+
+        self.ui.specials_combo.clear()
+        self.ui.specials_combo.addItem("")
+        for key in data["_specials"]:
+            self.ui.specials_combo.addItem(key)
 
 
 

@@ -18,7 +18,35 @@ Is it a forest? A Desert? Let's find out!
 """
 
 
-def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
+def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), **kwargs):
+    """
+    Assign all the biomes, colors, etc
+
+    kwargs:
+        temp_range : length-2 tuple. Rescales temperatures to this range. Useful for making ice planets (0,0.1) or desert planets (0.9,1.0)
+        rain_range : Length-2 tuple. Rescales rainfall ranges to this range. Dry (0.0, 0.1) to Wet (0.9, 1.0)
+        sea_level : float. Rescales altitudes to change the effective sea level. 
+    """
+    known_kwargs = [ 
+        "temp_range",
+        "rain_range",
+        "sea_level"
+    ]
+
+    if "temp_range" in kwargs:
+        def temp_rescale(t):
+            return (kwargs["temp_range"][1]-kwargs["temp_range"][0])*t + kwargs["temp_range"][0]
+    else:
+        def temp_rescale(t):
+            return t
+
+    if "rain_range" in kwargs:
+        def rain_rescale(t):
+            return (kwargs["rain_range"][1]-kwargs["rain_range"][0])*t + kwargs["rain_range"][0]
+    else:
+        def rain_rescale(t):
+            return t
+
 
     # load the config file
     file_object = open( os.path.join( os.path.dirname(__file__), 'config.json'), 'r' )
@@ -51,7 +79,10 @@ def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','ge
             main_map.catalog[ID]._fill = (158,140,96)
             main_map.catalog[ID].biome = "mountain"
             continue
-      
+        
+        main_map.catalog[ID].set_rainfall_base( rain_rescale(main_map.catalog[ID].rainfall) )
+        main_map.catalog[ID].set_temperature( temp_rescale(main_map.catalog[ID].temperature) )
+
         this_climatizer.apply_climate_to_hex( main_map.catalog[ID] )
 
 

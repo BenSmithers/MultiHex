@@ -161,10 +161,12 @@ class EntityWidget(GenericTab):
         self.description_lbl = QtWidgets.QLabel(self)
         self.description_lbl.setObjectName("description_lbl")
         self.description_lbl.setText("Description: \n")
+        
         self.left_pane.setWidget(line, QtWidgets.QFormLayout.LabelRole, self.description_lbl)
         line+=1
         self.description_edit = QtWidgets.QTextEdit(self)
         self.description_edit.setObjectName("description_edit")
+        self.description_edit.setMinimumWidth(350)
 
         self.left_pane.setWidget(line, QtWidgets.QFormLayout.SpanningRole, self.description_edit)
         self.right_pane = QtWidgets.QVBoxLayout()

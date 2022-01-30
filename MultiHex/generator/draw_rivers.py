@@ -13,7 +13,7 @@ Uses some simple thresholds to determine what kind of Hex a given Hex is
 Is it a forest? A Desert? Let's find out! 
 """
 
-def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
+def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), **kwargs):
 
     # load the config file
     file_object = open( os.path.join( os.path.dirname(__file__), 'config.json'), 'r' )

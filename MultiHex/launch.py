@@ -212,6 +212,7 @@ class main_window(QMainWindow):
         """
         This is called in order to generate a new map
         """
+        # sets the gen_params thingy
         new_dialog = basicMapDialog(self)
         new_dialog.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         new_dialog.exec_()
@@ -219,7 +220,10 @@ class main_window(QMainWindow):
         if self.gen_params==[]:
             return
         else:
-            genBar = WorldGenLoadingBar(self, self.gen_params[0], self.gen_params[1])
+            if len(self.gen_params)==3:
+                genBar = WorldGenLoadingBar(self, self.gen_params[0], self.gen_params[1], **self.gen_params[2])
+            else:
+                genBar = WorldGenLoadingBar(self, self.gen_params[0], self.gen_params[1])
             genBar.setAttribute(QtCore.Qt.WA_DeleteOnClose)
             genBar.exec_()
             self.load(self.gen_params[1]) #load the new map!

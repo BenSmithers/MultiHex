@@ -1,8 +1,7 @@
 #!/usr/bin/python3.6
 
 from math import exp, sqrt
-from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd, Hex
-from MultiHex.map_types.overland import River
+from MultiHex.core import Hexmap, load_map, save_map, Point, deconstruct_id, Point, PointNd, Hex, Point3d
 
 import random
 import os # used by the Climatizer 
@@ -24,7 +23,7 @@ def get_tileset_params(tileset = "standard"):
 
     # get the parameters
     parameters = []
-    ignoring = ["color","is_ray"]
+    ignoring = ["color","is_ray","flattype",]
     for super_type in config[tileset]["types"]:
         for sub_type in config[tileset]["types"][super_type]:
             for param in config[tileset]["types"][super_type][sub_type]:
@@ -104,7 +103,7 @@ class Climatizer:
 
         return( super, sub )
 
-    def apply_climate_to_hex( self, target ):
+    def apply_climate_to_hex( self, target:Hex)->None:
         """
         Uses the Climatizer's configuration to assign a new fill and "climate" to the Hex
         """
@@ -118,8 +117,7 @@ class Climatizer:
 
         super, sub = self.get_sup_sub( temp )
 
-        target._fill = tuple( self.config[self.tileset]["types"][super][sub]["color"] )
-        target.biome = sub
+        target.update(self.config[self.tileset]["types"][super][sub], sub)
 
 
 

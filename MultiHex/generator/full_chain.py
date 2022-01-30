@@ -4,7 +4,10 @@ from MultiHex.generator import sim_weather
 from MultiHex.generator import biome_maker
 from MultiHex.generator import draw_rivers
 
+import sys
 import os
+
+from MultiHex.logger import Logger
 
 """
 Provides macros for running the simulation chain
@@ -16,15 +19,17 @@ both refer to the file `config.json` for simulation parameters
 """
 
 
-def ridge_onward( size, name ):
-    fill_land.generate( size, name )
+def ridge_onward( size, name, **kwargs):
+    fill_land.generate( size, name, **kwargs )
     sim_weather.generate( size, name )
     draw_rivers.generate(size, name)
-    biome_maker.generate( size, name )
 
-def full_sim( size, name ):
-    make_ridges.generate( size, name )
-    ridge_onward( size, name )
+    biome_maker.generate( size, name, **kwargs) #, temp_range=(0.8,1.0), rain_range=(0,0.1))
+
+def full_sim( size, name, **kwargs):
+    Logger.Log("Got kwargs {}".format(kwargs))
+    make_ridges.generate( size, name, **kwargs)
+    ridge_onward( size, name, **kwargs)
 
 if __name__=='__main__':
     if sys.platform=='linux':

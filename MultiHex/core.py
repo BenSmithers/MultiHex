@@ -1,5 +1,6 @@
 from PyQt5 import QtCore, QtWidgets
 from MultiHex.objects import Entity, Mobile
+from MultiHex.clock import Clock
 
 try:
     from numpy import sqrt, atan, pi, floor, cos, sin, inf
@@ -270,8 +271,11 @@ class Hex:
         self._outline= (240,240,240)
         self._fill   = (100,100,100) 
 
-        # used in procedural generation
+        # used in procedural generation, pretty sure it's unused now...
         self.genkey            = '00000000'
+
+        # kinda name used by the region identifiers 
+        self.biome = "" 
 
     @property
     def outline(self):
@@ -280,6 +284,13 @@ class Hex:
     @property
     def fill(self):
         return self._fill
+
+    def update(self, new_parms:dict, biome_name:str)->None:
+        """
+        Called by the climatizer, the hex takes this dict and changes itself 
+        """
+        self._fill = tuple(new_parms["color"])
+        self.biome = biome_name
 
     def get_cost(self, other):
         """
@@ -501,6 +512,7 @@ class Hexmap:
         self._version = map_version 
 
         self.dimensions = None
+
 
     @property
     def tileset(self):

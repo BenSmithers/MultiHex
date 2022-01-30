@@ -1,4 +1,21 @@
 {
+  "_specials":{
+    "ice world":{
+      "temp_range":[0,0.1]
+    },
+    "desert world":{
+      "temp_range":[0.8,1.0],
+      "rain_range":[0.0,0.2],
+      "sea_level":[0.6,0.0]
+    },
+    "water world":{
+      "rain_range":[0.7,1.0],
+      "sea_level":[0.0,-0.5]
+    },
+    "dry world":{
+      "sea_level":[0.6,0.0]
+    }
+  },
   "continental": {
     "land": {
       "values": {

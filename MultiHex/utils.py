@@ -3,9 +3,8 @@ from collections import deque
 
 from numpy.core.fromnumeric import ravel
 
-from MultiHex.objects import Mobile, Entity 
 from MultiHex.clock import Clock, Time
-from MultiHex.core import Hexmap, Hex, Region
+from MultiHex.core import Hexmap, Hex
 
 from MultiHex.logger import Logger
 
@@ -488,7 +487,7 @@ class ActionManager:
     def configure_with_map(self, parent_map:Hexmap):
         self._configured = True
         self._parent = parent_map
-        self._clock = parent_map.clock
+        #self._clock = parent_map.clock
 
     def add_to_meta(self, action:MapAction):
         """

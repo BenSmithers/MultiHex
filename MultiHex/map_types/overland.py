@@ -1044,13 +1044,25 @@ class OHex(Hex):
         self._altitude_base    = 1.0
         self._temperature_base = 0.0
         self._is_land          = True
-        self.biome             = ""
+        self._flat             = False #don't use the altitude to change the draw color
         self.on_road           = None
 
         # CW downstream , CCW downstream, runs through
         self.river_border = [ False ,False , False]
 
         self._scale_factor = self.radius*rthree
+
+    def  update(self, new_parms: dict, biome_name: str) -> None:
+        self._flat = new_parms["flattype"]
+        return super().update(new_parms, biome_name)
+
+    def set_flatness(self, flatness:bool):
+        """
+        Sets whether or not the hex is "flat"
+            True - flat
+            False - not flat
+        """
+        self._flat = flatness
 
     def get_cost(self, other):
         """
@@ -1123,7 +1135,10 @@ class OHex(Hex):
         
     @property
     def fill(self):
-        return(min( 255, max( 0, self._fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
+        if self._flat:
+            return self._fill
+        else:
+            return(min( 255, max( 0, self._fill[0]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self._fill[1]*( 1.0 + 0.4*(self._altitude_base) -0.2))),
                         min( 255, max( 0, self._fill[2]*( 1.0 + 0.4*(self._altitude_base) -0.2))))
     @property

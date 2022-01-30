@@ -19,7 +19,7 @@ def make_basic_hex(arg1, arg2):
     return( new_one )
 
 
-def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap')):
+def generate(size, sim = os.path.join(os.path.dirname(__file__),'..','saves','generated.hexmap'), **kwargs):
 
     # load the config file
     file_object = open( os.path.join(os.path.dirname(__file__), 'config.json'), 'r' )

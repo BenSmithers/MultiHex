@@ -37,27 +37,18 @@ class map_use_ui:
         self.tool_hex_select.setObjectName("tool_hex_select")
         which_ui.toolPane.addWidget(self.tool_hex_select)
         '''
-
-        # the panels
-        self.Calendar = QtWidgets.QWidget()
-        self.Calendar.setGeometry(QtCore.QRect(0,0,450,630))
-        self.Calendar.setObjectName("Calendar")
-        self.cal_form_layout = QtWidgets.QFormLayout(self.Calendar)
-        self.cal_form_layout.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.cal_form_layout.setObjectName("cal_form_layout")
-        self.cal_Calendar = MultiHexCalendar(self.Calendar, Time(3,12,4,17,210))
-        self.cal_Calendar.setObjectName("Actual calendar")
-        self.cal_form_layout.setWidget(1,QtWidgets.QFormLayout.SpanningRole, self.cal_Calendar)
-
-        which_ui.contextPane.addItem(self.Calendar,"Calendar")
-
         #=======  Defining the event list panel  =============================
         self.EventsList = QtWidgets.QWidget()
         self.EventsList.setGeometry(QtCore.QRect(0,0,450,630))
         self.EventsList.setObjectName("EventsList")
+
         self.evt_formLayout = QtWidgets.QFormLayout(self.EventsList)
         self.evt_formLayout.setLabelAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self.evt_formLayout.setObjectName("evt_formLayout")
+        self.cal_Calendar = MultiHexCalendar(self.EventsList, Time(3,12,4,17,210))
+        self.cal_Calendar.setObjectName("Actual calendar")
+        self.evt_formLayout.setWidget(0, QtWidgets.QFormLayout.SpanningRole, self.cal_Calendar)
+
         self.evt_obj_name_lbl = QtWidgets.QLabel(self.EventsList)
         self.evt_obj_name_lbl.setObjectName("evt_obj_name_lbl")
         self.evt_obj_name_lbl.setText("Looking at: ")
@@ -144,7 +135,7 @@ class map_use_ui:
         self.evt_new_evt_button.setObjectName("evt_new_evt_button")
         self.evt_new_evt_button.setText("Add New Event")
         self.evt_formLayout.setWidget(8, QtWidgets.QFormLayout.SpanningRole, self.evt_new_evt_button)
-        which_ui.contextPane.addItem(self.EventsList,"Event List")
+        which_ui.contextPane.addItem(self.EventsList,"Map Use Mode")
 
         self.evt_next_sun_button.clicked.connect(self.next_suntime_button_clicked)
         self.evt_next_evt_button.clicked.connect(self.next_event_button_clicked)
